@@ -118,3 +118,7 @@ data class Move(
     val name: String,
     val tags: List<String>
 )
+
+Todo
+
+Please read through and do all of this, read all files necessary consume as much data as you need:

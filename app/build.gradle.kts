@@ -9,13 +9,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.combogenerator"
-    compileSdk = 36
+    namespace = "com.princelumpy.breakvault" // Updated namespace
+    compileSdk = 36 // Keeping compileSdk high is generally fine
 
     defaultConfig {
-        applicationId = "com.example.combogenerator"
+        applicationId = "com.princelumpy.breakvault" // CRITICAL: Updated applicationId
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 34 // Updated to a more common stable API for production
         versionCode = 1
         versionName = "1.0"
 
@@ -24,7 +24,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true // CRITICAL: Enabled minification for release
+            // isShrinkResources = true // Recommended: Add this to shrink resources
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -58,10 +59,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.compose.runtime.livedata)
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.navigation.compose) // Corrected from .compose.ui
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
@@ -72,6 +70,7 @@ dependencies {
 
     implementation(libs.kotlinx.serialization.json) // Added Kotlinx Serialization JSON library
 
+    // Test Implementations - Ensure these are not accidentally used in release code
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -79,4 +78,9 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    // Remove androidx.compose.ui, androidx.compose.ui.graphics, androidx.compose.ui.tooling.preview if only for preview
+    // Retained for now as they might be used directly, but usually covered by Material3 or BOM
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
 }

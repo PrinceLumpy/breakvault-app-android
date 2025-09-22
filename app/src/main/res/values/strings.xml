@@ -1,3 +1,104 @@
 <resources>
     <string name="app_name">BreakVault</string>
+
+    <!-- Screen Labels (for Navigation) -->
+    <string name="screen_label_moves">Moves</string>
+    <string name="screen_label_saved_combos">Saved</string>
+    <string name="screen_label_tags">Tags</string>
+    <string name="screen_label_settings">Settings</string>
+    <string name="screen_label_combo_generator">Generator</string>
+    <string name="screen_label_flashcards">Flashcards</string>
+    <string name="screen_label_add_edit_move">Add/Edit Move</string>
+
+    <!-- TagListScreen -->
+    <string name="tag_list_manage_tags_title">Manage Tags</string>
+    <string name="tag_list_add_tag_fab_description">Add Tag</string>
+    <string name="tag_list_no_tags_message">No tags found. Click the \'+\' button to add a new tag.</string>
+    <string name="tag_list_add_new_tag_dialog_title">Add New Tag</string>
+    <string name="tag_list_tag_name_label">Tag Name</string>
+    <string name="tag_list_edit_tag_name_dialog_title">Edit Tag Name</string>
+    <string name="tag_list_new_tag_name_label">New Tag Name</string>
+    <string name="tag_list_delete_confirmation_message">Are you sure you want to delete the tag \'%1$s\'? This will remove it from all associated moves.</string>
+    <string name="tag_list_edit_tag_description">Edit Tag</string>
+    <string name="tag_list_delete_tag_description">Delete Tag</string>
+
+    <!-- MoveListScreen -->
+    <string name="move_list_add_move_button">Add Move</string>
+    <string name="move_list_generate_combo_button">Generate Combo</string>
+    <string name="move_list_no_moves_message">No moves yet! Click \'Add Move\' to get started.</string>
+    <string name="move_list_delete_confirmation_message">Are you sure you want to delete \'%1$s\'?</string>
+    <string name="move_card_tags_label">Tags: %1$s</string>
+    <string name="move_card_no_tags_label">No tags</string>
+    <string name="move_card_edit_button">Edit</string>
+    <string name="move_card_delete_move_description">Delete Move</string>
+
+    <!-- AddEditMoveScreen -->
+    <string name="add_edit_move_add_new_move_title">Add New Move</string>
+    <string name="add_edit_move_edit_move_title">Edit Move</string>
+    <string name="add_edit_move_save_move_fab_description">Save Move</string>
+    <string name="add_edit_move_move_name_label">Move Name</string>
+    <string name="add_edit_move_select_tags_label">Select Tags:</string>
+    <string name="add_edit_move_no_tags_available_message">No tags available. Add some below!</string>
+    <string name="add_edit_move_selected_chip_description">Selected</string>
+    <string name="add_edit_move_add_new_tag_label">Add New Tag:</string>
+    <string name="add_edit_move_new_tag_name_label">New Tag Name</string>
+    <string name="add_edit_move_error_blank_name">Move name cannot be blank.</string>
+    <string name="add_edit_move_error_tag_exists">Tag \'%1$s\' already exists.</string>
+
+    <!-- ComboGeneratorScreen -->
+    <string name="combo_generator_initial_text">Your combo will appear here.</string>
+    <string name="combo_generator_title">Combo Generator</string>
+    <string name="combo_generator_select_tags_label">Select Tags for your Combo:</string>
+    <string name="combo_generator_no_tags_message">No tags available to generate a combo.</string>
+    <string name="combo_generator_number_of_moves_label">Number of Moves:</string>
+    <string name="combo_generator_random_length_option">Random</string>
+    <string name="combo_generator_combo_length_label">Combo Length</string>
+    <string name="combo_generator_length_warning_dialog_message">Only %1$d moves are available with the selected tags. A combo of %1$d moves has been generated.</string>
+    <string name="combo_generator_no_moves_found_message">No moves found matching the selected tags. Try a different selection or \'Random\' length.</string>
+    <string name="combo_generator_select_at_least_one_tag_message">Please select at least one tag to generate a combo.</string>
+    <string name="combo_generator_generate_combo_button">Generate Combo</string>
+    <string name="combo_generator_generated_combo_label">Generated Combo:</string>
+    <string name="combo_generator_save_combo_button">Save Combo</string>
+    <string name="combo_generator_save_combo_icon_description">Save Combo</string>
+    <string name="combo_generator_length_warning_dialog_title">Note</string>
+    <string name="combo_generator_combo_saved_snackbar">Combo saved!</string>
+
+    <!-- SettingsScreen -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_export_data_button">Export Data</string>
+    <string name="settings_import_data_button">Import Data</string>
+    <string name="settings_reset_database_button">Reset Database</string>
+    <string name="settings_export_success_snackbar">Data exported successfully to %1$s</string>
+    <string name="settings_export_error_retrieving_data_snackbar">Error: Could not retrieve data for export.</string>
+    <string name="settings_import_success_snackbar">Data imported successfully!</string>
+    <string name="settings_import_failed_logs_snackbar">Import failed. Check logs.</string>
+    <string name="settings_import_error_reading_file_snackbar">Error: Could not read data from file.</string>
+    <string name="settings_action_failed_snackbar">%1$s failed: %2$s</string>
+    <string name="settings_export_action_label">Export</string>
+    <string name="settings_import_action_label">Import</string>
+    <string name="settings_database_reset_success_snackbar">Database reset successfully.</string>
+    <string name="settings_reset_dialog_title">Reset Database?</string>
+    <string name="settings_reset_dialog_message">Are you sure you want to reset all data? This action cannot be undone.</string>
+    <string name="settings_reset_dialog_confirm_button">Reset</string>
+
+    <!-- FlashcardScreen -->
+    <string name="flashcard_screen_placeholder_title">Flashcards</string>
+    <string name="flashcard_upcoming_feature_message">Flashcard functionality is coming soon! Stay tuned for more updates.</string>
+
+    <!-- SavedCombosScreen -->
+    <string name="saved_combos_screen_title">Saved Combos</string>
+    <string name="saved_combos_no_combos_message">No combos saved yet.</string>
+    <string name="saved_combos_delete_combo_description">Delete Combo</string>
+    <string name="saved_combos_rename_dialog_title">Rename Combo</string>
+    <string name="saved_combos_rename_dialog_combo_name_label">Combo Name</string>
+
+    <!-- Common Strings (to be reused across screens) -->
+    <string name="common_add">Add</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_save">Save</string>
+    <string name="common_confirm_deletion_title">Confirm Deletion</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_back_button_description">Back</string>
+    <string name="common_ok">OK</string>
+
 </resources>

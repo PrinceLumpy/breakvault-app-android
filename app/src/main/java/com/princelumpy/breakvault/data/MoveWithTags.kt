@@ -8,12 +8,12 @@ data class MoveWithTags(
     @Embedded val move: Move,
     @Relation(
         parentColumn = "id", // Primary key of the Move entity
-        entityColumn = "id", // Primary key of the Tag entity
+        entityColumn = "id", // Primary key of the MoveListTag entity
         associateBy = Junction(
             value = MoveTagCrossRef::class,
             parentColumn = "moveId", // Foreign key in MoveTagCrossRef linking to Move
-            entityColumn = "tagId"   // Foreign key in MoveTagCrossRef linking to Tag
+            entityColumn = "tagId"   // Foreign key in MoveTagCrossRef linking to MoveListTag
         )
     )
-    val tags: List<Tag>
+    val moveListTags: List<MoveListTag>
 )

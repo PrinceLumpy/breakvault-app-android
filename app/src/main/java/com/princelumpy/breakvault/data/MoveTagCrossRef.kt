@@ -18,10 +18,10 @@ import kotlinx.serialization.Serializable
             onDelete = ForeignKey.CASCADE // If a Move is deleted, delete its links
         ),
         ForeignKey(
-            entity = Tag::class,
+            entity = MoveListTag::class,
             parentColumns = ["id"],
             childColumns = ["tagId"],
-            onDelete = ForeignKey.CASCADE // If a Tag is deleted, delete its links
+            onDelete = ForeignKey.CASCADE // If a MoveListTag is deleted, delete its links
         )
     ]
 )

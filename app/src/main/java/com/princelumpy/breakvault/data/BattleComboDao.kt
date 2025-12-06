@@ -11,7 +11,6 @@ import androidx.room.Update
 
 @Dao
 interface BattleComboDao {
-
     @Transaction
     @Query("SELECT * FROM battle_combos ORDER BY energy ASC")
     fun getAllBattleCombos(): LiveData<List<BattleComboWithTags>>
@@ -38,7 +37,7 @@ interface BattleComboDao {
 
     // Cross Ref Methods
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertBattleComboTagCrossRef(crossRef: BattleComboTagCrossRef)
+    suspend fun link(crossRef: BattleComboTagCrossRef)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAllBattleComboTagCrossRefs(crossRefs: List<BattleComboTagCrossRef>)

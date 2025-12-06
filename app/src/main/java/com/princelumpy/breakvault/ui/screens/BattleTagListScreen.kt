@@ -4,6 +4,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -14,9 +16,13 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.BattleTag
 import com.princelumpy.breakvault.viewmodel.BattleViewModel
 
@@ -33,21 +39,23 @@ fun BattleTagListScreen(
 
     var showAddTagDialog by remember { mutableStateOf(false) }
     var newTagName by remember { mutableStateOf("") }
+    
+    val focusManager = LocalFocusManager.current
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Manage Battle Tags") },
+                title = { Text(stringResource(id = R.string.battle_tag_list_title)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(id = R.string.common_back_button_description))
                     }
                 }
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddTagDialog = true }) {
-                Icon(Icons.Filled.Add, contentDescription = "Add Tag")
+                Icon(Icons.Filled.Add, contentDescription = stringResource(id = R.string.battle_tag_list_add_fab_description))
             }
         }
     ) { paddingValues ->
@@ -59,7 +67,7 @@ fun BattleTagListScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (tagsList.isEmpty() && !showAddTagDialog) {
-                Text("No battle tags found. Click '+' to add one.")
+                Text(stringResource(id = R.string.battle_tag_list_no_tags_message))
             }
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -85,14 +93,24 @@ fun BattleTagListScreen(
     if (showAddTagDialog) {
         AlertDialog(
             onDismissRequest = { showAddTagDialog = false; newTagName = "" },
-            title = { Text("Add New Battle Tag") },
+            title = { Text(stringResource(id = R.string.battle_tag_list_add_dialog_title)) },
             text = {
                 OutlinedTextField(
                     value = newTagName,
-                    onValueChange = { newTagName = it },
-                    label = { Text("Tag Name") },
+                    onValueChange = { 
+                        if (it.length <= 30) newTagName = it 
+                    },
+                    label = { Text(stringResource(id = R.string.battle_tag_list_tag_name_label)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = {
+                         if (newTagName.isNotBlank()) {
+                            battleViewModel.addBattleTag(newTagName)
+                            showAddTagDialog = false
+                            newTagName = ""
+                        }
+                    })
                 )
             },
             confirmButton = {
@@ -106,12 +124,12 @@ fun BattleTagListScreen(
                     },
                     enabled = newTagName.isNotBlank()
                 ) {
-                    Text("Add")
+                    Text(stringResource(id = R.string.common_add))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showAddTagDialog = false; newTagName = "" }) {
-                    Text("Cancel")
+                    Text(stringResource(id = R.string.common_cancel))
                 }
             }
         )
@@ -120,14 +138,24 @@ fun BattleTagListScreen(
     showEditDialog?.let { tagToEdit ->
         AlertDialog(
             onDismissRequest = { showEditDialog = null },
-            title = { Text("Edit Tag Name") },
+            title = { Text(stringResource(id = R.string.battle_tag_list_edit_dialog_title)) },
             text = {
                 OutlinedTextField(
                     value = tagNameForEdit,
-                    onValueChange = { tagNameForEdit = it },
-                    label = { Text("New Tag Name") },
+                    onValueChange = { 
+                        if (it.length <= 30) tagNameForEdit = it 
+                    },
+                    label = { Text(stringResource(id = R.string.battle_tag_list_new_tag_name_label)) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = {
+                        if (tagNameForEdit.isNotBlank() && tagNameForEdit != tagToEdit.name) {
+                            battleViewModel.updateBattleTag(tagToEdit.copy(name = tagNameForEdit))
+                        }
+                        showEditDialog = null
+                        tagNameForEdit = ""
+                    })
                 )
             },
             confirmButton = {
@@ -141,12 +169,12 @@ fun BattleTagListScreen(
                     },
                     enabled = tagNameForEdit.isNotBlank()
                 ) {
-                    Text("Save")
+                    Text(stringResource(id = R.string.common_save))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showEditDialog = null; tagNameForEdit = "" }) {
-                    Text("Cancel")
+                    Text(stringResource(id = R.string.common_cancel))
                 }
             }
         )
@@ -155,8 +183,8 @@ fun BattleTagListScreen(
     showDeleteDialog?.let { tagToDelete ->
         AlertDialog(
             onDismissRequest = { showDeleteDialog = null },
-            title = { Text("Confirm Deletion") },
-            text = { Text("Are you sure you want to delete '${tagToDelete.name}'?") },
+            title = { Text(stringResource(id = R.string.common_confirm_deletion_title)) },
+            text = { Text(stringResource(id = R.string.battle_tag_list_delete_confirmation, tagToDelete.name)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -165,12 +193,12 @@ fun BattleTagListScreen(
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Delete")
+                    Text(stringResource(id = R.string.common_delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = null }) {
-                    Text("Cancel")
+                    Text(stringResource(id = R.string.common_cancel))
                 }
             }
         )
@@ -201,10 +229,10 @@ fun BattleTagListItem(
             )
             Row {
                 IconButton(onClick = { onEditClick(tag) }) {
-                    Icon(Icons.Filled.Edit, contentDescription = "Edit Tag")
+                    Icon(Icons.Filled.Edit, contentDescription = stringResource(id = R.string.battle_tag_list_edit_icon_desc))
                 }
                 IconButton(onClick = { onDeleteClick(tag) }) {
-                    Icon(Icons.Filled.Delete, contentDescription = "Delete Tag", tint = MaterialTheme.colorScheme.error)
+                    Icon(Icons.Filled.Delete, contentDescription = stringResource(id = R.string.battle_tag_list_delete_icon_desc), tint = MaterialTheme.colorScheme.error)
                 }
             }
         }

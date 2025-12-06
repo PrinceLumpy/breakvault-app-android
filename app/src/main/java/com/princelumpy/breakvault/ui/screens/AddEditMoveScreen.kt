@@ -1,6 +1,8 @@
 package com.princelumpy.breakvault.ui.screens
 
 import android.util.Log
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
@@ -15,7 +17,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
@@ -23,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
-import com.princelumpy.breakvault.data.Tag
+import com.princelumpy.breakvault.data.MoveListTag
 import com.princelumpy.breakvault.ui.theme.ComboGeneratorTheme
 import com.princelumpy.breakvault.viewmodel.IMoveViewModel
 import com.princelumpy.breakvault.viewmodel.FakeMoveViewModel
@@ -41,13 +43,13 @@ fun AddEditMoveScreen(
     var moveName by remember { mutableStateOf("") }
     var newTagName by remember { mutableStateOf("") }
     val allTags by moveViewModel.allTags.observeAsState(initial = emptyList())
-    var selectedTags by remember { mutableStateOf(setOf<Tag>()) }
-    val keyboardController = LocalSoftwareKeyboardController.current
+    var selectedMoveListTags by remember { mutableStateOf(setOf<MoveListTag>()) }
+    val focusManager = LocalFocusManager.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current // For Snackbar messages
 
-    // State to track auto-selection of newly added tags
+    // State to track auto-selection of newly added moveListTags
     var pendingAutoSelectTagName by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(key1 = moveId) {
@@ -55,22 +57,22 @@ fun AddEditMoveScreen(
             val moveBeingEdited = moveViewModel.getMoveForEditing(moveId)
             if (moveBeingEdited != null) {
                 moveName = moveBeingEdited.move.name
-                selectedTags = moveBeingEdited.tags.toSet()
+                selectedMoveListTags = moveBeingEdited.moveListTags.toSet()
             } else {
                 Log.w("AddEditMoveScreen", "Could not find move with ID $moveId for editing.")
             }
         } else {
             moveName = ""
-            selectedTags = setOf()
+            selectedMoveListTags = setOf()
         }
     }
 
-    // Auto-select logic: When allTags updates, check if we are waiting for a tag to appear
+    // Auto-select logic: When allTags updates, check if we are waiting for a moveListTag to appear
     LaunchedEffect(allTags, pendingAutoSelectTagName) {
         pendingAutoSelectTagName?.let { tagName ->
             val foundTag = allTags.find { it.name.equals(tagName, ignoreCase = true) }
             if (foundTag != null) {
-                selectedTags = selectedTags + foundTag
+                selectedMoveListTags = selectedMoveListTags + foundTag
                 pendingAutoSelectTagName = null // Reset
             }
         }
@@ -79,11 +81,11 @@ fun AddEditMoveScreen(
     val saveMoveAction: () -> Unit = {
         if (moveName.isNotBlank()) {
             if (moveId == null) {
-                moveViewModel.addMove(moveName, selectedTags.toList())
+                moveViewModel.addMove(moveName, selectedMoveListTags.toList())
             } else {
-                moveViewModel.updateMoveAndTags(moveId, moveName, selectedTags.toList())
+                moveViewModel.updateMoveAndTags(moveId, moveName, selectedMoveListTags.toList())
             }
-            keyboardController?.hide()
+            focusManager.clearFocus()
             navController.popBackStack()
         } else {
             Log.w("AddEditMoveScreen", "Validation failed: Move name cannot be blank.")
@@ -93,7 +95,7 @@ fun AddEditMoveScreen(
         }
     }
 
-    val addTagAction: () -> Unit = {
+    val addMoveListTagAction: () -> Unit = {
         if (newTagName.isNotBlank()) {
             val trimmedTagName = newTagName.trim()
             if (!allTags.any { it.name.equals(trimmedTagName, ignoreCase = true) }) {
@@ -101,15 +103,15 @@ fun AddEditMoveScreen(
                 pendingAutoSelectTagName = trimmedTagName // Queue for auto-selection
                 newTagName = "" // Clear input after successful add
             } else {
-                Log.w("AddEditMoveScreen", "Validation failed: Tag '$trimmedTagName' already exists.")
+                Log.w("AddEditMoveScreen", "Validation failed: MoveListTag '$trimmedTagName' already exists.")
                 scope.launch {
                     snackbarHostState.showSnackbar(
                         message = context.getString(R.string.add_edit_move_error_tag_exists, trimmedTagName)
                     )
                 }
-                newTagName = "" // Clear input after attempting to add existing tag
+                newTagName = "" // Clear input after attempting to add existing moveListTag
             }
-            keyboardController?.hide()
+            focusManager.clearFocus()
         }
     }
 
@@ -136,13 +138,21 @@ fun AddEditMoveScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState())
-                .fillMaxSize(),
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { focusManager.clearFocus() }, // Hide keyboard on tap outside
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             OutlinedTextField(
                 value = moveName,
-                onValueChange = { moveName = it },
+                onValueChange = { 
+                    if (it.length <= 100) {
+                        moveName = it 
+                    }
+                },
                 label = { Text(stringResource(id = R.string.add_edit_move_move_name_label)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -161,16 +171,16 @@ fun AddEditMoveScreen(
             ) {
                 allTags.forEach { tag ->
                     FilterChip(
-                        selected = selectedTags.any { it.id == tag.id },
+                        selected = selectedMoveListTags.any { it.id == tag.id },
                         onClick = {
-                            selectedTags = if (selectedTags.any { it.id == tag.id }) {
-                                selectedTags.filterNot { selectedTag -> selectedTag.id == tag.id }.toSet()
+                            selectedMoveListTags = if (selectedMoveListTags.any { it.id == tag.id }) {
+                                selectedMoveListTags.filterNot { selectedTag -> selectedTag.id == tag.id }.toSet()
                             } else {
-                                selectedTags + tag
+                                selectedMoveListTags + tag
                             }
                         },
                         label = { Text(tag.name) },
-                        leadingIcon = if (selectedTags.any { it.id == tag.id }) {
+                        leadingIcon = if (selectedMoveListTags.any { it.id == tag.id }) {
                             { Icon(Icons.Filled.Done, stringResource(id = R.string.add_edit_move_selected_chip_description), Modifier.size(FilterChipDefaults.IconSize)) }
                         } else { null }
                     )
@@ -187,14 +197,18 @@ fun AddEditMoveScreen(
             ) {
                 OutlinedTextField(
                     value = newTagName,
-                    onValueChange = { newTagName = it },
+                    onValueChange = { 
+                        if (it.length <= 30) {
+                            newTagName = it 
+                        }
+                    },
                     label = { Text(stringResource(id = R.string.add_edit_move_new_tag_name_label)) },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { addTagAction() })
+                    keyboardActions = KeyboardActions(onDone = { addMoveListTagAction() })
                 )
-                Button(onClick = addTagAction) {
+                Button(onClick = addMoveListTagAction) {
                     Text(stringResource(id = R.string.common_add))
                 }
             }

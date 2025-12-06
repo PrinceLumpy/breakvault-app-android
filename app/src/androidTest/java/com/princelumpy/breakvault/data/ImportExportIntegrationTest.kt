@@ -17,6 +17,7 @@ import org.junit.runner.RunWith
 class ImportExportIntegrationTest {
 
     private lateinit var db: AppDB
+
     // DAOs
     private lateinit var moveTagDao: MoveTagDao
     private lateinit var savedComboDao: SavedComboDao
@@ -29,7 +30,7 @@ class ImportExportIntegrationTest {
         // Use an in-memory database for testing.
         // The data will be wiped when the process dies.
         db = Room.inMemoryDatabaseBuilder(context, AppDB::class.java).build()
-        
+
         moveTagDao = db.moveTagDao()
         savedComboDao = db.savedComboDao()
         battleComboDao = db.battleComboDao()
@@ -45,19 +46,19 @@ class ImportExportIntegrationTest {
     fun testFullImportCycle() = runBlocking {
         // 1. Prepare Complex Import Data
         val move1 = Move("m1", "Windmill")
-        val tag1 = Tag("t1", "Power")
+        val moveListTag1 = MoveListTag("t1", "Power")
         val crossRef1 = MoveTagCrossRef("m1", "t1")
-        
+
         val savedCombo = SavedCombo(
-            id = "s1", 
-            name = "Power Set", 
+            id = "s1",
+            name = "Power Set",
             moves = listOf("Windmill", "Windmill")
         )
-        
+
         val battleCombo = BattleCombo(
-            id = "b1", 
-            description = "Battle Round 1", 
-            energy = EnergyLevel.HIGH, 
+            id = "b1",
+            description = "Battle Round 1",
+            energy = EnergyLevel.HIGH,
             status = TrainingStatus.READY
         )
         val battleTag = BattleTag("bt1", "Aggressive")
@@ -65,7 +66,7 @@ class ImportExportIntegrationTest {
 
         val exportData = AppDataExport(
             moves = listOf(move1),
-            tags = listOf(tag1),
+            moveListTags = listOf(moveListTag1),
             moveTagCrossRefs = listOf(crossRef1),
             savedCombos = listOf(savedCombo),
             battleCombos = listOf(battleCombo),
@@ -75,21 +76,21 @@ class ImportExportIntegrationTest {
 
         // 2. Execute Import Logic (Simulating ViewModel logic manually)
         db.clearAllTables() // Ensure clean slate
-        
+
         moveTagDao.insertAllMoves(exportData.moves)
-        moveTagDao.insertAllTags(exportData.tags)
+        moveTagDao.insertAllTags(exportData.moveListTags)
         moveTagDao.insertAllMoveTagCrossRefs(exportData.moveTagCrossRefs)
         savedComboDao.insertAllSavedCombos(exportData.savedCombos)
-        
+
         exportData.battleCombos.forEach { battleComboDao.insertBattleCombo(it) }
         exportData.battleTags.forEach { battleTagDao.insertBattleTag(it) }
-        exportData.battleComboTagCrossRefs.forEach { battleComboDao.insertBattleComboTagCrossRef(it) }
+        exportData.battleComboTagCrossRefs.forEach { battleComboDao.link(it) }
 
         // 3. Verify Practice Mode Data
         val loadedMove = moveTagDao.getMoveWithTagsById("m1")
         assertNotNull("Move should exist", loadedMove)
         assertEquals("Windmill", loadedMove?.move?.name)
-        assertEquals("Power", loadedMove?.tags?.first()?.name)
+        assertEquals("Power", loadedMove?.moveListTags?.first()?.name)
 
         val loadedSavedCombo = savedComboDao.getSavedComboById("s1")
         assertNotNull("Saved Combo should exist", loadedSavedCombo)

@@ -9,5 +9,7 @@ import java.util.UUID
 @Entity(tableName = "battle_tags")
 data class BattleTag(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
-    val name: String
+    val name: String,
+    val createdAt: Long = System.currentTimeMillis(),
+    val modifiedAt: Long = System.currentTimeMillis()
 )

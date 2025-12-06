@@ -65,7 +65,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.Move
-import com.princelumpy.breakvault.data.Tag
+import com.princelumpy.breakvault.data.MoveListTag
 import com.princelumpy.breakvault.ui.theme.ComboGeneratorTheme
 import com.princelumpy.breakvault.viewmodel.FakeMoveViewModel
 import com.princelumpy.breakvault.viewmodel.IMoveViewModel
@@ -83,7 +83,7 @@ fun ComboGeneratorScreen(
     moveViewModel: IMoveViewModel = viewModel<MoveViewModel>()
 ) {
     val allTags by moveViewModel.allTags.observeAsState(initial = emptyList())
-    var selectedGeneratorTags by remember { mutableStateOf(setOf<Tag>()) }
+    var selectedGeneratorMoveListTags by remember { mutableStateOf(setOf<MoveListTag>()) }
     var generatedComboText by remember { mutableStateOf("") }
     var currentGeneratedMoves by remember { mutableStateOf<List<Move>>(emptyList()) }
     
@@ -100,7 +100,7 @@ fun ComboGeneratorScreen(
     var lengthDropdownExpanded by remember { mutableStateOf(false) }
 
     var currentMode by remember { mutableStateOf(GenerationMode.Random) }
-    var structuredTagSequence by remember { mutableStateOf<List<Tag>>(emptyList()) }
+    var structuredMoveListTagSequence by remember { mutableStateOf<List<MoveListTag>>(emptyList()) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -159,9 +159,9 @@ fun ComboGeneratorScreen(
             when (currentMode) {
                 GenerationMode.Random -> {
                     RandomModeUI(
-                        allTags = allTags,
-                        selectedTags = selectedGeneratorTags,
-                        onTagsChange = { selectedGeneratorTags = it },
+                        allMoveListTags = allTags,
+                        selectedMoveListTags = selectedGeneratorMoveListTags,
+                        onTagsChange = { selectedGeneratorMoveListTags = it },
                         selectedLength = selectedLength,
                         onLengthChange = { selectedLength = it },
                         lengthDropdownExpanded = lengthDropdownExpanded,
@@ -172,7 +172,7 @@ fun ComboGeneratorScreen(
                     )
                 }
                 GenerationMode.Structured -> {
-                    StructuredModeUI(allTags, structuredTagSequence, onSequenceChange = { structuredTagSequence = it })
+                    StructuredModeUI(allTags, structuredMoveListTagSequence, onSequenceChange = { structuredMoveListTagSequence = it })
                 }
             }
 
@@ -182,8 +182,8 @@ fun ComboGeneratorScreen(
                 onClick = {
                     val comboMoves = when (currentMode) {
                         GenerationMode.Random -> {
-                            // If no tags selected, use ALL tags
-                            val tagsToUse = selectedGeneratorTags.ifEmpty { allTags.toSet() }
+                            // If no moveListTags selected, use ALL moveListTags
+                            val tagsToUse = selectedGeneratorMoveListTags.ifEmpty { allTags.toSet() }
                             
                             if (tagsToUse.isNotEmpty()) {
                                 moveViewModel.generateComboFromTags(tagsToUse, selectedLength, allowRepeats)
@@ -193,8 +193,8 @@ fun ComboGeneratorScreen(
                             }
                         }
                         GenerationMode.Structured -> {
-                            if (structuredTagSequence.isNotEmpty()) {
-                                moveViewModel.generateStructuredCombo(structuredTagSequence)
+                            if (structuredMoveListTagSequence.isNotEmpty()) {
+                                moveViewModel.generateStructuredCombo(structuredMoveListTagSequence)
                             } else {
                                 generatedComboText = context.getString(R.string.combo_generator_select_at_least_one_tag_message)
                                 emptyList()
@@ -212,14 +212,14 @@ fun ComboGeneratorScreen(
                             warningDialogMessage = context.getString(R.string.combo_generator_length_warning_dialog_message, comboMoves.size)
                             showLengthWarningDialog = true
                         }
-                    } else if ((currentMode == GenerationMode.Random && allTags.isNotEmpty()) || (currentMode == GenerationMode.Structured && structuredTagSequence.isNotEmpty())) {
+                    } else if ((currentMode == GenerationMode.Random && allTags.isNotEmpty()) || (currentMode == GenerationMode.Structured && structuredMoveListTagSequence.isNotEmpty())) {
                         currentGeneratedMoves = emptyList()
                         generatedComboText = context.getString(R.string.combo_generator_no_moves_found_message)
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                // Enable if: (Random AND we have at least some tags in the system) OR (Structured AND sequence is not empty)
-                enabled = (currentMode == GenerationMode.Random && allTags.isNotEmpty()) || (currentMode == GenerationMode.Structured && structuredTagSequence.isNotEmpty())
+                // Enable if: (Random AND we have at least some moveListTags in the system) OR (Structured AND sequence is not empty)
+                enabled = (currentMode == GenerationMode.Random && allTags.isNotEmpty()) || (currentMode == GenerationMode.Structured && structuredMoveListTagSequence.isNotEmpty())
             ) {
                 Text(stringResource(id = R.string.combo_generator_generate_combo_button))
             }
@@ -258,9 +258,9 @@ fun ComboGeneratorScreen(
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun RandomModeUI(
-    allTags: List<Tag>,
-    selectedTags: Set<Tag>,
-    onTagsChange: (Set<Tag>) -> Unit,
+    allMoveListTags: List<MoveListTag>,
+    selectedMoveListTags: Set<MoveListTag>,
+    onTagsChange: (Set<MoveListTag>) -> Unit,
     selectedLength: Int?,
     onLengthChange: (Int?) -> Unit,
     lengthDropdownExpanded: Boolean,
@@ -272,7 +272,7 @@ fun RandomModeUI(
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(stringResource(id = R.string.combo_generator_select_tags_label), style = MaterialTheme.typography.titleMedium)
 
-        if (allTags.isEmpty()) {
+        if (allMoveListTags.isEmpty()) {
             Text(
                 stringResource(id = R.string.combo_generator_no_tags_message),
                 style = MaterialTheme.typography.bodySmall
@@ -283,12 +283,12 @@ fun RandomModeUI(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                allTags.forEach { tag ->
+                allMoveListTags.forEach { tag ->
                     FilterChip(
-                        selected = selectedTags.contains(tag),
-                        onClick = { onTagsChange(if (selectedTags.contains(tag)) selectedTags - tag else selectedTags + tag) },
+                        selected = selectedMoveListTags.contains(tag),
+                        onClick = { onTagsChange(if (selectedMoveListTags.contains(tag)) selectedMoveListTags - tag else selectedMoveListTags + tag) },
                         label = { Text(tag.name) },
-                        leadingIcon = if (selectedTags.contains(tag)) {
+                        leadingIcon = if (selectedMoveListTags.contains(tag)) {
                             { Icon(Icons.Filled.Done, stringResource(id = R.string.add_edit_move_selected_chip_description), Modifier.size(FilterChipDefaults.IconSize)) }
                         } else { null }
                     )
@@ -356,19 +356,19 @@ fun RandomModeUI(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StructuredModeUI(
-    allTags: List<Tag>,
-    tagSequence: List<Tag>,
-    onSequenceChange: (List<Tag>) -> Unit
+    allMoveListTags: List<MoveListTag>,
+    moveListTagSequence: List<MoveListTag>,
+    onSequenceChange: (List<MoveListTag>) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    var selectedTag by remember { mutableStateOf<Tag?>(null) }
+    var selectedMoveListTag by remember { mutableStateOf<MoveListTag?>(null) }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(id = R.string.combo_generator_define_structure_label), style = MaterialTheme.typography.titleMedium)
 
         ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
             OutlinedTextField(
-                value = selectedTag?.name ?: "",
+                value = selectedMoveListTag?.name ?: "",
                 onValueChange = {},
                 readOnly = true,
                 label = { Text(stringResource(id = R.string.combo_generator_add_tag_to_sequence_label)) },
@@ -376,11 +376,11 @@ fun StructuredModeUI(
                 modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
             )
             ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                allTags.forEach { tag ->
+                allMoveListTags.forEach { tag ->
                     DropdownMenuItem(
                         text = { Text(tag.name) },
                         onClick = {
-                            selectedTag = tag
+                            selectedMoveListTag = tag
                             expanded = false
                         }
                     )
@@ -393,12 +393,12 @@ fun StructuredModeUI(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Increased limit to 10
-            Button(onClick = { onSequenceChange(tagSequence + selectedTag!!) }, enabled = selectedTag != null && tagSequence.size < 10) {
+            Button(onClick = { onSequenceChange(moveListTagSequence + selectedMoveListTag!!) }, enabled = selectedMoveListTag != null && moveListTagSequence.size < 10) {
                 Text(stringResource(id = R.string.combo_generator_add_to_sequence_button))
             }
 
-            if (tagSequence.isNotEmpty()) {
-                FilledTonalButton(onClick = { onSequenceChange(tagSequence.dropLast(1)) }) {
+            if (moveListTagSequence.isNotEmpty()) {
+                FilledTonalButton(onClick = { onSequenceChange(moveListTagSequence.dropLast(1)) }) {
                     Icon(
                         Icons.AutoMirrored.Filled.Undo,
                         contentDescription = stringResource(id = R.string.combo_generator_undo_button_description)
@@ -409,12 +409,12 @@ fun StructuredModeUI(
             }
         }
 
-        if (tagSequence.isNotEmpty()) {
+        if (moveListTagSequence.isNotEmpty()) {
             Spacer(modifier = Modifier.height(4.dp))
             Text(stringResource(id = R.string.combo_generator_current_sequence_label), style = MaterialTheme.typography.titleMedium)
             Card(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = tagSequence.joinToString(" -> ") { it.name },
+                    text = moveListTagSequence.joinToString(" -> ") { it.name },
                     modifier = Modifier.padding(16.dp)
                 )
             }

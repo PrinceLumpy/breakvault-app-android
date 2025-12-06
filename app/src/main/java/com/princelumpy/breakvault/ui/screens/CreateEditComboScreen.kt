@@ -1,5 +1,7 @@
 package com.princelumpy.breakvault.ui.screens
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
@@ -15,6 +17,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -33,6 +38,9 @@ fun CreateEditComboScreen(
 ) {
     var comboName by remember { mutableStateOf("") }
     val allMoves by moveViewModel.allMoves.observeAsState(initial = emptyList())
+    
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
 
     // Use a generic MutableList
     val selectedMoves = remember { mutableStateListOf<String>() }
@@ -55,6 +63,13 @@ fun CreateEditComboScreen(
             }
         }
     }
+    
+    // Auto-focus name field ONLY if creating new combo
+    LaunchedEffect(Unit) {
+        if (!isEditing) {
+            focusRequester.requestFocus()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -70,12 +85,15 @@ fun CreateEditComboScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    if (isEditing) {
-                        moveViewModel.updateSavedCombo(comboId!!, comboName, selectedMoves.toList())
-                    } else {
-                        moveViewModel.saveCombo(comboName, selectedMoves.toList())
+                    if (comboName.length <= 30) {
+                        if (isEditing) {
+                            moveViewModel.updateSavedCombo(comboId!!, comboName, selectedMoves.toList())
+                        } else {
+                            moveViewModel.saveCombo(comboName, selectedMoves.toList())
+                        }
+                        focusManager.clearFocus()
+                        navController.popBackStack()
                     }
-                    navController.popBackStack()
                 },
                 containerColor = if (comboName.isNotBlank() && selectedMoves.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
             ) {
@@ -88,15 +106,26 @@ fun CreateEditComboScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { focusManager.clearFocus() },
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             OutlinedTextField(
                 value = comboName,
-                onValueChange = { comboName = it },
+                onValueChange = { 
+                    if (it.length <= 30) {
+                        comboName = it 
+                    }
+                },
                 label = { Text(stringResource(R.string.combo_name_label)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
             )
 
             Text(stringResource(R.string.select_moves_title), style = MaterialTheme.typography.titleMedium)
@@ -135,8 +164,10 @@ fun CreateEditComboScreen(
                 OutlinedTextField(
                     value = searchText,
                     onValueChange = {
-                        searchText = it
-                        expanded = true
+                        if (it.length <= 50) {
+                            searchText = it
+                            expanded = true
+                        }
                     },
                     label = { Text("Add move to combo") },
                     trailingIcon = {

@@ -2,7 +2,6 @@ package com.princelumpy.breakvault.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,7 +25,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.Move
-import com.princelumpy.breakvault.data.Tag
+import com.princelumpy.breakvault.data.MoveListTag
 import com.princelumpy.breakvault.viewmodel.IMoveViewModel
 import com.princelumpy.breakvault.viewmodel.MoveViewModel
 
@@ -34,21 +33,21 @@ import com.princelumpy.breakvault.viewmodel.MoveViewModel
 @Composable
 fun MovesByTagScreen(
     navController: NavController,
-    tag: Tag,
+    moveListTag: MoveListTag,
     moveViewModel: IMoveViewModel = viewModel<MoveViewModel>()
 ) {
     var moves by remember { mutableStateOf<List<Move>>(emptyList()) }
 
     // This is a simple, one-off fetch. For more complex scenarios, 
     // a dedicated LiveData in the ViewModel would be better.
-    LaunchedEffect(key1 = tag.id) {
-        moves = moveViewModel.getMovesForTag(tag.id)
+    LaunchedEffect(key1 = moveListTag.id) {
+        moves = moveViewModel.getMovesForTag(moveListTag.id)
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.moves_for_tag_title, tag.name)) },
+                title = { Text(stringResource(R.string.moves_for_tag_title, moveListTag.name)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back_button_description))

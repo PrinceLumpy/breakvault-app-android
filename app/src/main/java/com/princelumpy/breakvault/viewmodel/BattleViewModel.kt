@@ -26,6 +26,7 @@ class BattleViewModel(application: Application) : AndroidViewModel(application) 
     // Battle Combo Methods
     fun toggleUsed(combo: BattleCombo) {
         viewModelScope.launch(Dispatchers.IO) {
+            // Do not update modifiedAt when toggling isUsed
             battleComboDao.updateBattleCombo(combo.copy(isUsed = !combo.isUsed))
         }
     }
@@ -43,24 +44,26 @@ class BattleViewModel(application: Application) : AndroidViewModel(application) 
                 energy = energy,
                 status = status
             )
+            // createdAt/modifiedAt defaults are applied in constructor
             battleComboDao.insertBattleCombo(newCombo)
 
             tags.forEach { tagName ->
                 var tag = battleTagDao.getBattleTagByName(tagName)
-                // Create tag if it doesn't exist (though UI typically ensures this)
+                // Create moveListTag if it doesn't exist (though UI typically ensures this)
                 if (tag == null) {
                     tag = BattleTag(name = tagName)
                     battleTagDao.insertBattleTag(tag)
                 }
                 // Link
-                battleComboDao.insertBattleComboTagCrossRef(BattleComboTagCrossRef(newCombo.id, tag.id))
+                battleComboDao.link(BattleComboTagCrossRef(newCombo.id, tag.id))
             }
         }
     }
     
     fun updateBattleCombo(combo: BattleCombo, tagNames: List<String>) {
         viewModelScope.launch(Dispatchers.IO) {
-            battleComboDao.updateBattleCombo(combo)
+            // Ensure modifiedAt is updated for content changes
+            battleComboDao.updateBattleCombo(combo.copy(modifiedAt = System.currentTimeMillis()))
             
             // Update cross-refs: Delete old, Insert new
             battleComboDao.deleteBattleComboTagCrossRefs(combo.id)
@@ -71,7 +74,7 @@ class BattleViewModel(application: Application) : AndroidViewModel(application) 
                     tag = BattleTag(name = tagName)
                     battleTagDao.insertBattleTag(tag)
                 }
-                battleComboDao.insertBattleComboTagCrossRef(BattleComboTagCrossRef(combo.id, tag.id))
+                battleComboDao.link(BattleComboTagCrossRef(combo.id, tag.id))
             }
         }
     }
@@ -88,7 +91,7 @@ class BattleViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    // Battle Tag Methods
+    // Battle MoveListTag Methods
     fun addBattleTag(name: String) {
         viewModelScope.launch(Dispatchers.IO) {
             if (battleTagDao.getBattleTagByName(name) == null) {
@@ -99,7 +102,7 @@ class BattleViewModel(application: Application) : AndroidViewModel(application) 
 
     fun updateBattleTag(tag: BattleTag) {
         viewModelScope.launch(Dispatchers.IO) {
-            battleTagDao.updateBattleTag(tag)
+            battleTagDao.updateBattleTag(tag.copy(modifiedAt = System.currentTimeMillis()))
         }
     }
 

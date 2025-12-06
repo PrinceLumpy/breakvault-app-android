@@ -48,7 +48,7 @@ fun AddEditBattleComboScreen(
     
     // Tags State
     val allBattleTags by battleViewModel.allBattleTags.observeAsState(initial = emptyList())
-    var selectedTags by remember { mutableStateOf(setOf<String>()) } // Storing tag NAMES
+    var selectedTags by remember { mutableStateOf(setOf<String>()) } // Storing moveListTag NAMES
     var newTagName by remember { mutableStateOf("") }
     var pendingAutoSelectTagName by remember { mutableStateOf<String?>(null) }
     
@@ -82,7 +82,7 @@ fun AddEditBattleComboScreen(
         }
     }
 
-    // Auto-select logic for new tags
+    // Auto-select logic for new moveListTags
     LaunchedEffect(allBattleTags, pendingAutoSelectTagName) {
         pendingAutoSelectTagName?.let { tagName ->
             val foundTag = allBattleTags.find { it.name.equals(tagName, ignoreCase = true) }
@@ -124,7 +124,7 @@ fun AddEditBattleComboScreen(
         }
     }
 
-    val addTagAction: () -> Unit = {
+    val addMoveListTagAction: () -> Unit = {
         if (newTagName.isNotBlank()) {
             val trimmedTagName = newTagName.trim()
             if (!allBattleTags.any { it.name.equals(trimmedTagName, ignoreCase = true) }) {
@@ -132,7 +132,7 @@ fun AddEditBattleComboScreen(
                 pendingAutoSelectTagName = trimmedTagName
                 newTagName = ""
             } else {
-                // Tag exists, just select it
+                // MoveListTag exists, just select it
                  if (!selectedTags.contains(trimmedTagName)) {
                      selectedTags = selectedTags + trimmedTagName
                  }
@@ -236,7 +236,7 @@ fun AddEditBattleComboScreen(
             // Tags Selection (Chip Flow Row)
             Text("Battle Tags", style = MaterialTheme.typography.titleMedium)
             if (allBattleTags.isEmpty() && newTagName.isBlank()) {
-                Text("No battle tags available. Add some below!", style = MaterialTheme.typography.bodySmall)
+                Text("No battle moveListTags available. Add some below!", style = MaterialTheme.typography.bodySmall)
             }
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
@@ -261,7 +261,7 @@ fun AddEditBattleComboScreen(
                 }
             }
 
-            // Add New Tag
+            // Add New MoveListTag
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -274,9 +274,9 @@ fun AddEditBattleComboScreen(
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { addTagAction() })
+                    keyboardActions = KeyboardActions(onDone = { addMoveListTagAction() })
                 )
-                Button(onClick = addTagAction) {
+                Button(onClick = addMoveListTagAction) {
                     Text("Add")
                 }
             }

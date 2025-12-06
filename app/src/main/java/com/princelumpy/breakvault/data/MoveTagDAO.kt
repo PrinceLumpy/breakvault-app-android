@@ -10,7 +10,7 @@ interface MoveTagDao {
     suspend fun addMove(move: Move)
 
     @Insert
-    suspend fun addTag(tag: Tag)
+    suspend fun addTag(moveTag: MoveTag)
 
     @Insert
     suspend fun link(moveTag: MoveTagCrossRef)
@@ -19,8 +19,8 @@ interface MoveTagDao {
     @Query("SELECT * FROM moves")
     suspend fun getAllMovesList(): List<Move>
 
-    @Query("SELECT * FROM tags")
-    suspend fun getAllTagsList(): List<Tag>
+    @Query("SELECT * FROM move_tags")
+    suspend fun getAllTagsList(): List<MoveTag>
 
     @Query("SELECT * FROM move_tag_cross_refs")
     suspend fun getAllMoveTagCrossRefsList(): List<MoveTagCrossRef>
@@ -30,7 +30,7 @@ interface MoveTagDao {
     suspend fun insertAllMoves(moves: List<Move>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAllTags(tags: List<Tag>)
+    suspend fun insertAllTags(moveListTags: List<MoveTag>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAllMoveTagCrossRefs(crossRefs: List<MoveTagCrossRef>)
@@ -41,25 +41,31 @@ interface MoveTagDao {
     fun getMovesWithTags(): LiveData<List<MoveWithTags>>
 
     @Transaction
-    @Query("SELECT * FROM tags")
+    @Query("SELECT * FROM move_tags")
     fun getTagsWithMoves(): LiveData<List<TagWithMoves>>
 
-    @Query("SELECT * FROM tags ORDER BY name ASC")
-    fun getAllTags(): LiveData<List<Tag>>
+    @Query("SELECT * FROM move_tags ORDER BY name ASC")
+    fun getAllTags(): LiveData<List<MoveTag>>
 
     @Transaction
     @Query("SELECT * FROM moves WHERE id = :moveId")
     suspend fun getMoveWithTagsById(moveId: String): MoveWithTags?
     
     @Transaction
-    @Query("SELECT * FROM tags WHERE id = :tagId")
+    @Query("SELECT * FROM move_tags WHERE id = :tagId")
     suspend fun getTagWithMoves(tagId: String): TagWithMoves?
 
     @Update
     suspend fun updateMove(move: Move)
 
+    @Query("UPDATE moves SET name = :name, modifiedAt = :modifiedAt WHERE id = :id")
+    suspend fun updateMoveName(id: String, name: String, modifiedAt: Long)
+
     @Update
-    suspend fun updateTag(tag: Tag)
+    suspend fun updateTag(moveListTag: MoveTag)
+
+    @Query("UPDATE move_tags SET name = :name, modifiedAt = :modifiedAt WHERE id = :id")
+    suspend fun updateTagName(id: String, name: String, modifiedAt: Long)
 
     @Query("DELETE FROM move_tag_cross_refs WHERE moveId = :moveId")
     suspend fun unlinkMoveFromAllTags(moveId: String)
@@ -77,11 +83,11 @@ interface MoveTagDao {
     suspend fun unlinkTagFromAllMoves(tagId: String)
 
     @Delete
-    suspend fun deleteTag(tag: Tag)
+    suspend fun deleteTag(moveListTag: MoveTag)
 
     @Transaction
-    suspend fun deleteTagCompletely(tag: Tag) {
-        unlinkTagFromAllMoves(tag.id)
-        deleteTag(tag)
+    suspend fun deleteTagCompletely(moveListTag: MoveTag) {
+        unlinkTagFromAllMoves(moveListTag.id)
+        deleteTag(moveListTag)
     }
 }

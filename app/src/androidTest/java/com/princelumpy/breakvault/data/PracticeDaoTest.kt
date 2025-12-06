@@ -41,19 +41,19 @@ class PracticeDaoTest {
     fun insertAndGetMoveWithTags() = runBlocking {
         // Given
         val move = Move("m1", "Windmill")
-        val tag = Tag("t1", "Power")
+        val moveListTag = MoveListTag("t1", "Power")
         
         // When
         moveTagDao.addMove(move)
-        moveTagDao.addTag(tag)
-        moveTagDao.link(MoveTagCrossRef(move.id, tag.id))
+        moveTagDao.addTag(moveListTag)
+        moveTagDao.link(MoveTagCrossRef(move.id, moveListTag.id))
 
         // Then
         val loaded = moveTagDao.getMoveWithTagsById("m1")
         assertNotNull(loaded)
         assertEquals("Windmill", loaded?.move?.name)
-        assertEquals(1, loaded?.tags?.size)
-        assertEquals("Power", loaded?.tags?.first()?.name)
+        assertEquals(1, loaded?.moveListTags?.size)
+        assertEquals("Power", loaded?.moveListTags?.first()?.name)
     }
 
     @Test
@@ -80,10 +80,10 @@ class PracticeDaoTest {
     fun deleteMoveCascadesToCrossRef() = runBlocking {
         // Given
         val move = Move("m1", "Delete Me")
-        val tag = Tag("t1", "Tag")
+        val moveListTag = MoveListTag("t1", "MoveListTag")
         moveTagDao.addMove(move)
-        moveTagDao.addTag(tag)
-        moveTagDao.link(MoveTagCrossRef(move.id, tag.id))
+        moveTagDao.addTag(moveListTag)
+        moveTagDao.link(MoveTagCrossRef(move.id, moveListTag.id))
 
         // When
         moveTagDao.deleteMove(move)
@@ -95,35 +95,35 @@ class PracticeDaoTest {
 
     @Test
     fun deleteTagRemovesTagFromMoves() = runBlocking {
-        // Given: A move with two tags (Power, Style)
+        // Given: A move with two moveListTags (Power, Style)
         val move = Move("m1", "Halo")
-        val tag1 = Tag("t1", "Power")
-        val tag2 = Tag("t2", "Style")
+        val moveListTag1 = MoveListTag("t1", "Power")
+        val moveListTag2 = MoveListTag("t2", "Style")
         
         moveTagDao.addMove(move)
-        moveTagDao.addTag(tag1)
-        moveTagDao.addTag(tag2)
+        moveTagDao.addTag(moveListTag1)
+        moveTagDao.addTag(moveListTag2)
         
-        moveTagDao.link(MoveTagCrossRef(move.id, tag1.id))
-        moveTagDao.link(MoveTagCrossRef(move.id, tag2.id))
+        moveTagDao.link(MoveTagCrossRef(move.id, moveListTag1.id))
+        moveTagDao.link(MoveTagCrossRef(move.id, moveListTag2.id))
 
         // Verify setup
         val initialLoad = moveTagDao.getMoveWithTagsById("m1")
-        assertEquals(2, initialLoad?.tags?.size)
+        assertEquals(2, initialLoad?.moveListTags?.size)
 
-        // When: We delete one tag (Power)
-        moveTagDao.deleteTagCompletely(tag1)
+        // When: We delete one moveListTag (Power)
+        moveTagDao.deleteTagCompletely(moveListTag1)
 
         // Then:
         // 1. The Move should still exist
         val loadedMove = moveTagDao.getMoveWithTagsById("m1")
         assertNotNull(loadedMove)
         
-        // 2. The Move should only have 1 tag left (Style)
-        assertEquals(1, loadedMove?.tags?.size)
-        assertEquals("Style", loadedMove?.tags?.first()?.name)
+        // 2. The Move should only have 1 moveListTag left (Style)
+        assertEquals(1, loadedMove?.moveListTags?.size)
+        assertEquals("Style", loadedMove?.moveListTags?.first()?.name)
         
-        // 3. The CrossRef for the deleted tag should be gone
+        // 3. The CrossRef for the deleted moveListTag should be gone
         val allRefs = moveTagDao.getAllMoveTagCrossRefsList()
         assertEquals(1, allRefs.size)
         assertEquals("t2", allRefs.first().tagId)
@@ -156,7 +156,7 @@ class PracticeDaoTest {
     @Test
     fun cannotLinkInvalidMoveOrTag() = runBlocking {
         // Given: IDs that don't exist
-        val badRef = MoveTagCrossRef("bad-move", "bad-tag")
+        val badRef = MoveTagCrossRef("bad-move", "bad-moveListTag")
 
         // When / Then
         try {

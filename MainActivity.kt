@@ -48,7 +48,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.princelumpy.breakvault.data.MoveListTag
+import com.princelumpy.breakvault.data.Tag
 import com.princelumpy.breakvault.ui.screens.AddEditBattleComboScreen
 import com.princelumpy.breakvault.ui.screens.AddEditGoalStageScreen
 import com.princelumpy.breakvault.ui.screens.AddEditMoveScreen
@@ -79,7 +79,7 @@ sealed class Screen(
     object SavedCombos : Screen("saved_combos", R.string.screen_label_saved_combos, Icons.Filled.Favorite)
     object Goals : Screen("goals", R.string.screen_label_goals, Icons.Filled.Flag)
     object Timer : Screen("timer", R.string.screen_label_timer, Icons.Filled.Timer)
-    object Battle : Screen("battle_mode", R.string.screen_label_battle, Icons.Filled.FlashOn)
+    object BattleArena : Screen("battle_arena", R.string.screen_label_battle_arena, Icons.Filled.FlashOn)
 
     // Other Screens (Hide Bottom Bar)
     object TagList : Screen("tag_list")
@@ -121,7 +121,7 @@ val bottomNavItems = listOf(
     Screen.SavedCombos,
     Screen.Goals,
     Screen.Timer,
-    Screen.Battle
+    Screen.BattleArena
 )
 
 class MainActivity : ComponentActivity() {
@@ -323,11 +323,11 @@ fun MainAppScreen() {
                 ) { backStackEntry ->
                     val tagId = backStackEntry.arguments?.getString("tagId") ?: ""
                     val tagName = backStackEntry.arguments?.getString("tagName") ?: ""
-                    MovesByTagScreen(navController = navController, moveListTag = MoveListTag(tagId, tagName))
+                    MovesByTagScreen(navController = navController, tag = Tag(tagId, tagName))
                 }
 
                 // --- Battle Mode Routes ---
-                composable(Screen.Battle.route) { BattleScreen(navController = navController) }
+                composable(Screen.BattleArena.route) { BattleScreen(navController = navController) }
                 composable(Screen.BattleTagList.route) { BattleTagListScreen(navController = navController) }
                 
                 composable(

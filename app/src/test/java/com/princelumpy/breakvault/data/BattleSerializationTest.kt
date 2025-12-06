@@ -37,7 +37,7 @@ class BattleSerializationTest {
     fun `BattleTag serializes and deserializes correctly`() {
         // Given
         val originalTag = BattleTag(
-            id = "tag-123",
+            id = "moveListTag-123",
             name = "Power Move"
         )
 
@@ -54,7 +54,7 @@ class BattleSerializationTest {
         // Given
         val crossRef = BattleComboTagCrossRef(
             battleComboId = "combo-1",
-            battleTagId = "tag-1"
+            battleTagId = "moveListTag-1"
         )
 
         // When

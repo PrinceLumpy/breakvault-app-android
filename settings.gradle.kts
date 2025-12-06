@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Combo Generator"
+rootProject.name = "BreakVault"
 include(":app")

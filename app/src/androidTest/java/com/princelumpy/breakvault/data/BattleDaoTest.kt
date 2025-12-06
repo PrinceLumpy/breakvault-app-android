@@ -64,20 +64,20 @@ class BattleDaoTest {
         battleComboDao.insertBattleCombo(combo)
 
         // 2. Insert Tags
-        val tag1 = BattleTag(id = "tag-1", name = "Power")
-        val tag2 = BattleTag(id = "tag-2", name = "Style")
+        val tag1 = BattleTag(id = "moveListTag-1", name = "Power")
+        val tag2 = BattleTag(id = "moveListTag-2", name = "Style")
         battleTagDao.insertBattleTag(tag1)
         battleTagDao.insertBattleTag(tag2)
 
         // 3. Insert CrossRefs
-        val crossRef1 = BattleComboTagCrossRef(comboId, "tag-1")
-        val crossRef2 = BattleComboTagCrossRef(comboId, "tag-2")
-        battleComboDao.insertBattleComboTagCrossRef(crossRef1)
-        battleComboDao.insertBattleComboTagCrossRef(crossRef2)
+        val crossRef1 = BattleComboTagCrossRef(comboId, "moveListTag-1")
+        val crossRef2 = BattleComboTagCrossRef(comboId, "moveListTag-2")
+        battleComboDao.link(crossRef1)
+        battleComboDao.link(crossRef2)
 
         // 4. Query
         val loaded = battleComboDao.getBattleComboById(comboId)
-        
+
         // 5. Verify
         assertNotNull(loaded)
         assertEquals(2, loaded?.tags?.size)
@@ -90,12 +90,12 @@ class BattleDaoTest {
 
     @Test
     fun deleteBattleComboCascadesToCrossRef() = runBlocking {
-        // Given: Combo linked to Tag
+        // Given: Combo linked to MoveListTag
         val comboId = "c1"
         val tagId = "t1"
         battleComboDao.insertBattleCombo(BattleCombo(id = comboId, description = "Desc"))
-        battleTagDao.insertBattleTag(BattleTag(id = tagId, name = "Tag"))
-        battleComboDao.insertBattleComboTagCrossRef(BattleComboTagCrossRef(comboId, tagId))
+        battleTagDao.insertBattleTag(BattleTag(id = tagId, name = "MoveListTag"))
+        battleComboDao.link(BattleComboTagCrossRef(comboId, tagId))
 
         // When: Delete Combo
         battleComboDao.deleteBattleCombo(BattleCombo(id = comboId, description = ""))
@@ -107,14 +107,14 @@ class BattleDaoTest {
 
     @Test
     fun deleteBattleTagRemovesTagFromCombo() = runBlocking {
-        // Given: Combo linked to Tag
+        // Given: Combo linked to MoveListTag
         val comboId = "c1"
         val tagId = "t1"
         battleComboDao.insertBattleCombo(BattleCombo(id = comboId, description = "Desc"))
-        battleTagDao.insertBattleTag(BattleTag(id = tagId, name = "Tag"))
-        battleComboDao.insertBattleComboTagCrossRef(BattleComboTagCrossRef(comboId, tagId))
+        battleTagDao.insertBattleTag(BattleTag(id = tagId, name = "MoveListTag"))
+        battleComboDao.link(BattleComboTagCrossRef(comboId, tagId))
 
-        // When: Delete Tag
+        // When: Delete MoveListTag
         battleTagDao.deleteBattleTag(BattleTag(id = tagId, name = ""))
 
         // Then:
@@ -131,11 +131,11 @@ class BattleDaoTest {
     @Test
     fun cannotInsertCrossRefWithInvalidIds() = runBlocking {
         // Given: IDs that don't exist in DB
-        val invalidRef = BattleComboTagCrossRef("bad-combo-id", "bad-tag-id")
+        val invalidRef = BattleComboTagCrossRef("bad-combo-id", "bad-moveListTag-id")
 
         // When / Then
         try {
-            battleComboDao.insertBattleComboTagCrossRef(invalidRef)
+            battleComboDao.link(invalidRef)
             fail("Should have thrown SQLiteConstraintException")
         } catch (_: SQLiteConstraintException) {
             // Expected behavior: Foreign Key constraint failed

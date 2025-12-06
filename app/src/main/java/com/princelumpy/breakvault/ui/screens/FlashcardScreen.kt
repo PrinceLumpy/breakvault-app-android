@@ -20,7 +20,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.Move
-import com.princelumpy.breakvault.data.Tag
+import com.princelumpy.breakvault.data.MoveListTag
 import com.princelumpy.breakvault.ui.theme.ComboGeneratorTheme
 import com.princelumpy.breakvault.viewmodel.FakeMoveViewModel
 import com.princelumpy.breakvault.viewmodel.IMoveViewModel
@@ -33,7 +33,7 @@ fun FlashcardScreen(
     moveViewModel: IMoveViewModel = viewModel<MoveViewModel>()
 ) {
     val allTags by moveViewModel.allTags.observeAsState(initial = emptyList())
-    var selectedTags by remember { mutableStateOf(setOf<Tag>()) }
+    var selectedMoveListTags by remember { mutableStateOf(setOf<MoveListTag>()) }
     var currentFlashcardMove by remember { mutableStateOf<Move?>(null) }
 
     Scaffold(
@@ -72,16 +72,16 @@ fun FlashcardScreen(
                 ) {
                     allTags.forEach { tag ->
                         FilterChip(
-                            selected = selectedTags.contains(tag),
+                            selected = selectedMoveListTags.contains(tag),
                             onClick = {
-                                selectedTags = if (selectedTags.contains(tag)) {
-                                    selectedTags - tag
+                                selectedMoveListTags = if (selectedMoveListTags.contains(tag)) {
+                                    selectedMoveListTags - tag
                                 } else {
-                                    selectedTags + tag
+                                    selectedMoveListTags + tag
                                 }
                             },
                             label = { Text(tag.name) },
-                            leadingIcon = if (selectedTags.contains(tag)) {
+                            leadingIcon = if (selectedMoveListTags.contains(tag)) {
                                 { Icon(Icons.Filled.Done, contentDescription = stringResource(id = R.string.add_edit_move_selected_chip_description), modifier = Modifier.size(FilterChipDefaults.IconSize)) }
                             } else { null }
                         )
@@ -93,10 +93,10 @@ fun FlashcardScreen(
 
             Button(
                 onClick = {
-                    currentFlashcardMove = moveViewModel.getFlashcardMove(selectedTags)
+                    currentFlashcardMove = moveViewModel.getFlashcardMove(selectedMoveListTags)
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = selectedTags.isNotEmpty()
+                enabled = selectedMoveListTags.isNotEmpty()
             ) {
                 Text(stringResource(id = R.string.flashcard_next_move_button))
             }

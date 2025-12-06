@@ -13,7 +13,7 @@ import com.princelumpy.breakvault.data.Move
 import com.princelumpy.breakvault.data.MoveTagCrossRef
 import com.princelumpy.breakvault.data.MoveWithTags
 import com.princelumpy.breakvault.data.SavedCombo
-import com.princelumpy.breakvault.data.Tag
+import com.princelumpy.breakvault.data.MoveListTag
 import com.princelumpy.breakvault.data.transfer.AppDataExport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -26,21 +26,21 @@ import kotlin.math.min
 
 interface IMoveViewModel {
     val movesWithTags: LiveData<List<MoveWithTags>>
-    val allTags: LiveData<List<Tag>>
+    val allTags: LiveData<List<MoveListTag>>
     val savedCombos: LiveData<List<SavedCombo>>
     val allMoves: LiveData<List<Move>>
 
-    fun addMove(moveName: String, selectedTags: List<Tag>)
+    fun addMove(moveName: String, selectedMoveListTags: List<MoveListTag>)
     fun addTag(tagName: String)
     suspend fun getMoveForEditing(moveId: String): MoveWithTags?
-    fun updateMoveAndTags(moveId: String, newName: String, newSelectedTags: List<Tag>)
+    fun updateMoveAndTags(moveId: String, newName: String, newSelectedMoveListTags: List<MoveListTag>)
     fun deleteMove(move: Move)
     fun updateTag(tagId: String, newName: String)
-    fun deleteTag(tag: Tag)
-    fun generateComboFromTags(selectedTags: Set<Tag>, length: Int? = null, allowRepeats: Boolean = false): List<Move>
-    fun generateStructuredCombo(tagSequence: List<Tag>): List<Move>
+    fun deleteTag(moveListTag: MoveListTag)
+    fun generateComboFromTags(selectedMoveListTags: Set<MoveListTag>, length: Int? = null, allowRepeats: Boolean = false): List<Move>
+    fun generateStructuredCombo(moveListTagSequence: List<MoveListTag>): List<Move>
     suspend fun getMovesForTag(tagId: String): List<Move>
-    fun getFlashcardMove(excludedTags: Set<Tag>): Move?
+    fun getFlashcardMove(excludedMoveListTags: Set<MoveListTag>): Move?
     fun saveCombo(comboName: String, moves: List<String>)
     fun deleteSavedCombo(savedComboId: String)
     fun updateSavedComboName(savedComboId: String, newName: String)
@@ -62,7 +62,7 @@ class MoveViewModel(application: Application) : AndroidViewModel(application), I
     private val battleTagDao = db.battleTagDao()
 
     override val movesWithTags: LiveData<List<MoveWithTags>> = moveTagDao.getMovesWithTags()
-    override val allTags: LiveData<List<Tag>> = moveTagDao.getAllTags()
+    override val allTags: LiveData<List<MoveListTag>> = moveTagDao.getAllTags()
     override val savedCombos: LiveData<List<SavedCombo>> =
         savedComboDao.getAllSavedCombos()
 
@@ -71,7 +71,7 @@ class MoveViewModel(application: Application) : AndroidViewModel(application), I
     }
 
     private val movesWithTagsObserver = Observer<List<MoveWithTags>> { data ->
-        if (data.isEmpty()) {
+        if (data.isNullOrEmpty()) {
             Log.d("MoveViewModel_Debug", "movesWithTags LiveData is EMPTY or NULL")
         } else {
             Log.d("MoveViewModel_Debug", "movesWithTags LiveData has ${data.size} items:")
@@ -82,13 +82,13 @@ class MoveViewModel(application: Application) : AndroidViewModel(application), I
         movesWithTags.observeForever(movesWithTagsObserver)
     }
 
-    override fun getFlashcardMove(excludedTags: Set<Tag>): Move? {
+    override fun getFlashcardMove(excludedMoveListTags: Set<MoveListTag>): Move? {
         val currentMoves = movesWithTags.value ?: return null
-        if (excludedTags.isEmpty()) return null
+        if (excludedMoveListTags.isEmpty()) return null
 
-        val excludedTagIds = excludedTags.map { it.id }.toSet()
+        val excludedTagIds = excludedMoveListTags.map { it.id }.toSet()
         val eligibleMoves = currentMoves
-            .filter { moveWithTags -> moveWithTags.tags.any { it.id in excludedTagIds } }
+            .filter { moveWithTags -> moveWithTags.moveListTags.any { it.id in excludedTagIds } }
             .map { it.move }
 
         return if (eligibleMoves.isNotEmpty()) eligibleMoves.random() else null
@@ -98,13 +98,13 @@ class MoveViewModel(application: Application) : AndroidViewModel(application), I
         moveTagDao.getTagWithMoves(tagId)?.moves ?: emptyList()
     }
 
-    override fun generateStructuredCombo(tagSequence: List<Tag>): List<Move> {
+    override fun generateStructuredCombo(moveListTagSequence: List<MoveListTag>): List<Move> {
         val currentMoves = movesWithTags.value ?: return emptyList()
-        if (tagSequence.isEmpty()) return emptyList()
+        if (moveListTagSequence.isEmpty()) return emptyList()
 
         val generatedMoves = mutableListOf<Move>()
-        tagSequence.forEach { tag ->
-            val movesForTag = currentMoves.filter { it.tags.contains(tag) }.map { it.move }
+        moveListTagSequence.forEach { tag ->
+            val movesForTag = currentMoves.filter { it.moveListTags.contains(tag) }.map { it.move }
             if (movesForTag.isNotEmpty()) {
                 generatedMoves.add(movesForTag.random())
             }
@@ -121,7 +121,11 @@ class MoveViewModel(application: Application) : AndroidViewModel(application), I
             try {
                 val currentCombo = savedComboDao.getSavedComboById(comboId)
                 if (currentCombo != null) {
-                    val updatedCombo = currentCombo.copy(name = newName, moves = newMoves)
+                    val updatedCombo = currentCombo.copy(
+                        name = newName, 
+                        moves = newMoves, 
+                        modifiedAt = System.currentTimeMillis()
+                    )
                     savedComboDao.updateSavedCombo(updatedCombo)
                     Log.i("MoveViewModel", "updateSavedCombo successful for id: $comboId")
                 }
@@ -131,12 +135,13 @@ class MoveViewModel(application: Application) : AndroidViewModel(application), I
         }
     }
 
-    override fun addMove(moveName: String, selectedTags: List<Tag>) {
+    override fun addMove(moveName: String, selectedMoveListTags: List<MoveListTag>) {
         viewModelScope.launch(Dispatchers.IO) {
             val newMoveId = UUID.randomUUID().toString()
+            // Default createdAt/modifiedAt applied here via data class defaults
             val move = Move(id = newMoveId, name = moveName)
             moveTagDao.addMove(move)
-            selectedTags.forEach { tag ->
+            selectedMoveListTags.forEach { tag ->
                 moveTagDao.link(MoveTagCrossRef(moveId = newMoveId, tagId = tag.id))
             }
         }
@@ -144,7 +149,8 @@ class MoveViewModel(application: Application) : AndroidViewModel(application), I
 
     override fun addTag(tagName: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            moveTagDao.addTag(Tag(id = UUID.randomUUID().toString(), name = tagName))
+            // Default createdAt/modifiedAt applied here
+            moveTagDao.addTag(MoveListTag(id = UUID.randomUUID().toString(), name = tagName))
         }
     }
 
@@ -152,11 +158,13 @@ class MoveViewModel(application: Application) : AndroidViewModel(application), I
         moveTagDao.getMoveWithTagsById(moveId)
     }
 
-    override fun updateMoveAndTags(moveId: String, newName: String, newSelectedTags: List<Tag>) {
+    override fun updateMoveAndTags(moveId: String, newName: String, newSelectedMoveListTags: List<MoveListTag>) {
         viewModelScope.launch(Dispatchers.IO) {
-            moveTagDao.updateMove(Move(id = moveId, name = newName))
+            // Use the specific query to preserve createdAt
+            moveTagDao.updateMoveName(moveId, newName, System.currentTimeMillis())
+            
             moveTagDao.unlinkMoveFromAllTags(moveId)
-            newSelectedTags.forEach { tag ->
+            newSelectedMoveListTags.forEach { tag ->
                 moveTagDao.link(MoveTagCrossRef(moveId = moveId, tagId = tag.id))
             }
         }
@@ -171,25 +179,26 @@ class MoveViewModel(application: Application) : AndroidViewModel(application), I
     override fun updateTag(tagId: String, newName: String) {
         viewModelScope.launch(Dispatchers.IO) {
             if (newName.isNotBlank()) {
-                moveTagDao.updateTag(Tag(id = tagId, name = newName))
+                // Use specific query to preserve createdAt
+                moveTagDao.updateTagName(tagId, newName, System.currentTimeMillis())
             }
         }
     }
 
-    override fun deleteTag(tag: Tag) {
+    override fun deleteTag(moveListTag: MoveListTag) {
         viewModelScope.launch(Dispatchers.IO) {
-            moveTagDao.deleteTagCompletely(tag)
+            moveTagDao.deleteTagCompletely(moveListTag)
         }
     }
 
-    override fun generateComboFromTags(selectedTags: Set<Tag>, length: Int?, allowRepeats: Boolean): List<Move> {
+    override fun generateComboFromTags(selectedMoveListTags: Set<MoveListTag>, length: Int?, allowRepeats: Boolean): List<Move> {
         val currentMovesWithTags = movesWithTags.value ?: return emptyList()
-        if (selectedTags.isEmpty()) return emptyList()
+        if (selectedMoveListTags.isEmpty()) return emptyList()
 
-        val selectedTagIds = selectedTags.map { it.id }.toSet()
+        val selectedTagIds = selectedMoveListTags.map { it.id }.toSet()
         // Only keep unique moves for the pool, unless allowRepeats is handled in selection
         val matchingMoves = currentMovesWithTags
-            .filter { moveWithTags -> moveWithTags.tags.any { it.id in selectedTagIds } }
+            .filter { moveWithTags -> moveWithTags.moveListTags.any { it.id in selectedTagIds } }
             .map { it.move }
             .distinct() // Ensure pool is unique moves first
 
@@ -253,7 +262,7 @@ class MoveViewModel(application: Application) : AndroidViewModel(application), I
 
         AppDataExport(
             moves = moveTagDao.getAllMovesList(),
-            tags = moveTagDao.getAllTagsList(),
+            moveListTags = moveTagDao.getAllTagsList(),
             moveTagCrossRefs = moveTagDao.getAllMoveTagCrossRefsList(),
             savedCombos = savedComboDao.getAllSavedCombosList(),
             battleCombos = battleCombosOnly,
@@ -266,14 +275,14 @@ class MoveViewModel(application: Application) : AndroidViewModel(application), I
         try {
             db.clearAllTables()
             moveTagDao.insertAllMoves(appData.moves)
-            moveTagDao.insertAllTags(appData.tags)
+            moveTagDao.insertAllTags(appData.moveListTags)
             moveTagDao.insertAllMoveTagCrossRefs(appData.moveTagCrossRefs)
             savedComboDao.insertAllSavedCombos(appData.savedCombos)
             
             // Import Battle Data
             appData.battleCombos.forEach { battleComboDao.insertBattleCombo(it) }
             appData.battleTags.forEach { battleTagDao.insertBattleTag(it) }
-            appData.battleComboTagCrossRefs.forEach { battleComboDao.insertBattleComboTagCrossRef(it) }
+            appData.battleComboTagCrossRefs.forEach { battleComboDao.link(it) }
 
             AppDB.prepopulateExampleData(db)
             true
@@ -291,37 +300,37 @@ class MoveViewModel(application: Application) : AndroidViewModel(application), I
 
 class FakeMoveViewModel : IMoveViewModel {
     private val initialFakeMovesWithTags = listOf(
-        MoveWithTags(Move("m1", "6-Step"), listOf(Tag("t1", "Footwork"))),
-        MoveWithTags(Move("m2", "Toprock Basic"), listOf(Tag("t2", "Toprock")))
+        MoveWithTags(Move("m1", "6-Step"), listOf(MoveListTag("t1", "Footwork"))),
+        MoveWithTags(Move("m2", "Toprock Basic"), listOf(MoveListTag("t2", "Toprock")))
     )
-    private val initialFakeTags = listOf(Tag("t1", "Footwork"), Tag("t2", "Toprock"), Tag("t3", "Freeze"))
+    private val initialFakeMoveListTags = listOf(MoveListTag("t1", "Footwork"), MoveListTag("t2", "Toprock"), MoveListTag("t3", "Freeze"))
     private val _movesWithTags = MutableLiveData(initialFakeMovesWithTags)
     override val movesWithTags: LiveData<List<MoveWithTags>> = _movesWithTags
 
-    private val _allTags = MutableLiveData(initialFakeTags)
-    override val allTags: LiveData<List<Tag>> = _allTags
+    private val _allTags = MutableLiveData(initialFakeMoveListTags)
+    override val allTags: LiveData<List<MoveListTag>> = _allTags
 
     override val allMoves: LiveData<List<Move>> = _movesWithTags.map { it.map { mwt -> mwt.move } }
     override val savedCombos: LiveData<List<SavedCombo>> = MutableLiveData(emptyList())
 
-    override fun addMove(moveName: String, selectedTags: List<Tag>) {}
+    override fun addMove(moveName: String, selectedMoveListTags: List<MoveListTag>) {}
     override fun addTag(tagName: String) {}
     override suspend fun getMoveForEditing(moveId: String): MoveWithTags? = null
     override suspend fun getMovesForTag(tagId: String): List<Move> {
-        return movesWithTags.value?.find { it.tags.any { it.id == tagId } }?.let { listOf(it.move) } ?: emptyList()
+        return movesWithTags.value?.find { it.moveListTags.any { it.id == tagId } }?.let { listOf(it.move) } ?: emptyList()
     }
-    override fun getFlashcardMove(excludedTags: Set<Tag>): Move? {
-        val excludedTagIds = excludedTags.map { it.id }.toSet()
-        return initialFakeMovesWithTags.filter { mwt -> mwt.tags.any { it.id in excludedTagIds } }.map { it.move }.randomOrNull()
+    override fun getFlashcardMove(excludedMoveListTags: Set<MoveListTag>): Move? {
+        val excludedTagIds = excludedMoveListTags.map { it.id }.toSet()
+        return initialFakeMovesWithTags.filter { mwt -> mwt.moveListTags.any { it.id in excludedTagIds } }.map { it.move }.randomOrNull()
     }
-    override fun updateMoveAndTags(moveId: String, newName: String, newSelectedTags: List<Tag>) {}
+    override fun updateMoveAndTags(moveId: String, newName: String, newSelectedMoveListTags: List<MoveListTag>) {}
     override fun deleteMove(move: Move) {}
     override fun updateTag(tagId: String, newName: String) {}
-    override fun deleteTag(tag: Tag) {}
-    override fun generateComboFromTags(selectedTags: Set<Tag>, length: Int?, allowRepeats: Boolean): List<Move> = emptyList()
-    override fun generateStructuredCombo(tagSequence: List<Tag>): List<Move> {
-        return tagSequence.mapNotNull { tag ->
-            initialFakeMovesWithTags.find { it.tags.contains(tag) }?.move
+    override fun deleteTag(moveListTag: MoveListTag) {}
+    override fun generateComboFromTags(selectedMoveListTags: Set<MoveListTag>, length: Int?, allowRepeats: Boolean): List<Move> = emptyList()
+    override fun generateStructuredCombo(moveListTagSequence: List<MoveListTag>): List<Move> {
+        return moveListTagSequence.mapNotNull { tag ->
+            initialFakeMovesWithTags.find { it.moveListTags.contains(tag) }?.move
         }
     }
     override fun saveCombo(comboName: String, moves: List<String>) {}

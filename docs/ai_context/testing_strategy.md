@@ -26,6 +26,11 @@
     - Assert return values.
     - Verify DAO calls were made (`coVerify`).
 
+## Coverage
+- **MoveViewModel**: Core logic for combo generation, filters, and data export/import.
+- **BattleViewModel**: Battle session management, timer logic, and state updates.
+- **GoalViewModel**: Goal creation, updating, archiving, and stage progress logic (including clamping and parent timestamp updates).
+
 ## Example Template
 ```kotlin
 @OptIn(ExperimentalCoroutinesApi::class)

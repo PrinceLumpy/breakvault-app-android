@@ -2,7 +2,6 @@ package com.princelumpy.breakvault.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,21 +12,18 @@ import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.princelumpy.breakvault.R
-import com.princelumpy.breakvault.data.BattleCombo
 import com.princelumpy.breakvault.data.BattleComboWithTags
 import com.princelumpy.breakvault.data.EnergyLevel
 import com.princelumpy.breakvault.data.TrainingStatus
@@ -65,7 +61,7 @@ fun BattleScreen(
             battleCombos
         } else {
             battleCombos.filter { comboWithTags ->
-                // OR Logic: Show combo if it has ANY of the selected tags
+                // OR Logic: Show combo if it has ANY of the selected moveListTags
                 comboWithTags.tags.any { it.name in selectedTags }
             }
         }
@@ -89,7 +85,7 @@ fun BattleScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Battle Combos") },
+                title = { Text("Battle Arena") },
                 actions = {
                     // Manage Tags Button
                     IconButton(onClick = { navController.navigate(Screen.BattleTagList.route) }) {
@@ -130,10 +126,12 @@ fun BattleScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { 
-                navController.navigate(Screen.AddEditBattleCombo.route)
-            }) {
-                Icon(Icons.Filled.Add, contentDescription = "Add Battle Combo")
+            if (battleCombos.isNotEmpty()) {
+                FloatingActionButton(onClick = { 
+                    navController.navigate(Screen.AddEditBattleCombo.route)
+                }) {
+                    Icon(Icons.Filled.Add, contentDescription = "Add Battle Combo")
+                }
             }
         }
     ) { paddingValues ->
@@ -145,7 +143,7 @@ fun BattleScreen(
             // Tip: Hold to edit (Only show if there are combos)
             if (battleCombos.isNotEmpty()) {
                 Text(
-                    text = "Tip: Hold to edit",
+                    text = "Tip: Hold to edit, Tap to mark used",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
@@ -155,7 +153,7 @@ fun BattleScreen(
                 )
             }
 
-            // Tag Filter Row
+            // MoveListTag Filter Row
             if (allTags.isNotEmpty()) {
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -179,16 +177,38 @@ fun BattleScreen(
             }
 
             if (filteredAndSortedCombos.isEmpty()) {
-                Box(
+                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(16.dp),
-                    contentAlignment = Alignment.Center
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     if (battleCombos.isEmpty()) {
-                        Text("No battle combos yet. Go to the Lab or add one!")
+                        Text(
+                            text = "The arena is empty.",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Add battle-ready combos to track them during sessions.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = { navController.navigate(Screen.AddEditBattleCombo.route) }) {
+                            Icon(Icons.Filled.Add, contentDescription = null)
+                            Spacer(modifier = Modifier.padding(4.dp))
+                            Text("Add Battle Combo")
+                        }
                     } else {
-                        Text("No combos match your filter.")
+                         Text(
+                            text = "No combos match your filter.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             } else {
@@ -264,7 +284,8 @@ fun BattleComboItem(
             ),
         colors = CardDefaults.cardColors(
             containerColor = if (combo.isUsed) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f) else MaterialTheme.colorScheme.surface
-        )
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
             // Energy Strip

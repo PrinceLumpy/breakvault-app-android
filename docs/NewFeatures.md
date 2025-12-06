@@ -12,7 +12,7 @@ Users can create high-level goals (e.g., "Master Power Moves") and define specif
 ### Database Schema Changes
 
 #### New Entity: `Goal`
-Represents the parent container for a set of tracking tasks.
+Represents the parent container for a set of tracking stages.
 ```kotlin
 @Entity(tableName = "goals")
 data class Goal(
@@ -20,6 +20,7 @@ data class Goal(
     val title: String,
     val description: String,
     val createdAt: Long = System.currentTimeMillis(),
+    val lastUpdated: Long = System.currentTimeMillis(), // Added for sorting/sync
     val isArchived: Boolean = false
 )
 ```
@@ -39,7 +40,9 @@ data class GoalStage(
     val name: String,   // e.g., "Flare Drills"
     val currentCount: Int = 0,
     val targetCount: Int,
-    val unit: String = "reps" // e.g., "reps", "minutes", "sets"
+    val unit: String = "reps", // e.g., "reps", "minutes", "sets"
+    val createdAt: Long = System.currentTimeMillis(),
+    val lastUpdated: Long = System.currentTimeMillis()
 )
 ```
 
@@ -47,31 +50,30 @@ data class GoalStage(
 
 #### A. Goals Dashboard (New Tab)
 *   **List View:** Displays active goals.
-*   **Card Content:** Goal Title, specific count of active stages (e.g., "3 active drills"), and an overall completion percentage.
+*   **Card Content:** Goal Title, and an overall completion percentage.
 *   **FAB:** "Create New Goal".
 
 #### B. Goal Details Screen (The "Tracker")
-This is where the user spends their practice time.
-*   **Header:** Goal Title & Description.
+*   **Header:** Goal Title & Optional Description.
 *   **Visuals:** A master progress bar for the entire goal.
 *   **Stage List:** A list of `GoalStage` items.
 
 **Stage Item Layout (Row):**
-1.  **Left:** Stage Name (e.g., "Halos").
-2.  **Middle:**
-    *   **Progress Bar:** Linear progress indicator showing `current / target`.
+1.  **Top:** Stage Name (e.g., "Halos").
+2.  **Bottom:**
     *   **Text:** `45 / 100`.
-3.  **Right (Controls):**
-    *   **`-` Button:** Decrement by 1 (Quick correction).
-    *   **`+` Button:** Increment by 1 (Quick add).
-    *   **`Edit/Add` Button:** Opens a dialog.
+    *   **Progress Bar:** Linear progress indicator showing `current / target`.
+3. Tap on stage to navigate to the ViewGoalStage Page 
+4. Hold to open an edit popup that can edit the Name, Description, and Target
 
+#### C. View GoalStage Screen
+This is where the user spends most of their practice time.
+I still haven't finished acceptance criteria for this.
 **"Add Reps" Dialog:**
 *   Triggered by clicking the stage or the specific "Add" button.
 *   **Input Field:** Numeric input (e.g., user did a set of 10, types "10").
 *   **Action:** Adds input to `currentCount`.
 *   **Reasoning:** Doing 50 reps and tapping `+` 50 times is bad UX.
-
 ---
 
 ## 2. In-App Timer
@@ -95,37 +97,7 @@ A utility to help with footwork drills, freezes, or HIIT sets without leaving th
 
 ---
 
-## 3. Foundational Drills Library
-
-### Concept
-A persistent checklist or library of "Basics" (e.g., 6-step, CCs, Pushups) that a user wants to keep track of separately from their creative "Moves" list.
-
-### Database Schema Changes
-
-#### New Entity: `Drill`
-Separating this from `Move` prevents the "Creative Move Library" (Combo Generator) from getting cluttered with conditioning exercises.
-
-```kotlin
-@Entity(tableName = "drills")
-data class Drill(
-    @PrimaryKey val id: String = UUID.randomUUID().toString(),
-    val name: String,
-    val category: String, // e.g., "Conditioning", "Footwork", "Freeze"
-    val description: String
-)
-```
-
-### UI/UX Design
-
-#### Drills Library Screen
-*   **List View:** Alphabetical list of drills.
-*   **Functionality:**
-    *   Add/Edit/Delete Drills.
-    *   **"Add to Goal" Action:** Long-pressing a drill allows the user to instantly create a `GoalStage` in an existing goal using this drill's name.
-
----
-
-## 4. Navigation & Architecture Updates
+## 5. Navigation & Architecture Updates
 
 ### Navigation Structure
 The "Practice" section is becoming feature-rich. To avoid a clutter of 6+ bottom tabs, we should reorganize:
@@ -149,6 +121,5 @@ Keep existing tabs but add a **"Goals"** tab and put the Timer/Drills inside it 
 
 ### Recommended Implementation Order
 1.  **Database Layer:** Create Entities (`Goal`, `GoalStage`, `Drill`) and DAOs.
-2.  **Goals UI:** Build the Goal List and Detail screens.
-3.  **Drills UI:** Build the simple CRUD list.
-4.  **Timer UI:** Build the utility screen.
+2.  **Goals UI:** Build the Goal List and Detail screens. and Archived Goals in the side bar
+3.  **Timer UI:** Build the utility screen.

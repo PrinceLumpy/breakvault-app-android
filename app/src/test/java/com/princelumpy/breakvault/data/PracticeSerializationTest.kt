@@ -24,10 +24,10 @@ class PracticeSerializationTest {
 
     @Test
     fun `Tag serializes correctly`() {
-        val tag = Tag(id = "t1", name = "Power")
-        val string = json.encodeToString(tag)
-        val decoded = json.decodeFromString<Tag>(string)
-        assertEquals(tag, decoded)
+        val moveListTag = MoveListTag(id = "t1", name = "Power")
+        val string = json.encodeToString(moveListTag)
+        val decoded = json.decodeFromString<MoveListTag>(string)
+        assertEquals(moveListTag, decoded)
     }
 
     @Test
@@ -55,7 +55,7 @@ class PracticeSerializationTest {
     fun `AppDataExport serializes correctly with all fields`() {
         val export = AppDataExport(
             moves = listOf(Move("m1", "Windmill")),
-            tags = listOf(Tag("t1", "Power")),
+            moveListTags = listOf(MoveListTag("t1", "Power")),
             moveTagCrossRefs = listOf(MoveTagCrossRef("m1", "t1")),
             savedCombos = listOf(SavedCombo(id = "s1", name = "My Combo", moves = listOf("Windmill"))),
             battleCombos = listOf(BattleCombo(id = "b1", description = "Battle Round")),
@@ -76,7 +76,7 @@ class PracticeSerializationTest {
         val oldJson = """
             {
                 "moves": [{"id": "m1", "name": "Windmill"}],
-                "tags": [],
+                "moveListTags": [],
                 "moveTagCrossRefs": [],
                 "savedCombos": []
             }

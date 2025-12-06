@@ -3,7 +3,7 @@
 ## Database Configuration
 - **Library:** Room.
 - **Database Class:** `AppDB` (Abstract class extending `RoomDatabase`).
-- **Callback:** `AppDbCallback` prepopulates default tags on creation.
+- **Callback:** `AppDbCallback` prepopulates default moveListTags on creation.
 - **Migration:** `fallbackToDestructiveMigration(true)` is enabled for development iteration.
 
 ## Entities

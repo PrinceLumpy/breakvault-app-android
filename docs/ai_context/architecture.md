@@ -21,7 +21,7 @@
 ## Core Features
 1.  **Practice Mode:**
     - Manage Moves and Tags (Many-to-Many).
-    - Generate random or structured combos based on tags.
+    - Generate random or structured combos based on moveListTags.
     - "Flashcard" mode.
 2.  **Battle Mode:**
     - Manage Battle Combos with properties: Description, Energy Level, Readiness Status.

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -21,7 +22,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.Screen
-import com.princelumpy.breakvault.data.Tag
+import com.princelumpy.breakvault.data.MoveListTag
 import com.princelumpy.breakvault.ui.theme.ComboGeneratorTheme
 import com.princelumpy.breakvault.viewmodel.FakeMoveViewModel
 import com.princelumpy.breakvault.viewmodel.IMoveViewModel
@@ -34,8 +35,8 @@ fun TagListScreen(
     moveViewModel: IMoveViewModel = viewModel<MoveViewModel>()
 ) {
     val tagsList by moveViewModel.allTags.observeAsState(initial = emptyList())
-    var showEditDialog by remember { mutableStateOf<Tag?>(null) }
-    var showDeleteDialog by remember { mutableStateOf<Tag?>(null) }
+    var showEditDialog by remember { mutableStateOf<MoveListTag?>(null) }
+    var showDeleteDialog by remember { mutableStateOf<MoveListTag?>(null) }
     var tagNameForEdit by remember { mutableStateOf("") }
 
     var showAddTagDialog by remember { mutableStateOf(false) }
@@ -44,7 +45,12 @@ fun TagListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(id = R.string.tag_list_manage_tags_title)) }
+                title = { Text(stringResource(id = R.string.tag_list_manage_tags_title)) },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(id = R.string.common_back_button_description))
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -72,7 +78,7 @@ fun TagListScreen(
                     key = { it.id }
                 ) { tag ->
                     TagListItem(
-                        tag = tag,
+                        moveListTag = tag,
                         onItemClick = {
                             navController.navigate(Screen.MovesByTag.withArgs(it.id, it.name))
                         },
@@ -184,15 +190,15 @@ fun TagListScreen(
 
 @Composable
 fun TagListItem(
-    tag: Tag,
-    onItemClick: (Tag) -> Unit,
-    onEditClick: (Tag) -> Unit,
-    onDeleteClick: (Tag) -> Unit
+    moveListTag: MoveListTag,
+    onItemClick: (MoveListTag) -> Unit,
+    onEditClick: (MoveListTag) -> Unit,
+    onDeleteClick: (MoveListTag) -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onItemClick(tag) },
+            .clickable { onItemClick(moveListTag) },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -203,15 +209,15 @@ fun TagListItem(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = tag.name,
+                text = moveListTag.name,
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.weight(1f)
             )
             Row {
-                IconButton(onClick = { onEditClick(tag) }) {
+                IconButton(onClick = { onEditClick(moveListTag) }) {
                     Icon(Icons.Filled.Edit, contentDescription = stringResource(id = R.string.tag_list_edit_tag_description))
                 }
-                IconButton(onClick = { onDeleteClick(tag) }) {
+                IconButton(onClick = { onDeleteClick(moveListTag) }) {
                     Icon(Icons.Filled.Delete, contentDescription = stringResource(id = R.string.tag_list_delete_tag_description), tint = MaterialTheme.colorScheme.error)
                 }
             }
@@ -232,7 +238,7 @@ fun TagListScreenPreview() {
 fun TagListItemPreview() {
     ComboGeneratorTheme {
         TagListItem(
-            tag = Tag("1", "Beginner"),
+            moveListTag = MoveListTag("1", "Beginner"),
             onItemClick = {},
             onEditClick = {},
             onDeleteClick = {}

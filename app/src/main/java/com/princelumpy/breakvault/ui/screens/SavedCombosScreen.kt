@@ -1,20 +1,51 @@
 package com.princelumpy.breakvault.ui.screens
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -48,20 +79,40 @@ fun SavedCombosScreen(
             TopAppBar(title = { Text(stringResource(id = R.string.saved_combos_screen_title)) })
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { navController.navigate(Screen.CreateEditCombo.route) }) {
-                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.create_combo_fab_description))
+            if (savedCombosList.isNotEmpty()) {
+                FloatingActionButton(onClick = { navController.navigate(Screen.CreateEditCombo.route) }) {
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.create_combo_fab_description))
+                }
             }
         }
     ) { paddingValues ->
         if (savedCombosList.isEmpty()) {
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
                     .padding(16.dp),
-                contentAlignment = Alignment.Center
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(stringResource(id = R.string.saved_combos_no_combos_message))
+                Text(
+                    text = stringResource(id = R.string.saved_combos_no_combos_message),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Create and save your favorite combos to access them quickly.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = { navController.navigate(Screen.CreateEditCombo.route) }) {
+                    Icon(Icons.Filled.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.padding(4.dp))
+                    Text("Create Combo")
+                }
             }
         } else {
             LazyColumn(
@@ -69,7 +120,7 @@ fun SavedCombosScreen(
                     .fillMaxSize()
                     .padding(paddingValues),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(
                     savedCombosList,
@@ -77,7 +128,7 @@ fun SavedCombosScreen(
                 ) { savedCombo ->
                     SavedComboItem(
                         savedCombo = savedCombo,
-                        onItemClick = {
+                        onEditClick = {
                             navController.navigate(Screen.CreateEditCombo.withOptionalArgs(mapOf("comboId" to savedCombo.id)))
                         },
                         onDeleteClick = { showDeleteDialog = savedCombo }
@@ -120,18 +171,17 @@ fun SavedCombosScreen(
 @Composable
 fun SavedComboItem(
     savedCombo: SavedCombo,
-    onItemClick: (SavedCombo) -> Unit,
+    onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onItemClick(savedCombo) },
+            .fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
-                .padding(12.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -146,11 +196,29 @@ fun SavedComboItem(
                 Text(
                     text = savedCombo.moves.joinToString(separator = " -> "),
                     style = MaterialTheme.typography.bodyMedium,
-                    fontSize = 14.sp
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            IconButton(onClick = onDeleteClick) {
-                Icon(Icons.Filled.Delete, contentDescription = stringResource(id = R.string.saved_combos_delete_combo_description))
+            
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
+                IconButton(onClick = onEditClick) {
+                    Icon(
+                        Icons.Filled.Edit, 
+                        contentDescription = "Edit Combo",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                IconButton(onClick = onDeleteClick) {
+                    Icon(
+                        Icons.Filled.Delete, 
+                        contentDescription = stringResource(id = R.string.saved_combos_delete_combo_description),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     }
@@ -176,7 +244,7 @@ fun SavedComboItemPreview() {
         )
         SavedComboItem(
             savedCombo = sampleCombo,
-            onItemClick = {},
+            onEditClick = {},
             onDeleteClick = {}
         )
     }

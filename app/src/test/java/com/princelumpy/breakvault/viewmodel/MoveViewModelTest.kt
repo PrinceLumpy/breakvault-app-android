@@ -39,7 +39,7 @@ class MoveViewModelTest {
 
     // Mock LiveData sources
     private val movesWithTagsLiveData = MutableLiveData<List<MoveWithTags>>()
-    private val allTagsLiveData = MutableLiveData<List<Tag>>()
+    private val allTagsLiveData = MutableLiveData<List<MoveListTag>>()
     private val savedCombosLiveData = MutableLiveData<List<SavedCombo>>()
 
     @Before
@@ -84,14 +84,14 @@ class MoveViewModelTest {
     @Test
     fun `generateStructuredCombo returns valid moves when matching tags found`() = runTest {
         // Given
-        val tagToprock = Tag("t1", "Toprock")
-        val tagFootwork = Tag("t2", "Footwork")
+        val moveListTagToprock = MoveListTag("t1", "Toprock")
+        val moveListTagFootwork = MoveListTag("t2", "Footwork")
         
         val moveToprock = Move("m1", "Indian Step")
         val moveFootwork = Move("m2", "6-Step")
         
-        val moveWithTags1 = MoveWithTags(moveToprock, listOf(tagToprock))
-        val moveWithTags2 = MoveWithTags(moveFootwork, listOf(tagFootwork))
+        val moveWithTags1 = MoveWithTags(moveToprock, listOf(moveListTagToprock))
+        val moveWithTags2 = MoveWithTags(moveFootwork, listOf(moveListTagFootwork))
         
         // Seed the ViewModel with data
         movesWithTagsLiveData.value = listOf(moveWithTags1, moveWithTags2)
@@ -100,7 +100,7 @@ class MoveViewModelTest {
         advanceUntilIdle() 
 
         // When requesting a sequence: Toprock -> Footwork
-        val requestedSequence = listOf(tagToprock, tagFootwork)
+        val requestedSequence = listOf(moveListTagToprock, moveListTagFootwork)
         val result = viewModel.generateStructuredCombo(requestedSequence)
 
         // Then
@@ -112,17 +112,17 @@ class MoveViewModelTest {
     @Test
     fun `generateStructuredCombo skips moves if no match for tag`() = runTest {
         // Given
-        val tagToprock = Tag("t1", "Toprock")
-        val tagFreeze = Tag("t3", "Freeze") // We have no freeze moves in our mock data
+        val moveListTagToprock = MoveListTag("t1", "Toprock")
+        val moveListTagFreeze = MoveListTag("t3", "Freeze") // We have no freeze moves in our mock data
         
         val moveToprock = Move("m1", "Indian Step")
-        val moveWithTags1 = MoveWithTags(moveToprock, listOf(tagToprock))
+        val moveWithTags1 = MoveWithTags(moveToprock, listOf(moveListTagToprock))
         
         movesWithTagsLiveData.value = listOf(moveWithTags1)
         advanceUntilIdle()
 
         // When requesting: Toprock -> Freeze
-        val requestedSequence = listOf(tagToprock, tagFreeze)
+        val requestedSequence = listOf(moveListTagToprock, moveListTagFreeze)
         val result = viewModel.generateStructuredCombo(requestedSequence)
 
         // Then
@@ -153,19 +153,19 @@ class MoveViewModelTest {
     @Test
     fun `getFlashcardMove respects excluded tags`() = runTest {
         // Given
-        val tagToprock = Tag("t1", "Toprock")
-        val tagFootwork = Tag("t2", "Footwork")
+        val moveListTagToprock = MoveListTag("t1", "Toprock")
+        val moveListTagFootwork = MoveListTag("t2", "Footwork")
         
         val moveToprock = Move("m1", "Indian Step")
         val moveFootwork = Move("m2", "6-Step")
         
         movesWithTagsLiveData.value = listOf(
-            MoveWithTags(moveToprock, listOf(tagToprock)),
-            MoveWithTags(moveFootwork, listOf(tagFootwork))
+            MoveWithTags(moveToprock, listOf(moveListTagToprock)),
+            MoveWithTags(moveFootwork, listOf(moveListTagFootwork))
         )
         advanceUntilIdle()
         
-        val targetTags = setOf(tagFootwork)
+        val targetTags = setOf(moveListTagFootwork)
         val result = viewModel.getFlashcardMove(targetTags)
         
         // Then
@@ -176,13 +176,13 @@ class MoveViewModelTest {
     fun `getAppDataForExport collects data from all DAOs`() = runTest {
         // Given
         val moves = listOf(Move("m1", "Move1"))
-        val tags = listOf(Tag("t1", "Tag1"))
+        val moveListTags = listOf(MoveTag("t1", "Tag1"))
         val savedCombos = listOf(SavedCombo(id = "s1", name = "Combo1", moves = listOf("Move1")))
         val battleCombosWithTags = listOf(BattleComboWithTags(BattleCombo(id = "b1", description = "Battle1"), emptyList()))
 
         // Mock DAO returns
         coEvery { moveTagDao.getAllMovesList() } returns moves
-        coEvery { moveTagDao.getAllTagsList() } returns tags
+        coEvery { moveTagDao.getAllTagsList() } returns moveListTags
         coEvery { moveTagDao.getAllMoveTagCrossRefsList() } returns emptyList()
         coEvery { savedComboDao.getAllSavedCombosList() } returns savedCombos
         coEvery { battleComboDao.getAllBattleCombosList() } returns battleCombosWithTags
@@ -205,7 +205,7 @@ class MoveViewModelTest {
         // Given
         val importData = AppDataExport(
             moves = listOf(Move("m1", "NewMove")),
-            tags = emptyList(),
+            moveListTags = emptyList(),
             moveTagCrossRefs = emptyList(),
             savedCombos = emptyList(),
             battleCombos = listOf(BattleCombo(id = "b1", description = "NewBattle")),
@@ -233,12 +233,12 @@ class MoveViewModelTest {
     @Test
     fun `generateComboFromTags allows exceeding pool size when repeats are enabled`() = runTest {
         // Given: Only 2 unique moves in the database
-        val tag = Tag("t1", "Tag")
+        val moveListTag = MoveListTag("t1", "MoveListTag")
         val move1 = Move("m1", "Move1")
         val move2 = Move("m2", "Move2")
         val moves = listOf(
-            MoveWithTags(move1, listOf(tag)),
-            MoveWithTags(move2, listOf(tag))
+            MoveWithTags(move1, listOf(moveListTag)),
+            MoveWithTags(move2, listOf(moveListTag))
         )
         movesWithTagsLiveData.value = moves
         advanceUntilIdle()
@@ -246,7 +246,7 @@ class MoveViewModelTest {
         // When: We ask for a combo of length 50 with repeats
         // (Note: Logic is now clamped to 6, so requesting 50 should return 6)
         val result = viewModel.generateComboFromTags(
-            selectedTags = setOf(tag),
+            selectedMoveListTags = setOf(moveListTag),
             length = 50,
             allowRepeats = true
         )
@@ -260,19 +260,19 @@ class MoveViewModelTest {
     @Test
     fun `generateComboFromTags clamps length to pool size when repeats are disabled`() = runTest {
         // Given: Only 2 unique moves
-        val tag = Tag("t1", "Tag")
+        val moveListTag = MoveListTag("t1", "MoveListTag")
         val move1 = Move("m1", "Move1")
         val move2 = Move("m2", "Move2")
         val moves = listOf(
-            MoveWithTags(move1, listOf(tag)),
-            MoveWithTags(move2, listOf(tag))
+            MoveWithTags(move1, listOf(moveListTag)),
+            MoveWithTags(move2, listOf(moveListTag))
         )
         movesWithTagsLiveData.value = moves
         advanceUntilIdle()
 
         // When: We ask for a combo of length 50 WITHOUT repeats
         val result = viewModel.generateComboFromTags(
-            selectedTags = setOf(tag),
+            selectedMoveListTags = setOf(moveListTag),
             length = 50,
             allowRepeats = false
         )
@@ -286,29 +286,29 @@ class MoveViewModelTest {
     @Test
     fun `generateComboFromTags clamps length to max limit`() = runTest {
         // Given: Pool of 3 unique moves
-        val tag = Tag("t1", "Tag")
+        val moveListTag = MoveListTag("t1", "MoveListTag")
         val move1 = Move("m1", "Move1")
         val move2 = Move("m2", "Move2")
         val move3 = Move("m3", "Move3")
         val moves = listOf(
-            MoveWithTags(move1, listOf(tag)),
-            MoveWithTags(move2, listOf(tag)),
-            MoveWithTags(move3, listOf(tag))
+            MoveWithTags(move1, listOf(moveListTag)),
+            MoveWithTags(move2, listOf(moveListTag)),
+            MoveWithTags(move3, listOf(moveListTag))
         )
         movesWithTagsLiveData.value = moves
         advanceUntilIdle()
 
         // Case 1: Request 3 (Exact) - No Repeats
-        val result3 = viewModel.generateComboFromTags(setOf(tag), 3, false)
+        val result3 = viewModel.generateComboFromTags(setOf(moveListTag), 3, false)
         assertEquals(3, result3.size)
 
         // Case 2: Request 2 (Under) - No Repeats
-        val result2 = viewModel.generateComboFromTags(setOf(tag), 2, false)
+        val result2 = viewModel.generateComboFromTags(setOf(moveListTag), 2, false)
         assertEquals(2, result2.size)
 
         // Case 3: Request 60 (Over Max) - Repeats Enabled
         // FIX: Logic clamps to 6.
-        val result60 = viewModel.generateComboFromTags(setOf(tag), 60, true)
+        val result60 = viewModel.generateComboFromTags(setOf(moveListTag), 60, true)
         assertEquals(6, result60.size)
     }
 }

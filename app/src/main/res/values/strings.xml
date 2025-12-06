@@ -3,7 +3,7 @@
 
     <!-- Screen Labels (for Navigation) -->
     <string name="screen_label_moves">Moves</string>
-    <string name="screen_label_saved_combos">Saved</string>
+    <string name="screen_label_saved_combos">Combos</string>
     <string name="screen_label_tags">Tags</string>
     <string name="screen_label_settings">Settings</string>
     <string name="screen_label_combo_generator">Generator</string>
@@ -12,18 +12,36 @@
     <string name="screen_label_battle_arena">Battle</string>
     <string name="screen_label_battle_mode">Battle</string>
     <string name="screen_label_practice_mode">Practice</string>
+    <string name="screen_label_goals">Goals</string>
+    <string name="screen_label_timer">Timer</string>
+
+    <!-- Drawer Items -->
+    <string name="drawer_item_practice_tags">Manage Move List Tags</string>
+    <string name="drawer_item_battle_tags">Battle Tags</string>
 
     <!-- TagListScreen -->
-    <string name="tag_list_manage_tags_title">Manage Tags</string>
+    <string name="tag_list_manage_tags_title">Manage Move List Tags</string>
     <string name="tag_list_add_tag_fab_description">Add Tag</string>
-    <string name="tag_list_no_tags_message">No tags found. Click the \'+\' button to add a new tag.</string>
+    <string name="tag_list_no_tags_message">No Tags found. Click the \'+\' button to add a new tag.</string>
     <string name="tag_list_add_new_tag_dialog_title">Add New Tag</string>
     <string name="tag_list_tag_name_label">Tag Name</string>
     <string name="tag_list_edit_tag_name_dialog_title">Edit Tag Name</string>
     <string name="tag_list_new_tag_name_label">New Tag Name</string>
-    <string name="tag_list_delete_confirmation_message">Are you sure you want to delete the tag \'%1$s\'? This will remove it from all associated moves.</string>
+    <string name="tag_list_delete_confirmation_message">Are you sure you want to delete the Tag \'%1$s\'? This will remove it from all associated moves.</string>
     <string name="tag_list_edit_tag_description">Edit Tag</string>
     <string name="tag_list_delete_tag_description">Delete Tag</string>
+
+    <!-- BattleTagListScreen -->
+    <string name="battle_tag_list_title">Manage Battle Tags</string>
+    <string name="battle_tag_list_add_fab_description">Add Tag</string>
+    <string name="battle_tag_list_no_tags_message">No battle tags found. Click \'+\' to add one.</string>
+    <string name="battle_tag_list_add_dialog_title">Add New Battle Tag</string>
+    <string name="battle_tag_list_tag_name_label">Tag Name</string>
+    <string name="battle_tag_list_edit_dialog_title">Edit Tag Name</string>
+    <string name="battle_tag_list_new_tag_name_label">New Tag Name</string>
+    <string name="battle_tag_list_delete_confirmation">Are you sure you want to delete \'%1$s\'?</string>
+    <string name="battle_tag_list_edit_icon_desc">Edit Tag</string>
+    <string name="battle_tag_list_delete_icon_desc">Delete Tag</string>
 
     <!-- MoveListScreen -->
     <string name="move_list_add_move_button">Add Move</string>
@@ -34,6 +52,7 @@
     <string name="move_card_no_tags_label">No tags</string>
     <string name="move_card_edit_button">Edit</string>
     <string name="move_card_delete_move_description">Delete Move</string>
+    <string name="move_list_manage_tags_button">Manage Tags</string>
 
     <!-- AddEditMoveScreen -->
     <string name="add_edit_move_add_new_move_title">Add New Move</string>
@@ -102,8 +121,8 @@
     <string name="flashcard_prompt">Can you do this move: \'%1$s\' in three different ways in and out of it?</string>
 
     <!-- SavedCombosScreen -->
-    <string name="saved_combos_screen_title">Saved Combos</string>
-    <string name="saved_combos_no_combos_message">No combos saved yet.</string>
+    <string name="saved_combos_screen_title">Combos</string>
+    <string name="saved_combos_no_combos_message">No saved combos yet.</string>
     <string name="saved_combos_delete_combo_description">Delete Combo</string>
     <string name="create_combo_fab_description">Create Combo</string>
     <string name="combo_deleted_snackbar">Combo deleted</string>
@@ -128,5 +147,7 @@
     <string name="common_delete">Delete</string>
     <string name="common_back_button_description">Back</string>
     <string name="common_ok">OK</string>
+    <string name="drawer_item_archived_goals">not implemented yet</string>
+    <string name="screen_label_battle">Battle</string>
 
 </resources>

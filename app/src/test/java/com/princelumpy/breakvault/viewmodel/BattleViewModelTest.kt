@@ -38,7 +38,7 @@ class BattleViewModelTest {
     val instantTaskExecutorRule = InstantTaskExecutorRule()
 
     private val testDispatcher = StandardTestDispatcher()
-    
+
     private val app = mockk<Application>(relaxed = true)
     private val db = mockk<AppDB>()
     private val battleComboDao = mockk<BattleComboDao>(relaxed = true)
@@ -52,7 +52,7 @@ class BattleViewModelTest {
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        
+
         // Mock Log
         mockkStatic(Log::class)
         every { Log.d(any(), any()) } returns 0
@@ -91,7 +91,7 @@ class BattleViewModelTest {
         advanceUntilIdle()
 
         // Then
-        coVerify { 
+        coVerify {
             battleComboDao.updateBattleCombo(match { updatedCombo ->
                 updatedCombo.id == "1" && updatedCombo.isUsed == true
             })
@@ -115,9 +115,9 @@ class BattleViewModelTest {
         val energy = EnergyLevel.HIGH
         val status = TrainingStatus.READY
         val tagName = "Power"
-        val existingTag = BattleTag(id = "tag-1", name = tagName)
+        val existingTag = BattleTag(id = "moveListTag-1", name = tagName)
 
-        // Mock: Tag exists
+        // Mock: MoveListTag exists
         coEvery { battleTagDao.getBattleTagByName(tagName) } returns existingTag
 
         // When
@@ -126,15 +126,15 @@ class BattleViewModelTest {
 
         // Then
         // 1. Verify Combo Insert
-        coVerify { 
-            battleComboDao.insertBattleCombo(match { 
+        coVerify {
+            battleComboDao.insertBattleCombo(match {
                 it.description == description && it.energy == energy
             })
         }
-        // 2. Verify CrossRef Insert (linking combo to existing tag)
-        coVerify { 
-            battleComboDao.insertBattleComboTagCrossRef(match { 
-                it.battleTagId == "tag-1" 
+        // 2. Verify CrossRef Insert (linking combo to existing moveListTag)
+        coVerify {
+            battleComboDao.link(match {
+                it.battleTagId == "moveListTag-1"
             })
         }
     }
@@ -143,21 +143,21 @@ class BattleViewModelTest {
     fun `addBattleCombo creates new tag if not found`() = runTest {
         // Given
         val tagName = "New Style"
-        // Mock: Tag does NOT exist
+        // Mock: MoveListTag does NOT exist
         coEvery { battleTagDao.getBattleTagByName(tagName) } returns null
-        
+
         // When
         viewModel.addBattleCombo("Desc", EnergyLevel.LOW, TrainingStatus.TRAINING, listOf(tagName))
         advanceUntilIdle()
 
         // Then
-        // 1. Verify Tag Creation
-        coVerify { 
+        // 1. Verify MoveListTag Creation
+        coVerify {
             battleTagDao.insertBattleTag(match { it.name == tagName })
         }
         // 2. Verify CrossRef Insert
-        coVerify { 
-            battleComboDao.insertBattleComboTagCrossRef(any())
+        coVerify {
+            battleComboDao.link(any())
         }
     }
 }

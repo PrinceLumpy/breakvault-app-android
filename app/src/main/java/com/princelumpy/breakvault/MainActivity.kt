@@ -6,7 +6,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -57,23 +56,24 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.princelumpy.breakvault.ui.screens.AddEditBattleComboScreen
-import com.princelumpy.breakvault.ui.screens.AddEditComboScreen
-import com.princelumpy.breakvault.ui.screens.AddEditGoalScreen
-import com.princelumpy.breakvault.ui.screens.AddEditGoalStageScreen
-import com.princelumpy.breakvault.ui.screens.AddEditMoveScreen
-import com.princelumpy.breakvault.ui.screens.ArchivedGoalsScreen
-import com.princelumpy.breakvault.ui.screens.BattleComboListScreen
-import com.princelumpy.breakvault.ui.screens.BattleTagListScreen
-import com.princelumpy.breakvault.ui.screens.ComboGeneratorScreen
-import com.princelumpy.breakvault.ui.screens.GoalsScreen
-import com.princelumpy.breakvault.ui.screens.MoveListScreen
-import com.princelumpy.breakvault.ui.screens.MoveTagListScreen
-import com.princelumpy.breakvault.ui.screens.MovesByTagScreen
-import com.princelumpy.breakvault.ui.screens.SavedCombosScreen
-import com.princelumpy.breakvault.ui.screens.SettingsScreen
-import com.princelumpy.breakvault.ui.screens.TimerScreen
+import com.princelumpy.breakvault.ui.battlecombos.addedit.AddEditBattleComboScreen
+import com.princelumpy.breakvault.ui.savedcombos.addedit.AddEditComboScreen
+import com.princelumpy.breakvault.ui.goals.addedit.AddEditGoalScreen
+import com.princelumpy.breakvault.ui.goals.addedit.stage.AddEditGoalStageScreen
+import com.princelumpy.breakvault.ui.moves.addedit.AddEditMoveScreen
+import com.princelumpy.breakvault.ui.goals.archived.ArchivedGoalsScreen
+import com.princelumpy.breakvault.ui.battlecombos.list.BattleComboListScreen
+import com.princelumpy.breakvault.ui.battlecombos.managetags.BattleTagListScreen
+import com.princelumpy.breakvault.ui.combogenerator.ComboGeneratorScreen
+import com.princelumpy.breakvault.ui.goals.list.GoalsScreen
+import com.princelumpy.breakvault.ui.moves.list.MoveListScreen
+import com.princelumpy.breakvault.ui.moves.managetags.MoveTagListScreen
+import com.princelumpy.breakvault.ui.moves.movesbytag.MovesByTagScreen
+import com.princelumpy.breakvault.ui.savedcombos.list.SavedCombosScreen
+import com.princelumpy.breakvault.ui.settings.SettingsScreen
+import com.princelumpy.breakvault.ui.timer.TimerScreen
 import com.princelumpy.breakvault.ui.theme.ComboGeneratorTheme
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
 sealed class Screen(
@@ -134,6 +134,7 @@ val bottomNavItems = listOf(
     Screen.Battle
 )
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -271,10 +272,10 @@ fun MainAppScreen() {
                     CenterAlignedTopAppBar(
                         title = { Text(stringResource(id = R.string.app_name)) },
                         navigationIcon = {
-                            IconButton(onClick = { 
+                            IconButton(onClick = {
                                 if (drawerState.isClosed) {
                                     scope.launch { drawerState.open() }
-                                } 
+                                }
                             }) {
                                 Icon(
                                     imageVector = Icons.Default.Menu,

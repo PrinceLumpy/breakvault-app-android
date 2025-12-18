@@ -117,7 +117,7 @@
     <string name="flashcard_select_tags_prompt">Select tags to practice with:</string>
     <string name="flashcard_no_tags_available_message">No tags available to practice with.</string>
     <string name="flashcard_next_move_button">Next Move</string>
-    <string name="flashcard_initial_prompt">Select tags and click "Next Move" to start.</string>
+    <string name="flashcard_initial_prompt">Select tags and click \"Next Move\" to start.</string>
     <string name="flashcard_prompt">Can you do this move: \'%1$s\' in three different ways in and out of it?</string>
 
     <!-- SavedCombosScreen -->
@@ -165,14 +165,21 @@
     <string name="goals_screen_create_goal_button">Create Goal</string>
     <string name="goals_screen_untitled_goal">Untitled Goal</string>
     <string name="goals_screen_progress_text">%1$d%% Complete</string>
+    <string name="goals_screen_delete_goal_dialog_title">Delete Goal?</string>
+    <string name="goals_screen_delete_goal_dialog_message">Are you sure you want to delete the goal \'%1$s\'?</string>
 
     <!-- MovesByTagScreen -->
-    <string name="moves_for_tag_title">Moves for "%1$s"</string>
+    <string name="moves_for_tag_title">Moves for \"%1$s\"</string>
     <string name="no_moves_for_tag_message">No moves found for this tag.</string>
 
     <!-- ArchivedGoalsScreen -->
     <string name="drawer_item_archived_goals">Archived Goals</string>
     <string name="archived_goals_no_goals">No archived goals found.</string>
+    <string name="archived_goals_unarchive_dialog_title">Unarchive Goal?</string>
+    <string name="archived_goals_unarchive_dialog_message">Are you sure you want to unarchive the goal \'%1$s\'?</string>
+    <string name="common_unarchive">Unarchive</string>
+    <string name="archived_goals_delete_dialog_title">Delete Goal?</string>
+    <string name="archived_goals_delete_dialog_message">Are you sure you want to permanently delete the goal \'%1$s\'? This action cannot be undone.</string>
 
     <!-- AddEditGoalScreen -->
     <string name="add_edit_goal_create_title">Create Goal</string>
@@ -184,6 +191,8 @@
     <string name="add_edit_goal_no_stages_message">No stages yet. Add one to get started!</string>
     <string name="add_edit_goal_archive_description">Archive Goal</string>
     <string name="add_edit_goal_delete_description">Delete Goal</string>
+    <string name="add_edit_goal_delete_dialog_title">Delete Goal?</string>
+    <string name="add_edit_goal_delete_dialog_message">Are you sure you want to delete this goal? This action cannot be undone.</string>
 
     <!-- AddEditGoalStageScreen -->
     <string name="add_edit_goal_stage_add_title">Add Goal Stage</string>
@@ -211,5 +220,16 @@
 </string>
     <string name="save_goal_content_description">Save Goal
 </string>
+    <string name="common_undo">undo</string>
+    <string name="goals_screen_edit_goal_description">Edit Goal</string>
+    <string name="goals_screen_delete_goal_description">Delete Goal</string>
+    <string name="archived_goals_unarchive_goal_description">Unarchive Goal</string>
+    <string name="archived_goals_archive_goal_description">Archive Goal</string>
+    <string name="common_archive">Archive</string>
+    <string name="goals_screen_archive_goal_dialog_title">Archive Goal?</string>
+    <string name="goals_screen_archive_goal_dialog_message">Are you sure you want to archive this goal?</string>
+    <string name="goal_stage_item_edit_button">Edit Goal Stage</string>
+    <string name="common_edit">Edit</string>
+    <string name="goal_stage_item_add_reps_button">Add Reps</string>
 
 </resources>

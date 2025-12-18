@@ -1,4 +1,15 @@
----- UI ----
+---- Architecture ----
+
+* Add a repository layer to separate data sources from ViewModels.
+* Apply the ON_RESUME data refresh pattern to all screens displaying dynamic data to ensure UI is
+  always up-to-date.
+
+
+* make dark theme look better
+* Have the add "REPS" in goalstage say the unit that is in the goal stage instead of reps
+  ---- UI ----
+  Implement loading bar for all pages
+  Restrusture to have a repository layer
 
 * When switching tabs from bottom navbar, the TopNavBar and BottomNavBar show way earlier than the
   actual page, it's very clunky.
@@ -12,16 +23,32 @@
 
   -- EditMove --
 
-* -- Combo Generator --
-* Save Combo should be a heart icon instead of floppy disk
+-- Combo Generator --
 
-  -- Saved Combos --
+-- Saved Combos --
 
-  -- Edit Saved Combo --
+-- Edit Saved Combo --
 
-  -- Goals Screen --
+-- Goals Screen --
 
--- Edit Goal --
+* Should have a title "Goals"
+
+  -- Edit Goal --
+* Change what the goal stage items look like
+* they should have
+  -- Add/Edit Goal Stage --
+* typing numbers in target count focuses keyboard on StageName each key press.
+* When saving a goal stage in here, navigating back to the edit Goal screen, the stages list should
+  be updated but it's not
+* I think it's fine that it saves the edits to Goal Title and description, I think it definitly
+  should have live data for the stages tho.
+* So when I add a goal stage to an unsaved goal, it saves the goal. then when I save a goal stage
+  and it brings me back to goal page, I can save again and it will create a NEW goal. It should ask
+  you to save changes before hitting add goal stage. and hitting add goal stage should not save the
+  goal, if the goal doesn't exist then do nothing but show a snackbar message to save the goal.
+* Change Goal Title to get rid of the asterisk, but it should show a red alert around the box as a
+  required field before saving.
+
 
 * When adding a goal
     * title should be Add Goal instead of Edit Goal
@@ -45,8 +72,6 @@
 * -- Edit Battle Combo --
 
 * -- Archived Goals --
-* Top nav bar with back button should be there like in manage tags
-* Implement Last
 
 Ask AI Agents to "search for edge cases that could break my code or won't work as intended and
 report to me"

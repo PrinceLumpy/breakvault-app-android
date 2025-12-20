@@ -41,30 +41,43 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.princelumpy.breakvault.R
-import com.princelumpy.breakvault.Screen
 import com.princelumpy.breakvault.data.local.entity.SavedCombo
 import com.princelumpy.breakvault.ui.theme.ComboGeneratorTheme
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SavedCombosScreen(
-    navController: NavController,
+    onNavigateToAddEditCombo: (String?) -> Unit,
     savedComboListViewModel: SavedComboListViewModel = hiltViewModel()
 ) {
     val uiState by savedComboListViewModel.uiState.collectAsState()
 
+    SavedCombosContent(
+        uiState = uiState,
+        onNavigateToAddEditCombo = onNavigateToAddEditCombo,
+        onShowDeleteDialog = savedComboListViewModel::onShowDeleteDialog,
+        onCancelDelete = savedComboListViewModel::onCancelDelete,
+        onConfirmDelete = savedComboListViewModel::onConfirmDelete
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SavedCombosContent(
+    uiState: SavedCombosUiState,
+    onNavigateToAddEditCombo: (String?) -> Unit,
+    onShowDeleteDialog: (SavedCombo) -> Unit,
+    onCancelDelete: () -> Unit,
+    onConfirmDelete: () -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(title = { Text(stringResource(id = R.string.saved_combos_screen_title)) })
         },
         floatingActionButton = {
             if (uiState.savedCombos.isNotEmpty()) {
-                FloatingActionButton(onClick = { navController.navigate(Screen.AddEditCombo.route) }) {
+                FloatingActionButton(onClick = { onNavigateToAddEditCombo(null) }) {
                     Icon(
                         Icons.Filled.Add,
                         contentDescription = stringResource(R.string.create_combo_fab_description)
@@ -88,17 +101,17 @@ fun SavedCombosScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Create and save your favorite combos to access them quickly.",
+                    text = stringResource(id = R.string.saved_combos_empty_state_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = { navController.navigate(Screen.AddEditCombo.route) }) {
+                Button(onClick = { onNavigateToAddEditCombo(null) }) {
                     Icon(Icons.Filled.Add, contentDescription = null)
                     Spacer(modifier = Modifier.padding(4.dp))
-                    Text("Create Combo")
+                    Text(stringResource(id = R.string.create_combo_button_text))
                 }
             }
         } else {
@@ -116,9 +129,9 @@ fun SavedCombosScreen(
                     SavedComboItem(
                         savedCombo = savedCombo,
                         onEditClick = {
-                            navController.navigate(Screen.AddEditCombo.withOptionalArgs(mapOf("comboId" to savedCombo.id)))
+                            onNavigateToAddEditCombo(savedCombo.id)
                         },
-                        onDeleteClick = { savedComboListViewModel.onShowDeleteDialog(savedCombo) }
+                        onDeleteClick = { onShowDeleteDialog(savedCombo) }
                     )
                 }
             }
@@ -127,26 +140,26 @@ fun SavedCombosScreen(
 
     uiState.comboToDelete?.let { combo ->
         AlertDialog(
-            onDismissRequest = { savedComboListViewModel.onCancelDelete() },
+            onDismissRequest = { onCancelDelete() },
             title = { Text(stringResource(id = R.string.common_confirm_deletion_title)) },
             text = {
                 Text(
                     stringResource(
-                        id = R.string.move_list_delete_confirmation_message,
+                        id = R.string.saved_combos_delete_confirmation_message,
                         combo.name
                     )
                 )
             },
             confirmButton = {
                 TextButton(
-                    onClick = { savedComboListViewModel.onConfirmDelete() },
+                    onClick = { onConfirmDelete() },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
                     Text(stringResource(id = R.string.common_delete))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { savedComboListViewModel.onCancelDelete() }) {
+                TextButton(onClick = { onCancelDelete() }) {
                     Text(stringResource(id = R.string.common_cancel))
                 }
             }
@@ -194,7 +207,7 @@ fun SavedComboItem(
                 IconButton(onClick = onEditClick) {
                     Icon(
                         Icons.Filled.Edit,
-                        contentDescription = "Edit Combo",
+                        contentDescription = stringResource(id = R.string.edit_combo_description),
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -215,22 +228,18 @@ fun SavedComboItem(
 fun SavedCombosScreenPreview() {
     val previewUiState = SavedCombosUiState(
         savedCombos = listOf(
-            SavedCombo(id = "1", name = "Combo 1", moves = listOf("Move 1", "Move 2")),
-            SavedCombo(id = "2", name = "Combo 2", moves = listOf("Move 3", "Move 4")),
+            SavedCombo(id = "1", name = "Windmill Freeze", moves = listOf("Windmill", "Baby Freeze")),
+            SavedCombo(id = "2", name = "Flare Swipe", moves = listOf("Flare", "Swipe", "Elbow Freeze")),
         )
     )
 
-    val fakeViewModel = object : SavedComboListViewModel(savedComboRepository = TODO()) {
-        override val uiState: StateFlow<SavedCombosUiState> = MutableStateFlow(previewUiState)
-        override fun onShowDeleteDialog(savedCombo: SavedCombo) {}
-        override fun onCancelDelete() {}
-        override fun onConfirmDelete() {}
-    }
-
     ComboGeneratorTheme {
-        SavedCombosScreen(
-            navController = rememberNavController(),
-            savedComboListViewModel = fakeViewModel
+        SavedCombosContent(
+            uiState = previewUiState,
+            onNavigateToAddEditCombo = {},
+            onShowDeleteDialog = {},
+            onCancelDelete = {},
+            onConfirmDelete = {}
         )
     }
 }

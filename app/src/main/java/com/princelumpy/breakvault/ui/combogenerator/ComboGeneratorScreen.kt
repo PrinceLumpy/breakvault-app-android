@@ -54,7 +54,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.MoveTag
@@ -62,7 +62,7 @@ import com.princelumpy.breakvault.data.local.entity.MoveTag
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ComboGeneratorScreen(
-    navController: NavController,
+    onNavigateUp: () -> Unit,
     comboGeneratorViewModel: ComboGeneratorViewModel = hiltViewModel()
 ) {
     val uiState by comboGeneratorViewModel.uiState.collectAsState()
@@ -81,7 +81,7 @@ fun ComboGeneratorScreen(
             TopAppBar(
                 title = { Text(stringResource(id = R.string.combo_generator_title)) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { onNavigateUp() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(id = R.string.common_back_button_description)

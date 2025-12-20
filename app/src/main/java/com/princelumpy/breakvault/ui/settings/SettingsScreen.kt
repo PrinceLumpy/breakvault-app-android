@@ -17,8 +17,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.ui.theme.ComboGeneratorTheme
 import kotlinx.coroutines.flow.collectLatest
@@ -27,7 +25,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    navController: NavController,
+    onNavigateUp: () -> Unit,
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     var showResetConfirmDialog by remember { mutableStateOf(false) }
@@ -69,7 +67,7 @@ fun SettingsScreen(
             TopAppBar(
                 title = { Text(stringResource(id = R.string.settings_title)) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { onNavigateUp() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(id = R.string.common_back_button_description)
@@ -167,7 +165,7 @@ fun SettingsScreenPreview() {
         // Your preview can be simplified as it doesn't need a real ViewModel
         // You may need a Fake ViewModel implementation if you want to preview UI states
         // For now, this will render the initial layout.
-        SettingsScreen(navController = rememberNavController())
+        SettingsScreen(onNavigateUp = {})
     }
 }
 

@@ -43,19 +43,16 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.EnergyLevel
 import com.princelumpy.breakvault.data.local.entity.TrainingStatus
@@ -63,25 +60,23 @@ import com.princelumpy.breakvault.data.local.entity.TrainingStatus
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddEditBattleComboScreen(
-    navController: NavController,
+    onNavigateUp: () -> Unit,
     comboId: String? = null,
-    battleComboViewModel: BattleComboViewModel = viewModel()
+    addEditBattleComboViewModel: AddEditBattleComboViewModel = hiltViewModel()
 ) {
-    val uiState by battleComboViewModel.uiState.collectAsState()
-    val practiceCombos by battleComboViewModel.practiceCombos.observeAsState(initial = emptyList())
+    val uiState by addEditBattleComboViewModel.uiState.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
 
     LaunchedEffect(comboId) {
-        battleComboViewModel.loadCombo(comboId)
+        addEditBattleComboViewModel.loadCombo(comboId)
     }
 
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let {
             snackbarHostState.showSnackbar(it)
-            battleComboViewModel.onSnackbarMessageShown()
+            addEditBattleComboViewModel.onSnackbarMessageShown()
         }
     }
 
@@ -97,7 +92,7 @@ fun AddEditBattleComboScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { onNavigateUp() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(id = R.string.common_back_button_description)
@@ -108,9 +103,9 @@ fun AddEditBattleComboScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = {
-                battleComboViewModel.saveCombo {
+                addEditBattleComboViewModel.saveCombo {
                     keyboardController?.hide()
-                    navController.popBackStack()
+                    onNavigateUp()
                 }
             }) {
                 Icon(
@@ -130,7 +125,7 @@ fun AddEditBattleComboScreen(
         ) {
             OutlinedTextField(
                 value = uiState.description,
-                onValueChange = { battleComboViewModel.onDescriptionChange(it) },
+                onValueChange = { addEditBattleComboViewModel.onDescriptionChange(it) },
                 label = { Text(stringResource(id = R.string.add_edit_battle_combo_description_label)) },
                 modifier = Modifier
                     .fillMaxWidth(),
@@ -139,7 +134,7 @@ fun AddEditBattleComboScreen(
 
             if (uiState.isNewCombo) {
                 Button(
-                    onClick = { battleComboViewModel.showImportDialog(true) },
+                    onClick = { addEditBattleComboViewModel.showImportDialog(true) },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                 ) {
@@ -159,19 +154,19 @@ fun AddEditBattleComboScreen(
                     label = stringResource(id = R.string.add_edit_battle_combo_energy_low),
                     color = Color(0xFF4CAF50),
                     isSelected = uiState.selectedEnergy == EnergyLevel.LOW,
-                    onClick = { battleComboViewModel.onEnergyChange(EnergyLevel.LOW) }
+                    onClick = { addEditBattleComboViewModel.onEnergyChange(EnergyLevel.LOW) }
                 )
                 EnergyChip(
                     label = stringResource(id = R.string.add_edit_battle_combo_energy_med),
                     color = Color(0xFFFFC107),
                     isSelected = uiState.selectedEnergy == EnergyLevel.MEDIUM,
-                    onClick = { battleComboViewModel.onEnergyChange(EnergyLevel.MEDIUM) }
+                    onClick = { addEditBattleComboViewModel.onEnergyChange(EnergyLevel.MEDIUM) }
                 )
                 EnergyChip(
                     label = stringResource(id = R.string.add_edit_battle_combo_energy_high),
                     color = Color(0xFFF44336),
                     isSelected = uiState.selectedEnergy == EnergyLevel.HIGH,
-                    onClick = { battleComboViewModel.onEnergyChange(EnergyLevel.HIGH) }
+                    onClick = { addEditBattleComboViewModel.onEnergyChange(EnergyLevel.HIGH) }
                 )
             }
 
@@ -185,13 +180,13 @@ fun AddEditBattleComboScreen(
             ) {
                 FilterChip(
                     selected = uiState.selectedStatus == TrainingStatus.TRAINING,
-                    onClick = { battleComboViewModel.onStatusChange(TrainingStatus.TRAINING) },
+                    onClick = { addEditBattleComboViewModel.onStatusChange(TrainingStatus.TRAINING) },
                     label = { Text(stringResource(id = R.string.add_edit_battle_combo_training_label)) },
                     leadingIcon = { Text("🔨") }
                 )
                 FilterChip(
                     selected = uiState.selectedStatus == TrainingStatus.READY,
-                    onClick = { battleComboViewModel.onStatusChange(TrainingStatus.READY) },
+                    onClick = { addEditBattleComboViewModel.onStatusChange(TrainingStatus.READY) },
                     label = { Text(stringResource(id = R.string.add_edit_battle_combo_ready_label)) },
                     leadingIcon = { Text("🔥") }
                 )
@@ -215,7 +210,7 @@ fun AddEditBattleComboScreen(
                 uiState.allBattleTags.forEach { tag ->
                     FilterChip(
                         selected = uiState.selectedTags.contains(tag.name),
-                        onClick = { battleComboViewModel.onTagSelected(tag.name) },
+                        onClick = { addEditBattleComboViewModel.onTagSelected(tag.name) },
                         label = { Text(tag.name) },
                         leadingIcon = if (uiState.selectedTags.contains(tag.name)) {
                             {
@@ -239,14 +234,14 @@ fun AddEditBattleComboScreen(
             ) {
                 OutlinedTextField(
                     value = uiState.newTagName,
-                    onValueChange = { battleComboViewModel.onNewTagNameChange(it) },
+                    onValueChange = { addEditBattleComboViewModel.onNewTagNameChange(it) },
                     label = { Text(stringResource(id = R.string.add_edit_battle_combo_new_tag_label)) },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { battleComboViewModel.addBattleTag() })
+                    keyboardActions = KeyboardActions(onDone = { addEditBattleComboViewModel.addBattleTag() })
                 )
-                Button(onClick = { battleComboViewModel.addBattleTag() }) {
+                Button(onClick = { addEditBattleComboViewModel.addBattleTag() }) {
                     Text(stringResource(id = R.string.common_add))
                 }
             }
@@ -255,7 +250,7 @@ fun AddEditBattleComboScreen(
 
     if (uiState.showImportDialog) {
         AlertDialog(
-            onDismissRequest = { battleComboViewModel.showImportDialog(false) },
+            onDismissRequest = { addEditBattleComboViewModel.showImportDialog(false) },
             title = { Text(stringResource(id = R.string.add_edit_battle_combo_import_dialog_title)) },
             text = {
                 LazyColumn(
@@ -263,18 +258,19 @@ fun AddEditBattleComboScreen(
                         .height(AppStyleDefaults.SpacingExtraLarge * 5)
                         .fillMaxWidth()
                 ) {
-                    items(practiceCombos) { combo ->
+                    // 3. Use the list from the single uiState
+                    items(uiState.allPracticeCombos) { combo ->
                         ListItem(
                             headlineContent = { Text(combo.name) },
                             supportingContent = { Text(combo.moves.joinToString(" -> ")) },
-                            modifier = Modifier.clickable { battleComboViewModel.onImportCombo(combo) }
+                            modifier = Modifier.clickable { addEditBattleComboViewModel.onImportCombo(combo) }
                         )
                         HorizontalDivider()
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { battleComboViewModel.showImportDialog(false) }) {
+                TextButton(onClick = { addEditBattleComboViewModel.showImportDialog(false) }) {
                     Text(stringResource(id = R.string.common_cancel))
                 }
             }

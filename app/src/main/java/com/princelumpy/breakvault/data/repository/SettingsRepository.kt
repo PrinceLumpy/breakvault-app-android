@@ -20,7 +20,7 @@ class SettingsRepository @Inject constructor(
             moves = moveDao.getAllMoves(),
             moveTags = moveDao.getAllMoveTags(),
             moveTagCrossRefs = moveDao.getAllMoveTagCrossRefs(),
-            savedCombos = savedComboDao.getAllSavedCombos(),
+            savedCombos = savedComboDao.getAllSavedCombosList(),
             battleCombos = battleDao.getAllBattleCombos(),
             battleTags = battleDao.getAllBattleTags(),
             battleComboTagCrossRefs = battleDao.getAllBattleComboTagCrossRefs(),

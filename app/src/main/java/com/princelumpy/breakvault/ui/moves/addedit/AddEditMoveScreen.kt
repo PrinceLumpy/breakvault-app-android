@@ -48,18 +48,17 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.ui.theme.ComboGeneratorTheme
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddEditMoveScreen(
-    navController: NavController,
+    onNavigateUp: () -> Unit,
     moveId: String?,
-    moveViewModel: IAddEditMoveViewModel = viewModel<AddEditMoveViewModel>()
+    moveViewModel: AddEditMoveViewModel = hiltViewModel()
 ) {
     val uiState by moveViewModel.uiState.collectAsState()
     val focusManager = LocalFocusManager.current
@@ -88,7 +87,7 @@ fun AddEditMoveScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { onNavigateUp() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(id = R.string.common_back_button_description)
@@ -101,7 +100,7 @@ fun AddEditMoveScreen(
             FloatingActionButton(onClick = {
                 moveViewModel.saveMove {
                     focusManager.clearFocus()
-                    navController.popBackStack()
+                    onNavigateUp()
                 }
             }) {
                 Icon(
@@ -131,7 +130,7 @@ fun AddEditMoveScreen(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { moveViewModel.saveMove { navController.popBackStack() } })
+                keyboardActions = KeyboardActions(onDone = { moveViewModel.saveMove { onNavigateUp() } })
             )
 
             Text(
@@ -202,9 +201,8 @@ fun AddEditMoveScreen(
 fun AddEditMoveScreenPreview_AddMode() {
     ComboGeneratorTheme {
         AddEditMoveScreen(
-            navController = rememberNavController(),
-            moveId = null,
-            moveViewModel = FakeAddEditMoveViewModel() // Use Fake ViewModel
+            onNavigateUp = {},
+            moveId = null
         )
     }
 }
@@ -214,9 +212,8 @@ fun AddEditMoveScreenPreview_AddMode() {
 fun AddEditMoveScreenPreview_EditMode() {
     ComboGeneratorTheme {
         AddEditMoveScreen(
-            navController = rememberNavController(),
-            moveId = "previewEditId", // Use the ID faked in FakeMoveViewModel
-            moveViewModel = FakeAddEditMoveViewModel() // Use Fake ViewModel
+            onNavigateUp = {},
+            moveId = "previewEditId"
         )
     }
 }

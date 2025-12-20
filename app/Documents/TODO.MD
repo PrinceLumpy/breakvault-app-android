@@ -1,8 +1,9 @@
 ---- Architecture ----
 
-* Add a repository layer to separate data sources from ViewModels.
+* migrate from collectAsState to collectAsStateWithLifecycle.
 * Apply the ON_RESUME data refresh pattern to all screens displaying dynamic data to ensure UI is
-  always up-to-date.
+  always up-to-date.'
+* look into coroutines, scope, and snackbar
 
 
 * make dark theme look better
@@ -20,6 +21,7 @@
 * -- Side Navigation Bar --
 
 * -- MovesList --
+* refactor a moveItem to a component in it's own file
 
   -- EditMove --
 

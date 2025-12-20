@@ -1,6 +1,7 @@
 package com.princelumpy.breakvault.ui.moves.movesbytag
 
 import AppStyleDefaults
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -26,7 +27,8 @@ import com.princelumpy.breakvault.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MovesByTagScreen(
-    navController: NavController,
+    onNavigateUp: () -> Unit,
+    onNavigateToMove: (String) -> Unit,
     tagId: String,
     tagName: String,
     movesByTagViewModel: MovesByTagViewModel = viewModel()
@@ -42,7 +44,7 @@ fun MovesByTagScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.moves_for_tag_title, uiState.tagName)) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { onNavigateUp() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.common_back_button_description)
@@ -70,8 +72,14 @@ fun MovesByTagScreen(
                 }
             } else {
                 items(uiState.moves) { move ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Text(text = move.name, modifier = Modifier.padding(AppStyleDefaults.SpacingLarge))
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToMove(move.id) }) {
+                        Text(
+                            text = move.name,
+                            modifier = Modifier.padding(AppStyleDefaults.SpacingLarge)
+                        )
                     }
                 }
             }

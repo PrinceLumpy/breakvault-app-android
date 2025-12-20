@@ -51,7 +51,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavController
@@ -62,7 +62,8 @@ import com.princelumpy.breakvault.ui.components.GoalStageItem
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditGoalScreen(
-    navController: NavController,
+    onNavigateUp: () -> Unit,
+    onNavigateToAddEditStage: (String, String?) -> Unit,
     goalId: String?,
     addEditGoalViewModel: AddEditGoalViewModel = hiltViewModel()
 ) {
@@ -93,9 +94,7 @@ fun AddEditGoalScreen(
 
     LaunchedEffect(uiState.navigateToAddStageWithGoalId) {
         uiState.navigateToAddStageWithGoalId?.let { goalIdForStage ->
-            navController.navigate(
-                Screen.AddEditGoalStage.withOptionalArgs(mapOf("goalId" to goalIdForStage))
-            )
+            onNavigateToAddEditStage(goalIdForStage, null)
             addEditGoalViewModel.onNavigateToAddStageDone()
         }
     }
@@ -103,14 +102,7 @@ fun AddEditGoalScreen(
     LaunchedEffect(uiState.navigateToEditStage) {
         uiState.navigateToEditStage?.let { stage ->
             uiState.goalId?.let {
-                navController.navigate(
-                    Screen.AddEditGoalStage.withOptionalArgs(
-                        mapOf(
-                            "stageId" to stage.id,
-                            "goalId" to stage.goalId
-                        )
-                    )
-                )
+                onNavigateToAddEditStage(it, stage.id)
             }
             addEditGoalViewModel.onNavigateToEditStageDone()
         }
@@ -124,7 +116,7 @@ fun AddEditGoalScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        addEditGoalViewModel.deleteGoal { navController.popBackStack() }
+                        addEditGoalViewModel.deleteGoal { onNavigateUp() }
                         showDeleteConfirmationDialog = false
                     }
                 ) {
@@ -176,7 +168,7 @@ fun AddEditGoalScreen(
             TopAppBar(
                 title = { Text(stringResource(id = if (uiState.isNewGoal) R.string.add_edit_goal_create_title else R.string.add_edit_goal_edit_title)) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { onNavigateUp() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(id = R.string.common_back_button_description)
@@ -186,7 +178,7 @@ fun AddEditGoalScreen(
                 actions = {
                     if (!uiState.isNewGoal) {
                         IconButton(onClick = {
-                            addEditGoalViewModel.archiveGoal { navController.popBackStack() }
+                            addEditGoalViewModel.archiveGoal { onNavigateUp() }
                         }) {
                             Icon(
                                 Icons.Filled.Archive,
@@ -207,7 +199,7 @@ fun AddEditGoalScreen(
             FloatingActionButton(onClick = {
                 addEditGoalViewModel.saveGoal { _ ->
                     focusManager.clearFocus()
-                    navController.popBackStack()
+                    onNavigateUp()
                 }
             }) {
                 Icon(

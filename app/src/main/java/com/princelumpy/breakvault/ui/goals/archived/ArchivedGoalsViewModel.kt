@@ -1,20 +1,25 @@
 package com.princelumpy.breakvault.ui.goals.archived
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.princelumpy.breakvault.data.local.dao.GoalDao
-import com.princelumpy.breakvault.data.local.entity.Goal
 import com.princelumpy.breakvault.data.local.relation.GoalWithStages
+import com.princelumpy.breakvault.data.repository.GoalRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * UI State for the Archived Goals screen.
+ * @param archivedGoals The list of goals that have been archived.
+ * @param goalToUnarchive The goal selected for the unarchive confirmation dialog.
+ * @param goalToDelete The goal selected for the delete confirmation dialog.
+ */
 data class ArchivedGoalsUiState(
     val archivedGoals: List<GoalWithStages> = emptyList(),
     val goalToUnarchive: GoalWithStages? = null,
@@ -23,71 +28,75 @@ data class ArchivedGoalsUiState(
 
 @HiltViewModel
 class ArchivedGoalsViewModel @Inject constructor(
-    private val goalDao: GoalDao
+    private val goalRepository: GoalRepository
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(ArchivedGoalsUiState())
-    val uiState: StateFlow<ArchivedGoalsUiState> = _uiState.asStateFlow()
 
-    private val archivedGoalsWithStages: LiveData<List<GoalWithStages>> =
-        goalDao.getArchivedGoalsWithStages()
+    private val _goalToUnarchive = MutableStateFlow<GoalWithStages?>(null)
+    private val _goalToDelete = MutableStateFlow<GoalWithStages?>(null)
 
-    private val goalsObserver = Observer<List<GoalWithStages>> { goals ->
-        _uiState.update { it.copy(archivedGoals = goals) }
-    }
-
-    init {
-        archivedGoalsWithStages.observeForever(goalsObserver)
-    }
+    /** The single source of truth for the UI's state, created by combining multiple flows. */
+    val uiState: StateFlow<ArchivedGoalsUiState> = combine(
+        goalRepository.getArchivedGoalsWithStages(),
+        _goalToUnarchive,
+        _goalToDelete
+    ) { archivedGoals, goalToUnarchive, goalToDelete ->
+        ArchivedGoalsUiState(
+            archivedGoals = archivedGoals,
+            goalToUnarchive = goalToUnarchive,
+            goalToDelete = goalToDelete
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = ArchivedGoalsUiState()
+    )
 
     // --- Unarchive Logic ---
 
+    /** Shows the confirmation dialog for unarchiving a goal. */
     fun onGoalUnarchiveClicked(goal: GoalWithStages) {
-        _uiState.update { it.copy(goalToUnarchive = goal) }
+        _goalToUnarchive.value = goal
     }
 
+    /** Cancels the unarchive action and hides the dialog. */
     fun onCancelGoalUnarchive() {
-        _uiState.update { it.copy(goalToUnarchive = null) }
+        _goalToUnarchive.value = null
     }
 
+    /** Confirms the unarchive action and updates the goal. */
     fun onConfirmGoalUnarchive() {
-        viewModelScope.launch {
-            _uiState.value.goalToUnarchive?.let { goalToUnarchive ->
-                unarchiveGoal(goalToUnarchive.goal)
-                _uiState.update { it.copy(goalToUnarchive = null) }
+        _goalToUnarchive.value?.let { goalToUnarchive ->
+            viewModelScope.launch {
+                val goal = goalToUnarchive.goal.copy(isArchived = false)
+                goalRepository.updateGoal(goal)
+                // Hide the dialog after the operation
+                onCancelGoalUnarchive()
             }
         }
-    }
-
-    private suspend fun unarchiveGoal(goal: Goal) {
-        goalDao.updateGoal(goal.copy(isArchived = false))
     }
 
     // --- Delete Logic ---
 
+    /** Shows the confirmation dialog for deleting a goal. */
     fun onGoalDeleteClicked(goal: GoalWithStages) {
-        _uiState.update { it.copy(goalToDelete = goal) }
+        _goalToDelete.value = goal
     }
 
+    /** Cancels the delete action and hides the dialog. */
     fun onCancelGoalDelete() {
-        _uiState.update { it.copy(goalToDelete = null) }
+        _goalToDelete.value = null
     }
 
+    /** Confirms the deletion of the selected goal. */
     fun onConfirmGoalDelete() {
-        viewModelScope.launch {
-            _uiState.value.goalToDelete?.let { goalToDelete ->
-                deleteGoal(goalToDelete.goal)
-                _uiState.update { it.copy(goalToDelete = null) }
+        _goalToDelete.value?.let { goalToDelete ->
+            viewModelScope.launch {
+                goalRepository.deleteGoal(goalToDelete.goal)
+                // Hide the dialog after the operation
+                onCancelGoalDelete()
             }
         }
     }
 
-    private suspend fun deleteGoal(goal: Goal) {
-        goalDao.deleteGoal(goal)
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        archivedGoalsWithStages.removeObserver(goalsObserver)
-    }
-
+    // The onCleared() method is no longer needed.
 }

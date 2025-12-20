@@ -1,6 +1,5 @@
 package com.princelumpy.breakvault.data.local.dao
 
-import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -37,7 +36,7 @@ interface MoveDao {
 
     @Transaction
     @Query("SELECT * FROM moves")
-    fun getAllMovesWithTags(): LiveData<List<MoveWithTags>>
+    fun getAllMovesWithTags(): Flow<List<MoveWithTags>>
 
     @Transaction
     @Query("SELECT * FROM moves")
@@ -67,13 +66,13 @@ interface MoveDao {
 
     @Transaction
     @Query("SELECT * FROM move_tags ORDER BY name ASC")
-    fun getAllTags(): LiveData<List<MoveTag>>
+    fun getAllTags(): Flow<List<MoveTag>>
 
     @Query("SELECT * FROM move_tags ORDER BY name ASC")
     fun getAllTagsAsFlow(): Flow<List<MoveTag>>
 
     @Query("SELECT * FROM move_tags")
-    fun getTagsWithMoves(): LiveData<List<TagWithMoves>>
+    fun getTagsWithMoves(): Flow<List<TagWithMoves>>
 
     @Transaction
     @Query("SELECT * FROM move_tags WHERE id = :tagId")

@@ -1,18 +1,19 @@
 package com.princelumpy.breakvault.ui.savedcombos.addedit
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.map
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.princelumpy.breakvault.data.local.database.AppDB
 import com.princelumpy.breakvault.data.local.entity.Move
 import com.princelumpy.breakvault.data.local.entity.SavedCombo
+import com.princelumpy.breakvault.data.repository.SavedComboRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class AddEditComboUiState(
     val comboId: String? = null,
@@ -24,38 +25,39 @@ data class AddEditComboUiState(
     val isNewCombo: Boolean = true
 )
 
-class SavedComboViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class AddEditComboViewModel @Inject constructor(
+    private val savedComboRepository: SavedComboRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddEditComboUiState())
     val uiState: StateFlow<AddEditComboUiState> = _uiState.asStateFlow()
 
-    private val savedComboDao = AppDB.getDatabase(application).savedComboDao()
-    private val moveDao = AppDB.getDatabase(application).moveDao()
-
-    val allMoves: LiveData<List<Move>> =
-        moveDao.getAllMovesWithTags().map { it.map { mwt -> mwt.move } }
-
     init {
-        allMoves.observeForever { moves ->
-            _uiState.update { it.copy(allMoves = moves) }
-        }
+        // Collect the flow of all moves from the repository
+        savedComboRepository.getAllMoves()
+            .onEach { moves ->
+                _uiState.update { it.copy(allMoves = moves) }
+            }.launchIn(viewModelScope)
     }
 
     fun loadCombo(comboId: String?) {
         if (comboId == null) {
-            _uiState.value = AddEditComboUiState()
+            _uiState.update { AddEditComboUiState(allMoves = it.allMoves) } // Keep the loaded moves
             return
         }
 
         viewModelScope.launch {
-            val comboToEdit = savedComboDao.getSavedComboById(comboId)
+            val comboToEdit = savedComboRepository.getSavedComboById(comboId)
             if (comboToEdit != null) {
-                _uiState.value = AddEditComboUiState(
-                    comboId = comboId,
-                    comboName = comboToEdit.name,
-                    selectedMoves = comboToEdit.moves,
-                    isNewCombo = false
-                )
+                _uiState.update {
+                    it.copy(
+                        comboId = comboId,
+                        comboName = comboToEdit.name,
+                        selectedMoves = comboToEdit.moves,
+                        isNewCombo = false
+                    )
+                }
             }
         }
     }
@@ -93,27 +95,22 @@ class SavedComboViewModel(application: Application) : AndroidViewModel(applicati
         if (currentUiState.comboName.isNotBlank() && currentUiState.selectedMoves.isNotEmpty()) {
             viewModelScope.launch {
                 if (currentUiState.isNewCombo) {
-                    savedComboDao.insertSavedCombo(
+                    savedComboRepository.insertSavedCombo(
                         SavedCombo(
                             name = currentUiState.comboName,
                             moves = currentUiState.selectedMoves
                         )
                     )
                 } else {
-                    savedComboDao.updateSavedCombo(
+                    savedComboRepository.updateSavedCombo(
                         currentUiState.comboId!!,
                         currentUiState.comboName,
-                        currentUiState.selectedMoves,
-                        System.currentTimeMillis()
+                        currentUiState.selectedMoves
                     )
                 }
                 onSuccess()
             }
         }
     }
-
-    override fun onCleared() {
-        super.onCleared()
-        allMoves.removeObserver { }
-    }
+    // onCleared() is no longer needed
 }

@@ -37,16 +37,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.BattleTag
+import com.princelumpy.breakvault.ui.battles.managetags.BattleTagListViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BattleTagListScreen(
-    navController: NavController,
-    battleTagListViewModel: BattleTagListViewModel = viewModel()
+    onNavigateUp: () -> Unit,
+    battleTagListViewModel: BattleTagListViewModel = hiltViewModel()
 ) {
     val uiState by battleTagListViewModel.uiState.collectAsState()
 
@@ -55,7 +57,7 @@ fun BattleTagListScreen(
             TopAppBar(
                 title = { Text(stringResource(id = R.string.battle_tag_list_title)) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { onNavigateUp() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(id = R.string.common_back_button_description)

@@ -48,7 +48,8 @@ private const val RES_ID_START = 0 // e.g., R.raw.start_beep
 private const val RES_ID_FINISH = 0 // e.g., R.raw.finish_beep
 
 @Composable
-fun TimerScreen(navController: NavController) {
+fun TimerScreen(
+) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     val focusManager = LocalFocusManager.current

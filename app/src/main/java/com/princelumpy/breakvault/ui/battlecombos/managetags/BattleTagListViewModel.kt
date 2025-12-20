@@ -1,16 +1,19 @@
-package com.princelumpy.breakvault.ui.battlecombos.managetags
+package com.princelumpy.breakvault.ui.battles.managetags
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.princelumpy.breakvault.data.local.database.AppDB
 import com.princelumpy.breakvault.data.local.entity.BattleTag
+import com.princelumpy.breakvault.data.repository.BattleRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
+import javax.inject.Inject
 
 data class BattleTagListUiState(
     val tags: List<BattleTag> = emptyList(),
@@ -21,19 +24,20 @@ data class BattleTagListUiState(
     val tagNameForEdit: String = ""
 )
 
-class BattleTagListViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class BattleTagListViewModel @Inject constructor(
+    private val battleRepository: BattleRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BattleTagListUiState())
     val uiState: StateFlow<BattleTagListUiState> = _uiState.asStateFlow()
 
-    private val battleDao = AppDB.getDatabase(application).battleDao()
-
-    val allBattleTags: LiveData<List<BattleTag>> = battleDao.getAllBattleTagsLiveData()
-
     init {
-        allBattleTags.observeForever { tags ->
-            _uiState.update { it.copy(tags = tags) }
-        }
+        // Use Flow and collect it within the viewModelScope
+        battleRepository.getAllTags()
+            .onEach { tags ->
+                _uiState.update { it.copy(tags = tags) }
+            }.launchIn(viewModelScope)
     }
 
     fun onAddTagClicked() {
@@ -54,7 +58,9 @@ class BattleTagListViewModel(application: Application) : AndroidViewModel(applic
         val newTagName = _uiState.value.newTagName.trim()
         if (newTagName.isNotBlank()) {
             viewModelScope.launch {
-                battleDao.insertBattleTag(BattleTag(name = newTagName))
+                val newBattleTag = BattleTag(name = newTagName, id = UUID.randomUUID().toString())
+                // Use repository to insert the tag
+                battleRepository.insertBattleTag(newBattleTag)
                 _uiState.update { it.copy(showAddDialog = false) }
             }
         }
@@ -81,7 +87,8 @@ class BattleTagListViewModel(application: Application) : AndroidViewModel(applic
 
         if (newName.isNotBlank() && newName != tagToEdit.name) {
             viewModelScope.launch {
-                battleDao.updateBattleTag(tagToEdit.copy(name = newName))
+                // Use repository to update the tag name
+                battleRepository.updateTagName(tagToEdit.id, newName)
                 _uiState.update { it.copy(showEditDialog = null) }
             }
         }
@@ -98,14 +105,10 @@ class BattleTagListViewModel(application: Application) : AndroidViewModel(applic
     fun onDeleteTag() {
         _uiState.value.showDeleteDialog?.let { tagToDelete ->
             viewModelScope.launch {
-                battleDao.deleteBattleTag(tagToDelete)
+                // Use repository to delete the tag
+                battleRepository.deleteTagCompletely(tagToDelete)
                 _uiState.update { it.copy(showDeleteDialog = null) }
             }
         }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        allBattleTags.removeObserver { }
     }
 }

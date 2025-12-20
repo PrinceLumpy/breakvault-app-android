@@ -2,6 +2,7 @@ package com.princelumpy.breakvault.di
 
 import android.content.Context
 import com.princelumpy.breakvault.data.local.database.AppDB
+import com.princelumpy.breakvault.data.local.dao.BattleDao // 1. Import BattleDao
 import com.princelumpy.breakvault.data.local.dao.GoalDao
 import com.princelumpy.breakvault.data.local.dao.MoveDao
 import com.princelumpy.breakvault.data.local.dao.SavedComboDao
@@ -20,6 +21,12 @@ object DatabaseModule {
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDB {
         return AppDB.getDatabase(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideBattleDao(appDB: AppDB): BattleDao {
+        return appDB.battleDao()
     }
 
     @Provides

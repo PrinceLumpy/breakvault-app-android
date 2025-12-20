@@ -1,17 +1,19 @@
 package com.princelumpy.breakvault.ui.moves.managetags
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.princelumpy.breakvault.data.local.database.AppDB
 import com.princelumpy.breakvault.data.local.entity.MoveTag
+import com.princelumpy.breakvault.data.repository.MoveRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
+import javax.inject.Inject
 
 data class MoveTagListUiState(
     val tags: List<MoveTag> = emptyList(),
@@ -22,19 +24,20 @@ data class MoveTagListUiState(
     val tagNameForEdit: String = ""
 )
 
-class MoveTagListViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class MoveTagListViewModel @Inject constructor(
+    private val moveRepository: MoveRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MoveTagListUiState())
     val uiState: StateFlow<MoveTagListUiState> = _uiState.asStateFlow()
 
-    private val moveDao = AppDB.getDatabase(application).moveDao()
-
-    val allTags: LiveData<List<MoveTag>> = moveDao.getAllTags()
-
     init {
-        allTags.observeForever { tags ->
-            _uiState.update { it.copy(tags = tags) }
-        }
+        // Use Flow and collect it within the viewModelScope
+        moveRepository.getAllTags()
+            .onEach { tags ->
+                _uiState.update { it.copy(tags = tags) }
+            }.launchIn(viewModelScope)
     }
 
     fun onAddTagClicked() {
@@ -56,7 +59,8 @@ class MoveTagListViewModel(application: Application) : AndroidViewModel(applicat
         if (newTagName.isNotBlank()) {
             viewModelScope.launch {
                 val newMoveTag = MoveTag(name = newTagName, id = UUID.randomUUID().toString())
-                moveDao.insertMoveTag(newMoveTag)
+                // Use repository to insert the tag
+                moveRepository.insertMoveTag(newMoveTag)
                 _uiState.update { it.copy(showAddDialog = false) }
             }
         }
@@ -83,7 +87,8 @@ class MoveTagListViewModel(application: Application) : AndroidViewModel(applicat
 
         if (newName.isNotBlank() && newName != tagToEdit.name) {
             viewModelScope.launch {
-                moveDao.updateTagName(tagToEdit.id, newName, System.currentTimeMillis())
+                // Use repository to update the tag name
+                moveRepository.updateTagName(tagToEdit.id, newName)
                 _uiState.update { it.copy(showEditDialog = null) }
             }
         }
@@ -100,14 +105,11 @@ class MoveTagListViewModel(application: Application) : AndroidViewModel(applicat
     fun onDeleteTag() {
         _uiState.value.showDeleteDialog?.let { tagToDelete ->
             viewModelScope.launch {
-                moveDao.deleteTagCompletely(tagToDelete)
+                // Use repository to delete the tag
+                moveRepository.deleteTagCompletely(tagToDelete)
                 _uiState.update { it.copy(showDeleteDialog = null) }
             }
         }
     }
-
-    override fun onCleared() {
-        super.onCleared()
-        allTags.removeObserver { }
-    }
+    // onCleared is no longer needed to remove observers
 }

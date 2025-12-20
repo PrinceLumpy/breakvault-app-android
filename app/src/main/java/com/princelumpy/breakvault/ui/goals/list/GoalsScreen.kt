@@ -47,7 +47,8 @@ import com.princelumpy.breakvault.data.local.relation.GoalWithStages
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GoalsScreen(
-    navController: NavController,
+    onNavigateToAddEditGoal: (String?) -> Unit,
+    onNavigateToArchivedGoals: () -> Unit,
     goalsViewModel: GoalsViewModel = hiltViewModel()
 ) {
     val uiState by goalsViewModel.uiState.collectAsState()
@@ -84,7 +85,7 @@ fun GoalsScreen(
         floatingActionButton = {
             if (uiState.goals.isNotEmpty()) {
                 FloatingActionButton(onClick = {
-                    navController.navigate("edit_goal")
+                    onNavigateToAddEditGoal(null)
                 }) {
                     Icon(
                         imageVector = Icons.Filled.Add,
@@ -121,7 +122,7 @@ fun GoalsScreen(
                     Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingLarge))
                     Button(
                         onClick = {
-                            navController.navigate("edit_goal")
+                            onNavigateToAddEditGoal(null)
                         }
                     ) {
                         Icon(imageVector = Icons.Filled.Add, contentDescription = null)
@@ -136,7 +137,7 @@ fun GoalsScreen(
                     items(uiState.goals) { goalWithStages ->
                         GoalCard(
                             goalWithStages = goalWithStages,
-                            onEditClick = { navController.navigate("edit_goal?goalId=${goalWithStages.goal.id}") },
+                            onEditClick = { onNavigateToAddEditGoal(goalWithStages.goal.id) },
                         )
                     }
                 }

@@ -34,7 +34,8 @@ import com.princelumpy.breakvault.ui.goals.list.GoalCard
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArchivedGoalsScreen(
-    navController: NavController,
+    onNavigateUp: () -> Unit,
+    onNavigateToAddEditGoal: (String) -> Unit,
     archivedGoalsViewModel: ArchivedGoalsViewModel = hiltViewModel()
 ) {
     val uiState by archivedGoalsViewModel.uiState.collectAsState()
@@ -96,7 +97,7 @@ fun ArchivedGoalsScreen(
         TopAppBar(
             title = { Text(stringResource(id = R.string.archived_goals_title)) },
             navigationIcon = {
-                IconButton(onClick = { navController.popBackStack() }) {
+                IconButton(onClick = { onNavigateUp() }) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(id = R.string.common_back_button_description)

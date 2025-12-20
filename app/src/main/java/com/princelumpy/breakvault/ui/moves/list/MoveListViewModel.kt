@@ -1,80 +1,101 @@
 package com.princelumpy.breakvault.ui.moves.list
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.asFlow
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.princelumpy.breakvault.data.local.database.AppDB
 import com.princelumpy.breakvault.data.local.entity.MoveTag
 import com.princelumpy.breakvault.data.local.relation.MoveWithTags
+import com.princelumpy.breakvault.data.repository.MoveRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class MoveListUiState(
-    val moves: List<MoveWithTags> = emptyList(),
+data class UiState(
+    val moveList: List<MoveWithTags> = emptyList(),
     val allTags: List<MoveTag> = emptyList(),
-    val selectedTags: List<String> = emptyList(),
+    val selectedTags: Set<String> = emptySet(),
     val moveToDelete: MoveWithTags? = null,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val userMessage: String? = null
 )
 
-class MoveListViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class MoveListViewModel @Inject constructor(
+    private val moveRepository: MoveRepository
+) : ViewModel() {
+    private val _selectedTags = MutableStateFlow<Set<String>>(emptySet())
+    private val _moveToDelete = MutableStateFlow<MoveWithTags?>(null)
+    private val _userMessage = MutableStateFlow<String?>(null)
 
-    private val _uiState = MutableStateFlow(MoveListUiState())
-    val uiState: StateFlow<MoveListUiState> = _uiState.asStateFlow()
-
-    private val moveDao = AppDB.getDatabase(application).moveDao()
-
-    init {
-        viewModelScope.launch {
-            val movesFlow = moveDao.getAllMovesWithTags().asFlow()
-            val tagsFlow = moveDao.getAllTags().asFlow()
-
-            combine(movesFlow, tagsFlow, _uiState) { moves, tags, uiState ->
-                val filteredMoves = if (uiState.selectedTags.isEmpty()) {
-                    moves
-                } else {
-                    moves.filter { moveWithTags ->
-                        moveWithTags.moveTags.any { tag -> tag.name in uiState.selectedTags }
-                    }
-                }
-                uiState.copy(
-                    moves = filteredMoves,
-                    allTags = tags,
-                    isLoading = false
-                )
-            }.collect { _uiState.value = it }
-        }
-    }
-
-    fun onTagSelected(tag: String) {
-        val selectedTags = _uiState.value.selectedTags.toMutableList()
-        if (selectedTags.contains(tag)) {
-            selectedTags.remove(tag)
+    val uiState: StateFlow<UiState> = combine(
+        moveRepository.getAllMovesWithTags(),
+        moveRepository.getAllTags(),
+        _selectedTags,
+        _moveToDelete,
+        _userMessage
+    ) { allMoves, allTags, selectedTags, moveToDelete, userMessage ->
+        val filteredMoves = if (selectedTags.isEmpty()) {
+            allMoves  // Show all if no tags selected
         } else {
-            selectedTags.add(tag)
+            allMoves.filter { moveWithTags ->
+                // Keep move if it has at least one selected tag
+                moveWithTags.moveTags.any { tag -> tag.name in selectedTags }
+            }
         }
-        _uiState.update { it.copy(selectedTags = selectedTags) }
+
+        UiState(
+            moveList = filteredMoves,
+            allTags = allTags,
+            selectedTags = selectedTags,
+            moveToDelete = moveToDelete,
+            userMessage = userMessage
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = UiState()
+    )
+
+    // User actions
+    fun toggleTagFilter(tagName: String) {
+        _selectedTags.update { current ->
+            if (tagName in current) {
+                current - tagName  // Remove if already selected
+            } else {
+                current + tagName  // Add if not selected
+            }
+        }
+        // ✅ Filtering happens automatically in combine()
     }
 
-    fun onMoveDeleteClicked(move: MoveWithTags) {
-        _uiState.update { it.copy(moveToDelete = move) }
+    fun clearFilters() {
+        _selectedTags.value = emptySet()
+    }
+
+    fun onDeleteMoveClick(moveWithTags: MoveWithTags) {
+        _moveToDelete.value = moveWithTags
     }
 
     fun onConfirmMoveDelete() {
-        _uiState.value.moveToDelete?.let { moveToDelete ->
-            viewModelScope.launch {
-                moveDao.deleteMoveCompletely(moveToDelete.move)
-                _uiState.update { it.copy(moveToDelete = null) }
-            }
+        val move = _moveToDelete.value ?: return
+        viewModelScope.launch {
+            moveRepository.deleteMove(move.move)
+            _moveToDelete.value = null
+            _userMessage.value = "Move deleted"
         }
     }
 
     fun onCancelMoveDelete() {
-        _uiState.update { it.copy(moveToDelete = null) }
+        _moveToDelete.value = null
+    }
+
+    fun clearMessage() {
+        _userMessage.value = null
     }
 }

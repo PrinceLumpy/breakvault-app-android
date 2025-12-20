@@ -1,146 +1,127 @@
 package com.princelumpy.breakvault.ui.battlecombos.list
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.princelumpy.breakvault.data.local.database.AppDB
 import com.princelumpy.breakvault.data.local.entity.BattleCombo
-import com.princelumpy.breakvault.data.local.entity.BattleComboTagCrossRef
 import com.princelumpy.breakvault.data.local.relation.BattleComboWithTags
 import com.princelumpy.breakvault.data.local.entity.BattleTag
-import com.princelumpy.breakvault.data.local.entity.EnergyLevel
 import com.princelumpy.breakvault.data.local.entity.TrainingStatus
-import kotlinx.coroutines.Dispatchers
+import com.princelumpy.breakvault.data.repository.BattleRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
+enum class BattleSortOption {
+    EnergyHighToLow, EnergyLowToHigh, StatusFireFirst, StatusHammerFirst
+}
+
+// Final state for the UI. Contains only the data the UI needs to draw.
 data class BattleComboListUiState(
+    val allCombos: List<BattleComboWithTags> = emptyList(),
+    val filteredAndSortedCombos: List<BattleComboWithTags> = emptyList(),
+    val allTags: List<BattleTag> = emptyList(),
+    val selectedTagNames: Set<String> = emptySet(),
+    val sortOption: BattleSortOption = BattleSortOption.EnergyLowToHigh,
     val showResetConfirmDialog: Boolean = false
 )
 
-class BattleComboListViewModel(application: Application) : AndroidViewModel(application) {
-    private val db = AppDB.getDatabase(application)
-    private val battleDao = db.battleDao()
+// Private state to hold only the user's direct interactions
+private data class UserInteractions(
+    val selectedTagNames: Set<String> = emptySet(),
+    val sortOption: BattleSortOption = BattleSortOption.EnergyLowToHigh,
+)
 
-    private val _uiState = MutableStateFlow(BattleComboListUiState())
-    val uiState: StateFlow<BattleComboListUiState> = _uiState.asStateFlow()
+@HiltViewModel
+class BattleComboListViewModel @Inject constructor(
+    private val battleRepository: BattleRepository
+) : ViewModel() {
 
-    val battleCombos: LiveData<List<BattleComboWithTags>> =
-        battleDao.getAllBattleCombosWithTags()
-    val allBattleTags: LiveData<List<BattleTag>> = battleDao.getAllBattleTagsLiveData()
+    private val _userInteractions = MutableStateFlow(UserInteractions())
+    private val _showResetDialog = MutableStateFlow(false)
 
-    // Dialog Methods
+    // This is the single source of truth for the UI.
+    val uiState: StateFlow<BattleComboListUiState> = combine(
+        battleRepository.getAllBattleCombosWithTags(), // Cold
+        battleRepository.getAllTags(),                 // Cold
+        _userInteractions,                             // Hot
+        _showResetDialog                               // Hot
+    ) { combos, tags, interactions, showReset ->
+        // This logic is now driven by independent, clean sources.
+
+        // Perform filtering
+        val filteredCombos = if (interactions.selectedTagNames.isEmpty()) {
+            combos
+        } else {
+            combos.filter { comboWithTags ->
+                comboWithTags.tags.any { tag -> tag.name in interactions.selectedTagNames }
+            }
+        }
+
+        // Perform sorting
+        val sortedCombos = when (interactions.sortOption) {
+            BattleSortOption.EnergyHighToLow -> filteredCombos.sortedByDescending { it.battleCombo.energy }
+            BattleSortOption.EnergyLowToHigh -> filteredCombos.sortedBy { it.battleCombo.energy }
+            BattleSortOption.StatusFireFirst -> filteredCombos.sortedBy { it.battleCombo.status != TrainingStatus.READY }
+            BattleSortOption.StatusHammerFirst -> filteredCombos.sortedBy { it.battleCombo.status != TrainingStatus.TRAINING }
+        }
+
+        // Return a new state object for the UI
+        BattleComboListUiState(
+            allCombos = combos,
+            allTags = tags,
+            filteredAndSortedCombos = sortedCombos,
+            selectedTagNames = interactions.selectedTagNames,
+            sortOption = interactions.sortOption,
+            showResetConfirmDialog = showReset
+        )
+    }.stateIn(
+        // This makes the entire `combine` block lifecycle-aware and shared.
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000L),
+        initialValue = BattleComboListUiState() // Show a default state while loading
+    )
+
+
+    fun onTagSelected(tagName: String) {
+        _userInteractions.update { currentState ->
+            val newSelectedTags = if (tagName in currentState.selectedTagNames) {
+                currentState.selectedTagNames - tagName
+            } else {
+                currentState.selectedTagNames + tagName
+            }
+            currentState.copy(selectedTagNames = newSelectedTags)
+        }
+    }
+
+    fun onSortOptionChange(sortOption: BattleSortOption) {
+        _userInteractions.update { it.copy(sortOption = sortOption) }
+    }
+
     fun onShowResetDialog() {
-        _uiState.update { it.copy(showResetConfirmDialog = true) }
+        _showResetDialog.value = true
     }
 
     fun onCancelReset() {
-        _uiState.update { it.copy(showResetConfirmDialog = false) }
+        _showResetDialog.value = false
     }
 
     fun onConfirmReset() {
-        viewModelScope.launch(Dispatchers.IO) {
-            battleDao.resetAllBattleCombosUsage()
+        viewModelScope.launch {
+            battleRepository.resetAllBattleCombosUsage()
         }
-        _uiState.update { it.copy(showResetConfirmDialog = false) }
+        _showResetDialog.value = false
     }
 
-    // Battle Combo Methods
     fun toggleUsed(combo: BattleCombo) {
-        viewModelScope.launch(Dispatchers.IO) {
-            // Do not update modifiedAt when toggling isUsed
-            battleDao.updateBattleCombo(combo.copy(isUsed = !combo.isUsed))
-        }
-    }
-
-    fun resetBattle() {
-        viewModelScope.launch(Dispatchers.IO) {
-            battleDao.resetAllBattleCombosUsage()
-        }
-    }
-
-    fun addBattleCombo(
-        description: String,
-        energy: EnergyLevel,
-        status: TrainingStatus,
-        tags: List<String>
-    ) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val newCombo = BattleCombo(
-                description = description,
-                energy = energy,
-                status = status
-            )
-            // createdAt/modifiedAt defaults are applied in constructor
-            battleDao.insertBattleCombo(newCombo)
-
-            tags.forEach { tagName ->
-                var tag = battleDao.getBattleTagByName(tagName)
-                // Create moveTag if it doesn't exist (though UI typically ensures this)
-                if (tag == null) {
-                    tag = BattleTag(name = tagName)
-                    battleDao.insertBattleTag(tag)
-                }
-                // Link
-                battleDao.link(BattleComboTagCrossRef(newCombo.id, tag.id))
-            }
-        }
-    }
-
-    fun updateBattleCombo(combo: BattleCombo, tagNames: List<String>) {
-        viewModelScope.launch(Dispatchers.IO) {
-            // Ensure modifiedAt is updated for content changes
-            battleDao.updateBattleCombo(combo.copy(modifiedAt = System.currentTimeMillis()))
-
-            // Update cross-refs: Delete old, Insert new
-            battleDao.unlinkBattleComboFromAllTags(combo.id)
-
-            tagNames.forEach { tagName ->
-                var tag = battleDao.getBattleTagByName(tagName)
-                if (tag == null) {
-                    tag = BattleTag(name = tagName)
-                    battleDao.insertBattleTag(tag)
-                }
-                battleDao.link(BattleComboTagCrossRef(combo.id, tag.id))
-            }
-        }
-    }
-
-    fun deleteBattleCombo(combo: BattleCombo) {
-        viewModelScope.launch(Dispatchers.IO) {
-            battleDao.deleteBattleCombo(combo)
-        }
-    }
-
-    suspend fun getBattleComboById(id: String): BattleComboWithTags? {
-        return withContext(Dispatchers.IO) {
-            battleDao.getBattleComboWithTags(id)
-        }
-    }
-
-    // Battle MoveTag Methods
-    fun addBattleTag(name: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            if (battleDao.getBattleTagByName(name) == null) {
-                battleDao.insertBattleTag(BattleTag(name = name))
-            }
-        }
-    }
-
-    fun updateBattleTag(tag: BattleTag) {
-        viewModelScope.launch(Dispatchers.IO) {
-            battleDao.updateBattleTag(tag.copy(modifiedAt = System.currentTimeMillis()))
-        }
-    }
-
-    fun deleteBattleTag(tag: BattleTag) {
-        viewModelScope.launch(Dispatchers.IO) {
-            battleDao.deleteBattleTag(tag)
+        viewModelScope.launch {
+            battleRepository.updateBattleCombo(combo.copy(isUsed = !combo.isUsed))
         }
     }
 }

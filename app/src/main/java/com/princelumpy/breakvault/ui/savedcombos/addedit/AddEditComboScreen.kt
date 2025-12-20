@@ -48,25 +48,24 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import com.princelumpy.breakvault.R
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditComboScreen(
-    navController: NavController,
+    onNavigateUp: () -> Unit,
     comboId: String?,
-    savedComboViewModel: SavedComboViewModel = viewModel()
+    addEditComboViewModel: AddEditComboViewModel = viewModel()
 ) {
-    val uiState by savedComboViewModel.uiState.collectAsState()
+    val uiState by addEditComboViewModel.uiState.collectAsState()
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(key1 = comboId) {
-        savedComboViewModel.loadCombo(comboId)
+        addEditComboViewModel.loadCombo(comboId)
     }
 
     LaunchedEffect(Unit) {
@@ -87,7 +86,7 @@ fun AddEditComboScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = { onNavigateUp() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.common_back_button_description)
@@ -108,9 +107,9 @@ fun AddEditComboScreen(
                             snackbarHostState.showSnackbar("A combo must have at least one move")
                         }
                     } else {
-                        savedComboViewModel.saveCombo {
+                        addEditComboViewModel.saveCombo {
                             focusManager.clearFocus()
-                            navController.popBackStack()
+                            onNavigateUp()
                         }
                     }
                 },
@@ -137,7 +136,7 @@ fun AddEditComboScreen(
         ) {
             OutlinedTextField(
                 value = uiState.comboName,
-                onValueChange = { savedComboViewModel.onComboNameChange(it) },
+                onValueChange = { addEditComboViewModel.onComboNameChange(it) },
                 label = { Text(stringResource(R.string.combo_name_label)) },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -165,7 +164,7 @@ fun AddEditComboScreen(
                     uiState.selectedMoves.forEachIndexed { index, moveName ->
                         ComboMoveItem(
                             moveName = moveName,
-                            onRemove = { savedComboViewModel.removeMoveFromCombo(index) }
+                            onRemove = { addEditComboViewModel.removeMoveFromCombo(index) }
                         )
                     }
                 }
@@ -177,17 +176,17 @@ fun AddEditComboScreen(
 
             ExposedDropdownMenuBox(
                 expanded = uiState.expanded,
-                onExpandedChange = { savedComboViewModel.onExpandedChange(!uiState.expanded) },
+                onExpandedChange = { addEditComboViewModel.onExpandedChange(!uiState.expanded) },
                 modifier = Modifier.padding(bottom = AppStyleDefaults.SpacingExtraLarge) // Extra padding for FAB
             ) {
                 OutlinedTextField(
                     value = uiState.searchText,
-                    onValueChange = { savedComboViewModel.onSearchTextChange(it) },
+                    onValueChange = { addEditComboViewModel.onSearchTextChange(it) },
                     label = { Text(stringResource(id = R.string.add_edit_combo_add_move_label)) },
                     trailingIcon = {
                         IconButton(onClick = {
                             if (uiState.searchText.isNotBlank()) {
-                                savedComboViewModel.addMoveToCombo(uiState.searchText.trim())
+                                addEditComboViewModel.addMoveToCombo(uiState.searchText.trim())
                             }
                         }) {
                             Icon(
@@ -204,9 +203,9 @@ fun AddEditComboScreen(
                     keyboardActions = KeyboardActions(
                         onDone = {
                             if (filteredMoves.isNotEmpty()) {
-                                savedComboViewModel.addMoveToCombo(filteredMoves.first().name)
+                                addEditComboViewModel.addMoveToCombo(filteredMoves.first().name)
                             } else if (uiState.searchText.isNotBlank()) {
-                                savedComboViewModel.addMoveToCombo(uiState.searchText.trim())
+                                addEditComboViewModel.addMoveToCombo(uiState.searchText.trim())
                             }
                         }
                     )
@@ -215,12 +214,12 @@ fun AddEditComboScreen(
                 if (filteredMoves.isNotEmpty() && uiState.expanded) {
                     ExposedDropdownMenu(
                         expanded = uiState.expanded,
-                        onDismissRequest = { savedComboViewModel.onExpandedChange(false) }
+                        onDismissRequest = { addEditComboViewModel.onExpandedChange(false) }
                     ) {
                         filteredMoves.forEach { move ->
                             DropdownMenuItem(
                                 text = { Text(move.name) },
-                                onClick = { savedComboViewModel.addMoveToCombo(move.name) }
+                                onClick = { addEditComboViewModel.addMoveToCombo(move.name) }
                             )
                         }
                     }

@@ -48,7 +48,7 @@ import com.princelumpy.breakvault.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditGoalStageScreen(
-    navController: NavController,
+    onNavigateUp: () -> Unit,
     goalId: String,
     stageId: String? = null,
     goalStageViewModel: GoalStageViewModel = viewModel()
@@ -74,7 +74,7 @@ fun AddEditGoalStageScreen(
                 TopAppBar(
                     title = { Text(stringResource(id = if (currentUiState.isNewStage) R.string.add_edit_goal_stage_add_title else R.string.add_edit_goal_stage_edit_title)) },
                     navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
+                        IconButton(onClick = { onNavigateUp() }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = stringResource(id = R.string.common_back_button_description)
@@ -96,7 +96,7 @@ fun AddEditGoalStageScreen(
             floatingActionButton = {
                 FloatingActionButton(
                     onClick = {
-                        goalStageViewModel.saveStage { navController.popBackStack() }
+                        goalStageViewModel.saveStage { onNavigateUp() }
                     }
                 ) {
                     Icon(
@@ -189,7 +189,7 @@ fun AddEditGoalStageScreen(
                 confirmButton = {
                     TextButton(
                         onClick = {
-                            goalStageViewModel.deleteStage { navController.popBackStack() }
+                            goalStageViewModel.deleteStage { onNavigateUp() }
                         }
                     ) {
                         Text(

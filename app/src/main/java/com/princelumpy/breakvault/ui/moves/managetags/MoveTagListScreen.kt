@@ -36,28 +36,62 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.princelumpy.breakvault.R
-import com.princelumpy.breakvault.Screen
 import com.princelumpy.breakvault.data.local.entity.MoveTag
 import com.princelumpy.breakvault.ui.theme.ComboGeneratorTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MoveTagListScreen(
-    navController: NavController,
-    moveTagListViewModel: MoveTagListViewModel = viewModel()
+    onNavigateToMovesByTag: (String, String) -> Unit,
+    onNavigateBack: () -> Unit,
+    moveTagListViewModel: MoveTagListViewModel = hiltViewModel()
 ) {
     val uiState by moveTagListViewModel.uiState.collectAsState()
 
+    MoveTagListContent(
+        uiState = uiState,
+        onNavigateToMovesByTag = onNavigateToMovesByTag,
+        onNavigateBack = onNavigateBack,
+        onAddTagClicked = moveTagListViewModel::onAddTagClicked,
+        onAddTagDialogDismiss = moveTagListViewModel::onAddTagDialogDismiss,
+        onNewTagNameChange = moveTagListViewModel::onNewTagNameChange,
+        onAddTag = moveTagListViewModel::onAddTag,
+        onEditTagClicked = moveTagListViewModel::onEditTagClicked,
+        onEditTagDialogDismiss = moveTagListViewModel::onEditTagDialogDismiss,
+        onTagNameForEditChange = moveTagListViewModel::onTagNameForEditChange,
+        onUpdateTag = moveTagListViewModel::onUpdateTag,
+        onDeleteTagClicked = moveTagListViewModel::onDeleteTagClicked,
+        onDeleteTagDialogDismiss = moveTagListViewModel::onDeleteTagDialogDismiss,
+        onDeleteTag = moveTagListViewModel::onDeleteTag
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MoveTagListContent(
+    uiState: MoveTagListUiState,
+    onNavigateToMovesByTag: (String, String) -> Unit,
+    onNavigateBack: () -> Unit,
+    onAddTagClicked: () -> Unit,
+    onAddTagDialogDismiss: () -> Unit,
+    onNewTagNameChange: (String) -> Unit,
+    onAddTag: () -> Unit,
+    onEditTagClicked: (MoveTag) -> Unit,
+    onEditTagDialogDismiss: () -> Unit,
+    onTagNameForEditChange: (String) -> Unit,
+    onUpdateTag: () -> Unit,
+    onDeleteTagClicked: (MoveTag) -> Unit,
+    onDeleteTagDialogDismiss: () -> Unit,
+    onDeleteTag: () -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(id = R.string.tag_list_manage_tags_title)) },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onNavigateBack) { // <-- Bug fix here
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(id = R.string.common_back_button_description)
@@ -67,7 +101,7 @@ fun MoveTagListScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { moveTagListViewModel.onAddTagClicked() }) {
+            FloatingActionButton(onClick = onAddTagClicked) {
                 Icon(
                     Icons.Filled.Add,
                     contentDescription = stringResource(id = R.string.tag_list_add_tag_fab_description)
@@ -96,10 +130,10 @@ fun MoveTagListScreen(
                     TagListItem(
                         moveTag = tag,
                         onItemClick = {
-                            navController.navigate(Screen.MovesByTag.withArgs(it.id, it.name))
+                            onNavigateToMovesByTag(it.id, it.name)
                         },
-                        onEditClick = { moveTagListViewModel.onEditTagClicked(it) },
-                        onDeleteClick = { moveTagListViewModel.onDeleteTagClicked(it) }
+                        onEditClick = { onEditTagClicked(it) },
+                        onDeleteClick = { onDeleteTagClicked(it) }
                     )
                 }
             }
@@ -108,12 +142,12 @@ fun MoveTagListScreen(
 
     if (uiState.showAddDialog) {
         AlertDialog(
-            onDismissRequest = { moveTagListViewModel.onAddTagDialogDismiss() },
+            onDismissRequest = onAddTagDialogDismiss,
             title = { Text(stringResource(id = R.string.tag_list_add_new_tag_dialog_title)) },
             text = {
                 OutlinedTextField(
                     value = uiState.newTagName,
-                    onValueChange = { moveTagListViewModel.onNewTagNameChange(it) },
+                    onValueChange = onNewTagNameChange,
                     label = { Text(stringResource(id = R.string.tag_list_tag_name_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -121,14 +155,14 @@ fun MoveTagListScreen(
             },
             confirmButton = {
                 TextButton(
-                    onClick = { moveTagListViewModel.onAddTag() },
+                    onClick = onAddTag,
                     enabled = uiState.newTagName.isNotBlank()
                 ) {
                     Text(stringResource(id = R.string.common_add))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { moveTagListViewModel.onAddTagDialogDismiss() }) {
+                TextButton(onClick = onAddTagDialogDismiss) {
                     Text(stringResource(id = R.string.common_cancel))
                 }
             }
@@ -137,12 +171,12 @@ fun MoveTagListScreen(
 
     uiState.showEditDialog?.let { tagToEdit ->
         AlertDialog(
-            onDismissRequest = { moveTagListViewModel.onEditTagDialogDismiss() },
+            onDismissRequest = onEditTagDialogDismiss,
             title = { Text(stringResource(id = R.string.tag_list_edit_tag_name_dialog_title)) },
             text = {
                 OutlinedTextField(
                     value = uiState.tagNameForEdit,
-                    onValueChange = { moveTagListViewModel.onTagNameForEditChange(it) },
+                    onValueChange = onTagNameForEditChange,
                     label = { Text(stringResource(id = R.string.tag_list_new_tag_name_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -150,14 +184,14 @@ fun MoveTagListScreen(
             },
             confirmButton = {
                 TextButton(
-                    onClick = { moveTagListViewModel.onUpdateTag() },
+                    onClick = onUpdateTag,
                     enabled = uiState.tagNameForEdit.isNotBlank()
                 ) {
                     Text(stringResource(id = R.string.common_save))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { moveTagListViewModel.onEditTagDialogDismiss() }) {
+                TextButton(onClick = onEditTagDialogDismiss) {
                     Text(stringResource(id = R.string.common_cancel))
                 }
             }
@@ -166,7 +200,7 @@ fun MoveTagListScreen(
 
     uiState.showDeleteDialog?.let { tagToDelete ->
         AlertDialog(
-            onDismissRequest = { moveTagListViewModel.onDeleteTagDialogDismiss() },
+            onDismissRequest = onDeleteTagDialogDismiss,
             title = { Text(stringResource(id = R.string.common_confirm_deletion_title)) },
             text = {
                 Text(
@@ -178,14 +212,14 @@ fun MoveTagListScreen(
             },
             confirmButton = {
                 TextButton(
-                    onClick = { moveTagListViewModel.onDeleteTag() },
+                    onClick = onDeleteTag,
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
                     Text(stringResource(id = R.string.common_delete))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { moveTagListViewModel.onDeleteTagDialogDismiss() }) {
+                TextButton(onClick = onDeleteTagDialogDismiss) {
                     Text(stringResource(id = R.string.common_cancel))
                 }
             }
@@ -244,9 +278,28 @@ fun TagListItem(
 @Composable
 fun MoveTagListScreenPreview() {
     ComboGeneratorTheme {
-        MoveTagListScreen(
-            navController = rememberNavController(),
-            moveTagListViewModel = viewModel()
+        // Preview the content composable with a sample state
+        MoveTagListContent(
+            uiState = MoveTagListUiState(
+                tags = listOf(
+                    MoveTag(id = "1", name = "Beginner"),
+                    MoveTag(id = "2", name = "Power"),
+                    MoveTag(id = "3", name = "Freezes")
+                )
+            ),
+            onNavigateToMovesByTag = { _, _ -> },
+            onNavigateBack = {},
+            onAddTagClicked = {},
+            onAddTagDialogDismiss = {},
+            onNewTagNameChange = {},
+            onAddTag = {},
+            onEditTagClicked = {},
+            onEditTagDialogDismiss = {},
+            onTagNameForEditChange = {},
+            onUpdateTag = {},
+            onDeleteTagClicked = {},
+            onDeleteTagDialogDismiss = {},
+            onDeleteTag = {}
         )
     }
 }

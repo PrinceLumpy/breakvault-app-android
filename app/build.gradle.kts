@@ -62,7 +62,6 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
-    implementation(libs.androidx.compose.runtime.livedata)
     implementation(libs.androidx.navigation.compose) // Corrected from .compose.ui
 
     implementation(libs.androidx.room.runtime)
@@ -73,7 +72,6 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     implementation(libs.androidx.lifecycle.viewmodelKtx)
-    implementation(libs.androidx.lifecycle.livedataKtx)
 
     implementation(libs.kotlinx.serialization.json) // Added Kotlinx Serialization JSON library
 

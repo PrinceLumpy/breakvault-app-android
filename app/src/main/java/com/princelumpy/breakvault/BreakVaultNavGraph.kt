@@ -21,7 +21,7 @@ import com.princelumpy.breakvault.ui.moves.list.MoveListScreen
 import com.princelumpy.breakvault.ui.moves.managetags.MoveTagListScreen
 import com.princelumpy.breakvault.ui.moves.movesbytag.MovesByTagScreen
 import com.princelumpy.breakvault.ui.savedcombos.addedit.AddEditComboScreen
-import com.princelumpy.breakvault.ui.savedcombos.list.SavedCombosScreen
+import com.princelumpy.breakvault.ui.savedcombos.list.SavedComboListScreen
 import com.princelumpy.breakvault.ui.settings.SettingsScreen
 import com.princelumpy.breakvault.ui.timer.TimerScreen
 
@@ -64,16 +64,10 @@ fun BreakVaultNavGraph(
                 navArgument(BreakVaultDestinationsArgs.TAG_ID_ARG) { type = NavType.StringType },
                 navArgument(BreakVaultDestinationsArgs.TAG_NAME_ARG) { type = NavType.StringType }
             )
-        ) { backStackEntry ->
-            val tagId =
-                backStackEntry.arguments?.getString(BreakVaultDestinationsArgs.TAG_ID_ARG) ?: ""
-            val tagName =
-                backStackEntry.arguments?.getString(BreakVaultDestinationsArgs.TAG_NAME_ARG) ?: ""
+        ) {
             MovesByTagScreen(
                 onNavigateUp = { navActions.navigateUp() },
                 onNavigateToMove = { navActions.navigateToAddEditMove(it) },
-                tagId = tagId,
-                tagName = tagName
             )
         }
         composable(
@@ -96,7 +90,7 @@ fun BreakVaultNavGraph(
             )
         }
         composable(BreakVaultDestinations.SAVED_COMBOS_ROUTE) {
-            SavedCombosScreen(
+            SavedComboListScreen(
                 onNavigateToAddEditCombo = { navActions.navigateToAddEditCombo(it) }
             )
         }
@@ -128,8 +122,7 @@ fun BreakVaultNavGraph(
                 nullable = true
                 defaultValue = null
             })
-        ) { backStackEntry ->
-            val goalId = backStackEntry.arguments?.getString(BreakVaultDestinationsArgs.GOAL_ID_ARG)
+        ) {
             AddEditGoalScreen(
                 onNavigateUp = { navActions.navigateUp() },
                 onNavigateToAddEditStage = { gId, stageId ->
@@ -137,8 +130,7 @@ fun BreakVaultNavGraph(
                         gId,
                         stageId
                     )
-                },
-                goalId = goalId
+                }
             )
         }
         composable(
@@ -165,7 +157,6 @@ fun BreakVaultNavGraph(
         composable(BreakVaultDestinations.ARCHIVED_GOALS_ROUTE) {
             ArchivedGoalsScreen(
                 onNavigateUp = { navActions.navigateUp() },
-                onNavigateToAddEditGoal = { navActions.navigateToAddEditGoal(it) }
             )
         }
         composable(BreakVaultDestinations.TIMER_ROUTE) { TimerScreen() }

@@ -1,116 +1,142 @@
 package com.princelumpy.breakvault.ui.goals.addedit
 
+import androidx.compose.animation.core.copy
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.princelumpy.breakvault.data.local.dao.GoalDao
 import com.princelumpy.breakvault.data.local.entity.Goal
 import com.princelumpy.breakvault.data.local.entity.GoalStage
+import com.princelumpy.breakvault.data.repository.GoalRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 
-data class AddEditGoalUiState(
-    val goalId: String? = null,
+// State for the user's direct text inputs.
+data class UserInputs(
     val title: String = "",
-    val description: String = "",
-    val stages: List<GoalStage> = emptyList(),
-    val isNewGoal: Boolean = true,
-    val isLoading: Boolean = true,
+    val description: String = ""
+)
+
+// State for transient UI events like dialogs and navigation.
+data class DialogState(
     val snackbarMessage: String? = null,
     val navigateToAddStageWithGoalId: String? = null,
     val navigateToEditStage: GoalStage? = null,
     val addingRepsToStage: GoalStage? = null
 )
 
+// The final, combined state for the UI.
+data class AddEditGoalUiState(
+    val goalId: String? = null,
+    val stages: List<GoalStage> = emptyList(),
+    val userInputs: UserInputs = UserInputs(),
+    val dialogState: DialogState = DialogState(),
+    val isNewGoal: Boolean = true,
+    val isLoading: Boolean = true
+)
+
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class AddEditGoalViewModel @Inject constructor(
-    private val goalDao: GoalDao,
+    private val goalRepository: GoalRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(AddEditGoalUiState())
-    val uiState: StateFlow<AddEditGoalUiState> = _uiState.asStateFlow()
+    private val goalId: StateFlow<String?> = savedStateHandle.getStateFlow("goalId", null)
 
-    private val goalId: String? = savedStateHandle["goalId"]
-    private var goal: Goal? = null
+    // Separate state flows for each concern.
+    private val _userInputs = MutableStateFlow(UserInputs())
+    private val _dialogState = MutableStateFlow(DialogState())
+    private val _isInitialLoadDone = MutableStateFlow(false)
 
-    init {
-        loadGoal()
-    }
-
-    fun loadGoal() {
-        if (goalId == null) {
-            _uiState.update { it.copy(isLoading = false, isNewGoal = true) }
-            return
-        }
-
-        _uiState.update { it.copy(isLoading = true) }
-        viewModelScope.launch {
-            val goalWithStages = goalDao.getGoalWithStages(goalId)
-            if (goalWithStages != null) {
-                this@AddEditGoalViewModel.goal = goalWithStages.goal
-                _uiState.value = AddEditGoalUiState(
-                    goalId = goalId,
-                    title = goalWithStages.goal.title,
-                    description = goalWithStages.goal.description,
-                    stages = goalWithStages.stages,
-                    isNewGoal = false,
-                    isLoading = false
-                )
+    val uiState: StateFlow<AddEditGoalUiState> = combine(
+        goalId.flatMapLatest { id ->
+            if (id == null) {
+                // If it's a new goal, there's no data to fetch.
+                goalRepository.getEmptyGoalWithStagesFlow() // Returns flowOf(null)
             } else {
-                _uiState.update {
-                    it.copy(
-                        snackbarMessage = "Could not find goal.",
-                        isLoading = false
-                    )
-                }
+                // If it's an existing goal, fetch its data.
+                goalRepository.getGoalWithStages(id)
             }
-        }
-    }
+        },
+        _userInputs,
+        _dialogState,
+        _isInitialLoadDone
+    ) { goalWithStages, userInputs, dialogState, isInitialLoadDone ->
 
+        // This logic runs when loading an existing goal for the first time.
+        if (goalWithStages != null && !isInitialLoadDone) {
+            _userInputs.value = UserInputs(
+                title = goalWithStages.goal.title,
+                description = goalWithStages.goal.description
+            )
+            _isInitialLoadDone.value = true // Mark initial load as complete.
+        }
+
+        AddEditGoalUiState(
+            goalId = goalWithStages?.goal?.id,
+            stages = goalWithStages?.stages ?: emptyList(),
+            userInputs = userInputs,
+            dialogState = dialogState,
+            isNewGoal = goalWithStages == null,
+            isLoading = goalId.value != null && !isInitialLoadDone
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = AddEditGoalUiState()
+    )
+
+
+    // --- User Input Handlers ---
     fun onTitleChange(newTitle: String) {
         if (newTitle.length <= 100) {
-            _uiState.update { it.copy(title = newTitle) }
+            _userInputs.update { it.copy(title = newTitle) }
         }
     }
 
     fun onDescriptionChange(newDescription: String) {
-        _uiState.update { it.copy(description = newDescription) }
+        _userInputs.update { it.copy(description = newDescription) }
     }
 
+    // --- Data Operation Handlers ---
     fun saveGoal(onSuccess: (goalId: String) -> Unit) {
         viewModelScope.launch {
-            val currentState = _uiState.value
-            if (currentState.title.isBlank()) {
-                _uiState.update { it.copy(snackbarMessage = "Goal title cannot be blank.") }
+            val currentInputs = _userInputs.value
+            if (currentInputs.title.isBlank()) {
+                _dialogState.update { it.copy(snackbarMessage = "Goal title cannot be blank.") }
                 return@launch
             }
 
-            if (goalId == null) {
+            val currentGoalId = goalId.value
+            if (currentGoalId == null) {
+                // Create new goal
                 val newGoal = Goal(
                     id = UUID.randomUUID().toString(),
-                    title = currentState.title,
-                    description = currentState.description,
-                    isArchived = false,
-                    lastUpdated = System.currentTimeMillis()
+                    title = currentInputs.title,
+                    description = currentInputs.description
                 )
-                goalDao.insertGoal(newGoal)
+                goalRepository.insertGoal(newGoal)
                 onSuccess(newGoal.id)
             } else {
-                goal?.let {
-                    val updatedGoal = it.copy(
-                        title = currentState.title,
-                        description = currentState.description,
+                // Update existing goal
+                goalRepository.getGoalById(currentGoalId)?.let { existingGoal ->
+                    val updatedGoal = existingGoal.copy(
+                        title = currentInputs.title,
+                        description = currentInputs.description,
                         lastUpdated = System.currentTimeMillis()
                     )
-                    goalDao.updateGoal(updatedGoal)
-                    onSuccess(goalId)
+                    goalRepository.updateGoal(updatedGoal)
+                    onSuccess(currentGoalId)
                 }
             }
         }
@@ -118,13 +144,8 @@ class AddEditGoalViewModel @Inject constructor(
 
     fun archiveGoal(onSuccess: () -> Unit) {
         viewModelScope.launch {
-            goal?.let {
-                goalDao.updateGoal(
-                    it.copy(
-                        isArchived = true,
-                        lastUpdated = System.currentTimeMillis()
-                    )
-                )
+            goalId.value?.let {
+                goalRepository.archiveGoal(it)
                 onSuccess()
             }
         }
@@ -132,50 +153,10 @@ class AddEditGoalViewModel @Inject constructor(
 
     fun deleteGoal(onSuccess: () -> Unit) {
         viewModelScope.launch {
-            goal?.let {
-                goalDao.deleteAllStagesForGoal(it.id)
-                goalDao.deleteGoal(it)
+            goalId.value?.let {
+                goalRepository.deleteGoalAndStages(it)
                 onSuccess()
             }
-        }
-    }
-
-    fun onSnackbarMessageShown() {
-        _uiState.update { it.copy(snackbarMessage = null) }
-    }
-
-    fun onAddStageClicked() {
-        if (_uiState.value.isNewGoal) {
-            _uiState.update { it.copy(snackbarMessage = "Please save goal before adding a stage.") }
-        } else {
-            _uiState.update { it.copy(navigateToAddStageWithGoalId = _uiState.value.goalId) }
-        }
-    }
-
-    fun onNavigateToAddStageDone() {
-        _uiState.update { it.copy(navigateToAddStageWithGoalId = null) }
-    }
-
-    fun onEditStageClicked(stage: GoalStage) {
-        _uiState.update { it.copy(navigateToEditStage = stage) }
-    }
-
-    fun onNavigateToEditStageDone() {
-        _uiState.update { it.copy(navigateToEditStage = null) }
-    }
-
-    fun onAddRepsClicked(stage: GoalStage) {
-        _uiState.update { it.copy(addingRepsToStage = stage) }
-    }
-
-    fun onAddRepsDismissed() {
-        _uiState.update { it.copy(addingRepsToStage = null) }
-    }
-
-    fun updateStage(updatedStage: GoalStage) {
-        viewModelScope.launch {
-            goalDao.updateGoalStage(updatedStage)
-            loadGoal()
         }
     }
 
@@ -183,17 +164,44 @@ class AddEditGoalViewModel @Inject constructor(
         viewModelScope.launch {
             val newCount = stage.currentCount + reps
             if (newCount < 0) {
-                _uiState.update {
-                    it.copy(
-                        snackbarMessage = "Repetitions cannot be negative.",
-                        addingRepsToStage = null
-                    )
-                }
-                return@launch
+                _dialogState.update { it.copy(snackbarMessage = "Repetitions cannot be negative.") }
+            } else {
+                goalRepository.updateGoalStage(stage.copy(currentCount = newCount))
             }
-            val updatedStage = stage.copy(currentCount = newCount)
-            goalDao.updateGoalStage(updatedStage)
-            loadGoal()
+            onAddRepsDismissed() // Always dismiss dialog after action
         }
+    }
+
+    // --- Navigation and Dialog Handlers ---
+    fun onSnackbarMessageShown() {
+        _dialogState.update { it.copy(snackbarMessage = null) }
+    }
+
+    fun onAddStageClicked() {
+        if (uiState.value.isNewGoal) {
+            _dialogState.update { it.copy(snackbarMessage = "Please save the goal before adding a stage.") }
+        } else {
+            _dialogState.update { it.copy(navigateToAddStageWithGoalId = uiState.value.goalId) }
+        }
+    }
+
+    fun onNavigateToAddStageDone() {
+        _dialogState.update { it.copy(navigateToAddStageWithGoalId = null) }
+    }
+
+    fun onEditStageClicked(stage: GoalStage) {
+        _dialogState.update { it.copy(navigateToEditStage = stage) }
+    }
+
+    fun onNavigateToEditStageDone() {
+        _dialogState.update { it.copy(navigateToEditStage = null) }
+    }
+
+    fun onAddRepsClicked(stage: GoalStage) {
+        _dialogState.update { it.copy(addingRepsToStage = stage) }
+    }
+
+    fun onAddRepsDismissed() {
+        _dialogState.update { it.copy(addingRepsToStage = null) }
     }
 }

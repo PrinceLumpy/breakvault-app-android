@@ -105,6 +105,9 @@ interface MoveDao {
     )
     suspend fun getMovesByTags(tagIds: List<String>): List<Move>
 
+    @Query("SELECT * FROM moves WHERE id IN (SELECT moveId FROM move_tag_cross_refs WHERE tagId = :tagId)")
+    fun getMovesByTagId(tagId: String): Flow<List<Move>>
+
 
     @Query("DELETE FROM move_tag_cross_refs WHERE moveId = :moveId")
     suspend fun unlinkMoveFromAllTags(moveId: String)

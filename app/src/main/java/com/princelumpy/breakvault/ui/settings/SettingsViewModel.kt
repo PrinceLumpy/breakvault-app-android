@@ -1,107 +1,104 @@
 package com.princelumpy.breakvault.ui.settings
 
-import android.app.Application
 import android.net.Uri
 import android.util.Log
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.repository.SettingsRepository
 import com.princelumpy.breakvault.data.service.export.model.AppDataExport
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import javax.inject.Inject
 
-// Sealed class to represent specific, type-safe UI events
-sealed class UiEvent {
-    data class ShowSnackbar(val message: String) : UiEvent()
-}
+// The final, combined state for the UI.
+data class SettingsUiState(
+    val showResetConfirmDialog: Boolean = false,
+    val snackbarMessage: String? = null
+)
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
-    application: Application
-) : AndroidViewModel(application) {
+) : ViewModel() { // No longer an AndroidViewModel
 
-    private val _uiEvent = MutableSharedFlow<UiEvent>()
-    val uiEvent = _uiEvent.asSharedFlow()
+    private val _uiState = MutableStateFlow(SettingsUiState())
+    val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     fun exportData(uri: Uri) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val context = getApplication<Application>()
+        viewModelScope.launch {
             try {
                 val appData = settingsRepository.getAppDataForExport()
                 val jsonString = json.encodeToString(AppDataExport.serializer(), appData)
-                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                    outputStream.write(jsonString.toByteArray())
-                }
+
+                settingsRepository.writeDataToUri(uri, jsonString)
+
                 Log.i("SettingsViewModel", "Data exported to $uri")
-                _uiEvent.emit(
-                    UiEvent.ShowSnackbar(
-                        context.getString(
-                            R.string.settings_export_success_snackbar,
-                            uri.toString()
-                        )
-                    )
-                )
+                _uiState.update { it.copy(snackbarMessage = "Export successful!") }
             } catch (e: Exception) {
                 Log.e("SettingsViewModel", "Error exporting data", e)
-                val errorMessage = context.getString(
-                    R.string.settings_action_failed_snackbar,
-                    context.getString(R.string.settings_export_action_label),
-                    e.message ?: "Unknown error"
-                )
-                _uiEvent.emit(UiEvent.ShowSnackbar(errorMessage))
+                _uiState.update { it.copy(snackbarMessage = "Export failed: ${e.message}") }
             }
         }
     }
 
     fun importData(uri: Uri) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val context = getApplication<Application>()
+        viewModelScope.launch {
             try {
-                val jsonString = context.contentResolver.openInputStream(uri)?.use {
-                    BufferedReader(InputStreamReader(it)).readText()
-                }
+                val jsonString = settingsRepository.readDataFromUri(uri)
 
                 if (jsonString != null) {
                     val appData = json.decodeFromString<AppDataExport>(jsonString)
                     settingsRepository.importAppData(appData)
                     Log.i("SettingsViewModel", "Data imported from $uri")
-                    _uiEvent.emit(UiEvent.ShowSnackbar(context.getString(R.string.settings_import_success_snackbar)))
+                    _uiState.update { it.copy(snackbarMessage = "Import successful!") }
                 } else {
-                    _uiEvent.emit(UiEvent.ShowSnackbar(context.getString(R.string.settings_import_error_reading_file_snackbar)))
+                    _uiState.update { it.copy(snackbarMessage = "Failed to read import file.") }
                 }
             } catch (e: Exception) {
                 Log.e("SettingsViewModel", "Error importing data", e)
-                val errorMessage = context.getString(
-                    R.string.settings_action_failed_snackbar,
-                    context.getString(R.string.settings_import_action_label),
-                    e.message ?: "Unknown error"
-                )
-                _uiEvent.emit(UiEvent.ShowSnackbar(errorMessage))
+                _uiState.update { it.copy(snackbarMessage = "Import failed: ${e.message}") }
             }
         }
     }
 
-    fun resetDatabase() {
-        viewModelScope.launch(Dispatchers.IO) {
-            val context = getApplication<Application>()
+    fun onResetDatabaseClicked() {
+        _uiState.update { it.copy(showResetConfirmDialog = true) }
+    }
+
+    fun onResetDatabaseConfirm() {
+        viewModelScope.launch {
             try {
                 settingsRepository.resetDatabase()
-                _uiEvent.emit(UiEvent.ShowSnackbar(context.getString(R.string.settings_database_reset_success_snackbar)))
+                _uiState.update {
+                    it.copy(
+                        showResetConfirmDialog = false,
+                        snackbarMessage = "Database reset successfully."
+                    )
+                }
             } catch (e: Exception) {
                 Log.e("SettingsViewModel", "Error resetting database", e)
-                _uiEvent.emit(UiEvent.ShowSnackbar("Database reset failed."))
+                _uiState.update {
+                    it.copy(
+                        showResetConfirmDialog = false,
+                        snackbarMessage = "Database reset failed."
+                    )
+                }
             }
         }
+    }
+
+    fun onResetDatabaseDismiss() {
+        _uiState.update { it.copy(showResetConfirmDialog = false) }
+    }
+
+    fun onSnackbarShown() {
+        _uiState.update { it.copy(snackbarMessage = null) }
     }
 }

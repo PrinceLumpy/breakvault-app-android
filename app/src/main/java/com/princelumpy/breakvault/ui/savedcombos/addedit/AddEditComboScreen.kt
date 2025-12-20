@@ -22,7 +22,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType.Companion.PrimaryEditable
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -36,10 +36,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -47,32 +45,39 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditComboScreen(
     onNavigateUp: () -> Unit,
     comboId: String?,
-    addEditComboViewModel: AddEditComboViewModel = viewModel()
+    addEditComboViewModel: AddEditComboViewModel = hiltViewModel()
 ) {
-    val uiState by addEditComboViewModel.uiState.collectAsState()
+    // UPDATED: Use collectAsStateWithLifecycle
+    val uiState by addEditComboViewModel.uiState.collectAsStateWithLifecycle()
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
-    val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Create convenience variables for cleaner access
+    val userInputs = uiState.userInputs
+    val dialogState = uiState.dialogState
 
     LaunchedEffect(key1 = comboId) {
         addEditComboViewModel.loadCombo(comboId)
     }
 
-    LaunchedEffect(Unit) {
+    // UPDATED: No need for a separate LaunchedEffect for focus, it can be handled differently or kept if needed for new items.
+    LaunchedEffect(uiState.isNewCombo) {
         if (uiState.isNewCombo) {
             focusRequester.requestFocus()
         }
     }
+
+    // REMOVED: Manual snackbar launching is no longer needed.
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -80,6 +85,7 @@ fun AddEditComboScreen(
             TopAppBar(
                 title = {
                     Text(
+                        // UPDATED: Use uiState for isNewCombo
                         if (uiState.isNewCombo) stringResource(R.string.create_combo_title) else stringResource(
                             R.string.edit_combo_title
                         )
@@ -98,22 +104,14 @@ fun AddEditComboScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    if (uiState.comboName.isBlank()) {
-                        scope.launch {
-                            snackbarHostState.showSnackbar("Must add a name before saving")
-                        }
-                    } else if (uiState.selectedMoves.isEmpty()) {
-                        scope.launch {
-                            snackbarHostState.showSnackbar("A combo must have at least one move")
-                        }
-                    } else {
-                        addEditComboViewModel.saveCombo {
-                            focusManager.clearFocus()
-                            onNavigateUp()
-                        }
+                    // ViewModel now handles validation and showing snackbars.
+                    addEditComboViewModel.saveCombo {
+                        focusManager.clearFocus()
+                        onNavigateUp()
                     }
                 },
-                containerColor = if (uiState.comboName.isNotBlank() && uiState.selectedMoves.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                // UPDATED: Use userInputs for state checks
+                containerColor = if (userInputs.comboName.isNotBlank() && userInputs.selectedMoves.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Icon(
                     Icons.Filled.Save,
@@ -135,7 +133,8 @@ fun AddEditComboScreen(
             verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
         ) {
             OutlinedTextField(
-                value = uiState.comboName,
+                // UPDATED: Access state from userInputs
+                value = userInputs.comboName,
                 onValueChange = { addEditComboViewModel.onComboNameChange(it) },
                 label = { Text(stringResource(R.string.combo_name_label)) },
                 modifier = Modifier
@@ -150,7 +149,8 @@ fun AddEditComboScreen(
                 style = MaterialTheme.typography.titleMedium
             )
 
-            if (uiState.selectedMoves.isEmpty()) {
+            // UPDATED: Access state from userInputs
+            if (userInputs.selectedMoves.isEmpty()) {
                 Text(
                     text = stringResource(id = R.string.add_edit_combo_no_moves_message),
                     style = MaterialTheme.typography.bodyMedium,
@@ -161,7 +161,8 @@ fun AddEditComboScreen(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
                 ) {
-                    uiState.selectedMoves.forEachIndexed { index, moveName ->
+                    // UPDATED: Access state from userInputs
+                    userInputs.selectedMoves.forEachIndexed { index, moveName ->
                         ComboMoveItem(
                             moveName = moveName,
                             onRemove = { addEditComboViewModel.removeMoveFromCombo(index) }
@@ -171,22 +172,26 @@ fun AddEditComboScreen(
             }
 
             val filteredMoves = uiState.allMoves.filter {
-                it.name.contains(uiState.searchText, ignoreCase = true)
+                // UPDATED: Access searchText from userInputs
+                it.name.contains(userInputs.searchText, ignoreCase = true)
             }
 
             ExposedDropdownMenuBox(
-                expanded = uiState.expanded,
-                onExpandedChange = { addEditComboViewModel.onExpandedChange(!uiState.expanded) },
+                // UPDATED: Access dropdownExpanded from dialogState
+                expanded = dialogState.dropdownExpanded,
+                onExpandedChange = { addEditComboViewModel.onExpandedChange(it) },
                 modifier = Modifier.padding(bottom = AppStyleDefaults.SpacingExtraLarge) // Extra padding for FAB
             ) {
                 OutlinedTextField(
-                    value = uiState.searchText,
+                    // UPDATED: Access searchText from userInputs
+                    value = userInputs.searchText,
                     onValueChange = { addEditComboViewModel.onSearchTextChange(it) },
                     label = { Text(stringResource(id = R.string.add_edit_combo_add_move_label)) },
                     trailingIcon = {
                         IconButton(onClick = {
-                            if (uiState.searchText.isNotBlank()) {
-                                addEditComboViewModel.addMoveToCombo(uiState.searchText.trim())
+                            // UPDATED: Access searchText from userInputs
+                            if (userInputs.searchText.isNotBlank()) {
+                                addEditComboViewModel.addMoveToCombo(userInputs.searchText.trim())
                             }
                         }) {
                             Icon(
@@ -197,23 +202,24 @@ fun AddEditComboScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .menuAnchor(PrimaryEditable),
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(
                         onDone = {
                             if (filteredMoves.isNotEmpty()) {
                                 addEditComboViewModel.addMoveToCombo(filteredMoves.first().name)
-                            } else if (uiState.searchText.isNotBlank()) {
-                                addEditComboViewModel.addMoveToCombo(uiState.searchText.trim())
+                            } else if (userInputs.searchText.isNotBlank()) { // UPDATED
+                                addEditComboViewModel.addMoveToCombo(userInputs.searchText.trim()) // UPDATED
                             }
                         }
                     )
                 )
 
-                if (filteredMoves.isNotEmpty() && uiState.expanded) {
+                // UPDATED: Access dropdownExpanded from dialogState
+                if (filteredMoves.isNotEmpty() && dialogState.dropdownExpanded) {
                     ExposedDropdownMenu(
-                        expanded = uiState.expanded,
+                        expanded = dialogState.dropdownExpanded, // UPDATED
                         onDismissRequest = { addEditComboViewModel.onExpandedChange(false) }
                     ) {
                         filteredMoves.forEach { move ->

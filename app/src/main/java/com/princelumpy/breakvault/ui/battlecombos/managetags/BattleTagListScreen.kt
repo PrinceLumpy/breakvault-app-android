@@ -31,18 +31,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.BattleTag
-import com.princelumpy.breakvault.ui.battles.managetags.BattleTagListViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +47,10 @@ fun BattleTagListScreen(
     onNavigateUp: () -> Unit,
     battleTagListViewModel: BattleTagListViewModel = hiltViewModel()
 ) {
-    val uiState by battleTagListViewModel.uiState.collectAsState()
+    val uiState by battleTagListViewModel.uiState.collectAsStateWithLifecycle()
+    // Create convenience variables for cleaner access
+    val dialogState = uiState.dialogState
+    val userInputs = uiState.userInputs
 
     Scaffold(
         topBar = {
@@ -82,7 +82,8 @@ fun BattleTagListScreen(
                 .padding(AppStyleDefaults.SpacingLarge),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (uiState.tags.isEmpty() && !uiState.showAddDialog) {
+            // UPDATED: Check dialog state for visibility
+            if (uiState.tags.isEmpty() && !dialogState.showAddDialog) {
                 Text(stringResource(id = R.string.battle_tag_list_no_tags_message))
             }
             LazyColumn(
@@ -103,13 +104,15 @@ fun BattleTagListScreen(
         }
     }
 
-    if (uiState.showAddDialog) {
+    // UPDATED: Use dialogState.showAddDialog
+    if (dialogState.showAddDialog) {
         AlertDialog(
             onDismissRequest = { battleTagListViewModel.onAddTagDialogDismiss() },
             title = { Text(stringResource(id = R.string.battle_tag_list_add_dialog_title)) },
             text = {
                 OutlinedTextField(
-                    value = uiState.newTagName,
+                    // UPDATED: Use userInputs.newTagName
+                    value = userInputs.newTagName,
                     onValueChange = { battleTagListViewModel.onNewTagNameChange(it) },
                     label = { Text(stringResource(id = R.string.battle_tag_list_tag_name_label)) },
                     singleLine = true,
@@ -121,7 +124,8 @@ fun BattleTagListScreen(
             confirmButton = {
                 TextButton(
                     onClick = { battleTagListViewModel.onAddTag() },
-                    enabled = uiState.newTagName.isNotBlank()
+                    // UPDATED: Use userInputs.newTagName
+                    enabled = userInputs.newTagName.isNotBlank()
                 ) {
                     Text(stringResource(id = R.string.common_add))
                 }
@@ -134,13 +138,15 @@ fun BattleTagListScreen(
         )
     }
 
-    uiState.showEditDialog?.let { tagToEdit ->
+    // UPDATED: Use dialogState.tagForEditDialog
+    dialogState.tagForEditDialog?.let { tagToEdit ->
         AlertDialog(
             onDismissRequest = { battleTagListViewModel.onEditTagDialogDismiss() },
             title = { Text(stringResource(id = R.string.battle_tag_list_edit_dialog_title)) },
             text = {
                 OutlinedTextField(
-                    value = uiState.tagNameForEdit,
+                    // UPDATED: Use userInputs.tagNameForEdit
+                    value = userInputs.tagNameForEdit,
                     onValueChange = { battleTagListViewModel.onTagNameForEditChange(it) },
                     label = { Text(stringResource(id = R.string.battle_tag_list_new_tag_name_label)) },
                     singleLine = true,
@@ -152,7 +158,8 @@ fun BattleTagListScreen(
             confirmButton = {
                 TextButton(
                     onClick = { battleTagListViewModel.onUpdateTag() },
-                    enabled = uiState.tagNameForEdit.isNotBlank()
+                    // UPDATED: Use userInputs.tagNameForEdit
+                    enabled = userInputs.tagNameForEdit.isNotBlank()
                 ) {
                     Text(stringResource(id = R.string.common_save))
                 }
@@ -165,7 +172,8 @@ fun BattleTagListScreen(
         )
     }
 
-    uiState.showDeleteDialog?.let { tagToDelete ->
+    // UPDATED: Use dialogState.tagForDeleteDialog
+    dialogState.tagForDeleteDialog?.let { tagToDelete ->
         AlertDialog(
             onDismissRequest = { battleTagListViewModel.onDeleteTagDialogDismiss() },
             title = { Text(stringResource(id = R.string.common_confirm_deletion_title)) },

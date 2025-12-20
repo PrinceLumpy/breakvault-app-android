@@ -108,7 +108,7 @@ fun MoveListScreen(
                 ) {
                     items(uiState.allTags) { tag ->
                         FilterChip(
-                            selected = uiState.selectedTags.contains(tag.name),
+                            selected = uiState.selectedTagNames.contains(tag.name),
                             onClick = { viewModel.toggleTagFilter(tag.name) },
                             label = { Text(tag.name) }
                         )

@@ -85,6 +85,11 @@ class MoveRepository @Inject constructor(
         }
     }
 
+    fun getMovesByTagId(tagId: String): Flow<List<Move>> {
+        return moveDao.getMovesByTagId(tagId)
+    }
+
+
     suspend fun deleteTagCompletely(tag: MoveTag) {
         withContext(Dispatchers.IO) {
             moveDao.deleteTagCompletely(tag)

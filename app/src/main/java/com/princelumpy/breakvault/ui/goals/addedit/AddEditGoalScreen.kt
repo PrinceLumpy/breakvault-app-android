@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -37,9 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,11 +51,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.navigation.NavController
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
-import com.princelumpy.breakvault.Screen
 import com.princelumpy.breakvault.ui.components.GoalStageItem
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,43 +60,35 @@ import com.princelumpy.breakvault.ui.components.GoalStageItem
 fun AddEditGoalScreen(
     onNavigateUp: () -> Unit,
     onNavigateToAddEditStage: (String, String?) -> Unit,
-    goalId: String?,
     addEditGoalViewModel: AddEditGoalViewModel = hiltViewModel()
 ) {
-    val uiState by addEditGoalViewModel.uiState.collectAsState()
+    val uiState by addEditGoalViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val focusManager = LocalFocusManager.current
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
 
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner, addEditGoalViewModel) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                addEditGoalViewModel.loadGoal()
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
+    // Create convenience variables for cleaner access
+    val userInputs = uiState.userInputs
+    val dialogState = uiState.dialogState
 
-    LaunchedEffect(uiState.snackbarMessage) {
-        uiState.snackbarMessage?.let { message ->
+    // The DisposableEffect for manual loading is no longer needed.
+
+    LaunchedEffect(dialogState.snackbarMessage) {
+        dialogState.snackbarMessage?.let { message ->
             snackbarHostState.showSnackbar(message)
             addEditGoalViewModel.onSnackbarMessageShown()
         }
     }
 
-    LaunchedEffect(uiState.navigateToAddStageWithGoalId) {
-        uiState.navigateToAddStageWithGoalId?.let { goalIdForStage ->
+    LaunchedEffect(dialogState.navigateToAddStageWithGoalId) {
+        dialogState.navigateToAddStageWithGoalId?.let { goalIdForStage ->
             onNavigateToAddEditStage(goalIdForStage, null)
             addEditGoalViewModel.onNavigateToAddStageDone()
         }
     }
 
-    LaunchedEffect(uiState.navigateToEditStage) {
-        uiState.navigateToEditStage?.let { stage ->
+    LaunchedEffect(dialogState.navigateToEditStage) {
+        dialogState.navigateToEditStage?.let { stage ->
             uiState.goalId?.let {
                 onNavigateToAddEditStage(it, stage.id)
             }
@@ -131,7 +119,8 @@ fun AddEditGoalScreen(
         )
     }
 
-    uiState.addingRepsToStage?.let { stage ->
+    // UPDATED: Access dialogState for this dialog
+    dialogState.addingRepsToStage?.let { stage ->
         var reps by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { addEditGoalViewModel.onAddRepsDismissed() },
@@ -149,13 +138,13 @@ fun AddEditGoalScreen(
                     reps.toIntOrNull()?.let {
                         addEditGoalViewModel.addRepsToStage(stage, it)
                     }
-                    addEditGoalViewModel.onAddRepsDismissed()
+                    // Dismissal is now handled within the ViewModel function
                 }) {
                     Text("Add")
                 }
             },
             dismissButton = {
-                Button(onClick = { addEditGoalViewModel.onAddRepsDismissed() }) {
+                TextButton(onClick = { addEditGoalViewModel.onAddRepsDismissed() }) {
                     Text("Cancel")
                 }
             }
@@ -197,7 +186,7 @@ fun AddEditGoalScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = {
-                addEditGoalViewModel.saveGoal { _ ->
+                addEditGoalViewModel.saveGoal { savedGoalId ->
                     focusManager.clearFocus()
                     onNavigateUp()
                 }
@@ -209,79 +198,86 @@ fun AddEditGoalScreen(
             }
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(innerPadding)
-                .padding(AppStyleDefaults.SpacingLarge)
-        ) {
-            OutlinedTextField(
-                value = uiState.title,
-                onValueChange = { addEditGoalViewModel.onTitleChange(it) },
-                label = { Text(stringResource(id = R.string.add_edit_goal_title_label)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
-            )
-
-            Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingMedium))
-
-            OutlinedTextField(
-                value = uiState.description,
-                onValueChange = { addEditGoalViewModel.onDescriptionChange(it) },
-                label = { Text(stringResource(id = R.string.add_edit_goal_description_label)) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(GoalInputDefaults.DESCRIPTION_FIELD_HEIGHT)
-            )
-
-            Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingExtraLarge))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = stringResource(id = R.string.add_edit_goal_stages_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Button(onClick = { addEditGoalViewModel.onAddStageClicked() }) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = stringResource(id = R.string.add_edit_goal_add_stage_button)
-                    )
-                    Spacer(modifier = Modifier.padding(start = AppStyleDefaults.SpacingSmall))
-                    Text(stringResource(id = R.string.add_edit_goal_add_stage_button))
-                }
+        if (uiState.isLoading) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(innerPadding)
+                    .padding(AppStyleDefaults.SpacingLarge)
+            ) {
+                // UPDATED: Access userInputs for state
+                OutlinedTextField(
+                    value = userInputs.title,
+                    onValueChange = { addEditGoalViewModel.onTitleChange(it) },
+                    label = { Text(stringResource(id = R.string.add_edit_goal_title_label)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
+                )
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = AppStyleDefaults.SpacingLarge))
+                Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingMedium))
 
-            if (uiState.stages.isEmpty()) {
-                Box(
+                OutlinedTextField(
+                    value = userInputs.description,
+                    onValueChange = { addEditGoalViewModel.onDescriptionChange(it) },
+                    label = { Text(stringResource(id = R.string.add_edit_goal_description_label)) },
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(AppStyleDefaults.SpacingLarge),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .height(GoalInputDefaults.DESCRIPTION_FIELD_HEIGHT)
+                )
+
+                Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingExtraLarge))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = stringResource(id = R.string.add_edit_goal_no_stages_message),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = stringResource(id = R.string.add_edit_goal_stages_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
-                }
-            } else {
-                Column {
-                    uiState.stages.forEach { goalStage ->
-                        GoalStageItem(
-                            goalStage = goalStage,
-                            onEditClick = { addEditGoalViewModel.onEditStageClicked(goalStage) },
-                            onAddRepsClick = { addEditGoalViewModel.onAddRepsClicked(goalStage) }
+                    Button(onClick = { addEditGoalViewModel.onAddStageClicked() }) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = stringResource(id = R.string.add_edit_goal_add_stage_button)
                         )
+                        Spacer(modifier = Modifier.padding(start = AppStyleDefaults.SpacingSmall))
+                        Text(stringResource(id = R.string.add_edit_goal_add_stage_button))
+                    }
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = AppStyleDefaults.SpacingLarge))
+
+                if (uiState.stages.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(AppStyleDefaults.SpacingLarge),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.add_edit_goal_no_stages_message),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    Column {
+                        uiState.stages.forEach { goalStage ->
+                            GoalStageItem(
+                                goalStage = goalStage,
+                                onEditClick = { addEditGoalViewModel.onEditStageClicked(goalStage) },
+                                onAddRepsClick = { addEditGoalViewModel.onAddRepsClicked(goalStage) }
+                            )
+                        }
                     }
                 }
             }

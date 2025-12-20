@@ -7,21 +7,32 @@ import com.princelumpy.breakvault.data.local.entity.SavedCombo
 import com.princelumpy.breakvault.data.repository.SavedComboRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class AddEditComboUiState(
-    val comboId: String? = null,
+// State for the user's direct inputs.
+data class UserInputs(
     val comboName: String = "",
     val selectedMoves: List<String> = emptyList(),
+    val searchText: String = ""
+)
+
+// State for transient UI events like dialogs or dropdowns.
+data class DialogState(
+    val dropdownExpanded: Boolean = false
+)
+
+// The final, combined state for the UI to consume.
+data class AddEditComboUiState(
+    val comboId: String? = null,
     val allMoves: List<Move> = emptyList(),
-    val searchText: String = "",
-    val expanded: Boolean = false,
+    val userInputs: UserInputs = UserInputs(),
+    val dialogState: DialogState = DialogState(),
     val isNewCombo: Boolean = true
 )
 
@@ -30,87 +41,114 @@ class AddEditComboViewModel @Inject constructor(
     private val savedComboRepository: SavedComboRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(AddEditComboUiState())
-    val uiState: StateFlow<AddEditComboUiState> = _uiState.asStateFlow()
+    // Separate state flows for each concern.
+    private val _userInputs = MutableStateFlow(UserInputs())
+    private val _dialogState = MutableStateFlow(DialogState())
+    private val _metadata =
+        MutableStateFlow<Pair<String?, Boolean>>(null to true) // Pair<comboId, isNewCombo>
 
-    init {
-        // Collect the flow of all moves from the repository
-        savedComboRepository.getAllMoves()
-            .onEach { moves ->
-                _uiState.update { it.copy(allMoves = moves) }
-            }.launchIn(viewModelScope)
-    }
+    val uiState: StateFlow<AddEditComboUiState> = combine(
+        savedComboRepository.getAllMoves(),
+        _userInputs,
+        _dialogState,
+        _metadata
+    ) { allMoves, userInputs, dialogState, metadata ->
+        AddEditComboUiState(
+            comboId = metadata.first,
+            isNewCombo = metadata.second,
+            allMoves = allMoves,
+            userInputs = userInputs,
+            dialogState = dialogState
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = AddEditComboUiState()
+    )
 
     fun loadCombo(comboId: String?) {
         if (comboId == null) {
-            _uiState.update { AddEditComboUiState(allMoves = it.allMoves) } // Keep the loaded moves
+            // New combo: Reset state to defaults.
+            _metadata.value = null to true
+            _userInputs.value = UserInputs()
             return
         }
 
+        // Existing combo: Load from repository.
         viewModelScope.launch {
             val comboToEdit = savedComboRepository.getSavedComboById(comboId)
             if (comboToEdit != null) {
-                _uiState.update {
-                    it.copy(
-                        comboId = comboId,
-                        comboName = comboToEdit.name,
-                        selectedMoves = comboToEdit.moves,
-                        isNewCombo = false
-                    )
-                }
+                _userInputs.value = UserInputs(
+                    comboName = comboToEdit.name,
+                    selectedMoves = comboToEdit.moves
+                )
+                _metadata.value = comboId to false
             }
         }
     }
 
+    // --- User Input Handlers ---
+
     fun onComboNameChange(newName: String) {
         if (newName.length <= 30) {
-            _uiState.update { it.copy(comboName = newName) }
+            _userInputs.update { it.copy(comboName = newName) }
         }
     }
 
     fun onSearchTextChange(newText: String) {
-        if (newText.length <= 50) {
-            _uiState.update { it.copy(searchText = newText, expanded = true) }
-        }
-    }
-
-    fun onExpandedChange(expanded: Boolean) {
-        _uiState.update { it.copy(expanded = expanded) }
+        _userInputs.update { it.copy(searchText = newText) }
+        // Also expand the dropdown when the user starts typing.
+        _dialogState.update { it.copy(dropdownExpanded = true) }
     }
 
     fun addMoveToCombo(move: String) {
-        val currentMoves = _uiState.value.selectedMoves.toMutableList()
-        currentMoves.add(move)
-        _uiState.update { it.copy(selectedMoves = currentMoves, searchText = "", expanded = false) }
+        _userInputs.update {
+            it.copy(
+                selectedMoves = it.selectedMoves + move,
+                searchText = "" // Clear search text after selection
+            )
+        }
+        // Hide dropdown after selection.
+        _dialogState.update { it.copy(dropdownExpanded = false) }
     }
 
     fun removeMoveFromCombo(index: Int) {
-        val currentMoves = _uiState.value.selectedMoves.toMutableList()
-        currentMoves.removeAt(index)
-        _uiState.update { it.copy(selectedMoves = currentMoves) }
+        _userInputs.update {
+            val newSelectedMoves = it.selectedMoves.toMutableList().apply { removeAt(index) }
+            it.copy(selectedMoves = newSelectedMoves)
+        }
     }
 
+    // --- Dialog State Handlers ---
+
+    fun onExpandedChange(expanded: Boolean) {
+        _dialogState.update { it.copy(dropdownExpanded = expanded) }
+    }
+
+    // --- Data Operation Handlers ---
+
     fun saveCombo(onSuccess: () -> Unit) {
-        val currentUiState = _uiState.value
-        if (currentUiState.comboName.isNotBlank() && currentUiState.selectedMoves.isNotEmpty()) {
+        val currentUiState = uiState.value
+        val inputs = currentUiState.userInputs
+
+        if (inputs.comboName.isNotBlank() && inputs.selectedMoves.isNotEmpty()) {
             viewModelScope.launch {
                 if (currentUiState.isNewCombo) {
                     savedComboRepository.insertSavedCombo(
                         SavedCombo(
-                            name = currentUiState.comboName,
-                            moves = currentUiState.selectedMoves
+                            name = inputs.comboName,
+                            moves = inputs.selectedMoves
                         )
                     )
                 } else {
                     savedComboRepository.updateSavedCombo(
                         currentUiState.comboId!!,
-                        currentUiState.comboName,
-                        currentUiState.selectedMoves
+                        inputs.comboName,
+                        inputs.selectedMoves
                     )
                 }
                 onSuccess()
             }
         }
     }
-    // onCleared() is no longer needed
 }

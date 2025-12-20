@@ -39,7 +39,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -49,7 +48,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.ui.theme.ComboGeneratorTheme
 
@@ -60,16 +59,21 @@ fun AddEditMoveScreen(
     moveId: String?,
     moveViewModel: AddEditMoveViewModel = hiltViewModel()
 ) {
-    val uiState by moveViewModel.uiState.collectAsState()
+    // UPDATED: Use collectAsStateWithLifecycle for better lifecycle management.
+    val uiState by moveViewModel.uiState.collectAsStateWithLifecycle()
     val focusManager = LocalFocusManager.current
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Create convenience variables for cleaner access.
+    val userInputs = uiState.userInputs
+    val dialogState = uiState.dialogState
 
     LaunchedEffect(key1 = moveId) {
         moveViewModel.loadMove(moveId)
     }
 
-    LaunchedEffect(uiState.snackbarMessage) {
-        uiState.snackbarMessage?.let {
+    LaunchedEffect(dialogState.snackbarMessage) {
+        dialogState.snackbarMessage?.let {
             snackbarHostState.showSnackbar(it)
             moveViewModel.onSnackbarMessageShown()
         }
@@ -124,7 +128,8 @@ fun AddEditMoveScreen(
             verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
         ) {
             OutlinedTextField(
-                value = uiState.moveName,
+                // UPDATED: Access state from userInputs
+                value = userInputs.moveName,
                 onValueChange = { moveViewModel.onMoveNameChange(it) },
                 label = { Text(stringResource(id = R.string.add_edit_move_move_name_label)) },
                 modifier = Modifier.fillMaxWidth(),
@@ -137,7 +142,8 @@ fun AddEditMoveScreen(
                 stringResource(id = R.string.add_edit_move_select_tags_label),
                 style = MaterialTheme.typography.titleMedium
             )
-            if (uiState.allTags.isEmpty() && uiState.newTagName.isBlank()) {
+            // UPDATED: Access state from userInputs
+            if (uiState.allTags.isEmpty() && userInputs.newTagName.isBlank()) {
                 Text(
                     stringResource(id = R.string.add_edit_move_no_tags_available_message),
                     style = MaterialTheme.typography.bodySmall
@@ -149,11 +155,14 @@ fun AddEditMoveScreen(
                 verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)
             ) {
                 uiState.allTags.forEach { tag ->
+                    // UPDATED: Check for tag ID in userInputs.selectedTags
+                    val isSelected = userInputs.selectedTags.contains(tag.id)
                     FilterChip(
-                        selected = uiState.selectedTags.any { it.id == tag.id },
-                        onClick = { moveViewModel.onTagSelected(tag) },
+                        selected = isSelected,
+                        // UPDATED: Pass the tag's ID instead of the object
+                        onClick = { moveViewModel.onTagSelected(tag.id) },
                         label = { Text(tag.name) },
-                        leadingIcon = if (uiState.selectedTags.any { it.id == tag.id }) {
+                        leadingIcon = if (isSelected) {
                             {
                                 Icon(
                                     Icons.Filled.Done,
@@ -180,7 +189,8 @@ fun AddEditMoveScreen(
                 horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
             ) {
                 OutlinedTextField(
-                    value = uiState.newTagName,
+                    // UPDATED: Access state from userInputs
+                    value = userInputs.newTagName,
                     onValueChange = { moveViewModel.onNewTagNameChange(it) },
                     label = { Text(stringResource(id = R.string.add_edit_move_new_tag_name_label)) },
                     modifier = Modifier.weight(1f),
@@ -196,6 +206,7 @@ fun AddEditMoveScreen(
     }
 }
 
+// Previews remain the same as they don't depend on internal ViewModel logic.
 @Preview(showBackground = true, name = "Add Mode")
 @Composable
 fun AddEditMoveScreenPreview_AddMode() {

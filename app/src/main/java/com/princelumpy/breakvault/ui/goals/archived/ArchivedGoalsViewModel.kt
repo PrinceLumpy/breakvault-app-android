@@ -15,15 +15,20 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * UI State for the Archived Goals screen.
- * @param archivedGoals The list of goals that have been archived.
- * @param goalToUnarchive The goal selected for the unarchive confirmation dialog.
- * @param goalToDelete The goal selected for the delete confirmation dialog.
+ * State to manage which dialogs are shown.
+ * This holds the goal currently being considered for an action.
+ */
+data class DialogState(
+    val goalToUnarchive: GoalWithStages? = null,
+    val goalToDelete: GoalWithStages? = null
+)
+
+/**
+ * The final, combined state for the UI to consume.
  */
 data class ArchivedGoalsUiState(
     val archivedGoals: List<GoalWithStages> = emptyList(),
-    val goalToUnarchive: GoalWithStages? = null,
-    val goalToDelete: GoalWithStages? = null
+    val dialogState: DialogState = DialogState()
 )
 
 @HiltViewModel
@@ -31,19 +36,17 @@ class ArchivedGoalsViewModel @Inject constructor(
     private val goalRepository: GoalRepository
 ) : ViewModel() {
 
-    private val _goalToUnarchive = MutableStateFlow<GoalWithStages?>(null)
-    private val _goalToDelete = MutableStateFlow<GoalWithStages?>(null)
+    // Single source of truth for all dialog-related states.
+    private val _dialogState = MutableStateFlow(DialogState())
 
     /** The single source of truth for the UI's state, created by combining multiple flows. */
     val uiState: StateFlow<ArchivedGoalsUiState> = combine(
         goalRepository.getArchivedGoalsWithStages(),
-        _goalToUnarchive,
-        _goalToDelete
-    ) { archivedGoals, goalToUnarchive, goalToDelete ->
+        _dialogState
+    ) { archivedGoals, dialogState ->
         ArchivedGoalsUiState(
             archivedGoals = archivedGoals,
-            goalToUnarchive = goalToUnarchive,
-            goalToDelete = goalToDelete
+            dialogState = dialogState
         )
     }.stateIn(
         scope = viewModelScope,
@@ -55,19 +58,22 @@ class ArchivedGoalsViewModel @Inject constructor(
 
     /** Shows the confirmation dialog for unarchiving a goal. */
     fun onGoalUnarchiveClicked(goal: GoalWithStages) {
-        _goalToUnarchive.value = goal
+        _dialogState.update { it.copy(goalToUnarchive = goal) }
     }
 
     /** Cancels the unarchive action and hides the dialog. */
     fun onCancelGoalUnarchive() {
-        _goalToUnarchive.value = null
+        _dialogState.update { it.copy(goalToUnarchive = null) }
     }
 
     /** Confirms the unarchive action and updates the goal. */
     fun onConfirmGoalUnarchive() {
-        _goalToUnarchive.value?.let { goalToUnarchive ->
+        _dialogState.value.goalToUnarchive?.let { goalToUnarchive ->
             viewModelScope.launch {
-                val goal = goalToUnarchive.goal.copy(isArchived = false)
+                val goal = goalToUnarchive.goal.copy(
+                    isArchived = false,
+                    lastUpdated = System.currentTimeMillis()
+                )
                 goalRepository.updateGoal(goal)
                 // Hide the dialog after the operation
                 onCancelGoalUnarchive()
@@ -79,24 +85,22 @@ class ArchivedGoalsViewModel @Inject constructor(
 
     /** Shows the confirmation dialog for deleting a goal. */
     fun onGoalDeleteClicked(goal: GoalWithStages) {
-        _goalToDelete.value = goal
+        _dialogState.update { it.copy(goalToDelete = goal) }
     }
 
     /** Cancels the delete action and hides the dialog. */
     fun onCancelGoalDelete() {
-        _goalToDelete.value = null
+        _dialogState.update { it.copy(goalToDelete = null) }
     }
 
     /** Confirms the deletion of the selected goal. */
     fun onConfirmGoalDelete() {
-        _goalToDelete.value?.let { goalToDelete ->
+        _dialogState.value.goalToDelete?.let { goalToDelete ->
             viewModelScope.launch {
-                goalRepository.deleteGoal(goalToDelete.goal)
+                goalRepository.deleteGoalAndStages(goalToDelete.goal.id)
                 // Hide the dialog after the operation
                 onCancelGoalDelete()
             }
         }
     }
-
-    // The onCleared() method is no longer needed.
 }

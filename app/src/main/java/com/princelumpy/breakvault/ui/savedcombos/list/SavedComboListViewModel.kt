@@ -15,13 +15,19 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * UI state for the Saved Combos screen.
- * @param savedCombos The list of all saved combos.
- * @param comboToDelete The specific combo that the user has prompted to delete, or null.
+ * State to manage which dialogs are shown.
+ * This holds the combo currently being considered for deletion.
+ */
+data class DialogState(
+    val comboToDelete: SavedCombo? = null
+)
+
+/**
+ * The final, combined state for the UI to consume.
  */
 data class SavedCombosUiState(
     val savedCombos: List<SavedCombo> = emptyList(),
-    val comboToDelete: SavedCombo? = null
+    val dialogState: DialogState = DialogState()
 )
 
 @HiltViewModel
@@ -29,16 +35,17 @@ class SavedComboListViewModel @Inject constructor(
     private val savedComboRepository: SavedComboRepository
 ) : ViewModel() {
 
-    private val _comboToDelete = MutableStateFlow<SavedCombo?>(null)
+    // Single source of truth for all dialog-related states.
+    private val _dialogState = MutableStateFlow(DialogState())
 
-    /** The single source of truth for the UI's state. */
+    /** The single source of truth for the UI's state, created by combining multiple flows. */
     val uiState: StateFlow<SavedCombosUiState> = combine(
         savedComboRepository.getSavedCombos(),
-        _comboToDelete
-    ) { combos, comboToDelete ->
+        _dialogState
+    ) { combos, dialogState ->
         SavedCombosUiState(
             savedCombos = combos,
-            comboToDelete = comboToDelete
+            dialogState = dialogState
         )
     }.stateIn(
         scope = viewModelScope,
@@ -48,20 +55,20 @@ class SavedComboListViewModel @Inject constructor(
 
     /** Shows the confirmation dialog for deleting a combo. */
     fun onShowDeleteDialog(savedCombo: SavedCombo) {
-        _comboToDelete.value = savedCombo
+        _dialogState.update { it.copy(comboToDelete = savedCombo) }
     }
 
     /** Cancels the delete action and hides the dialog. */
     fun onCancelDelete() {
-        _comboToDelete.value = null
+        _dialogState.update { it.copy(comboToDelete = null) }
     }
 
     /** Confirms the deletion of the selected combo. */
     fun onConfirmDelete() {
-        _comboToDelete.value?.let { combo ->
+        _dialogState.value.comboToDelete?.let { combo ->
             viewModelScope.launch {
                 savedComboRepository.deleteSavedCombo(combo.id)
-                // The dialog will hide automatically as _comboToDelete is part of the combine
+                // Hide the dialog after the operation is complete.
                 onCancelDelete()
             }
         }

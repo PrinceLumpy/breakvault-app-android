@@ -10,17 +10,15 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.ui.theme.ComboGeneratorTheme
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,27 +26,21 @@ fun SettingsScreen(
     onNavigateUp: () -> Unit,
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
-    var showResetConfirmDialog by remember { mutableStateOf(false) }
+    // UPDATED: Use collectAsStateWithLifecycle for better lifecycle management.
+    val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
-    // Listen for one-time events from the ViewModel
-    LaunchedEffect(Unit) {
-        settingsViewModel.uiEvent.collectLatest { event ->
-            when (event) {
-                is UiEvent.ShowSnackbar -> {
-                    scope.launch {
-                        snackbarHostState.showSnackbar(event.message)
-                    }
-                }
-            }
+    // UPDATED: LaunchedEffect now reacts to changes in the snackbarMessage from the UiState.
+    LaunchedEffect(uiState.snackbarMessage) {
+        uiState.snackbarMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            settingsViewModel.onSnackbarShown() // Notify ViewModel that snackbar was shown
         }
     }
 
     val exportDataLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json"),
         onResult = { uri: Uri? ->
-            // Just notify the ViewModel. The logic is handled there.
             uri?.let { settingsViewModel.exportData(it) }
         }
     )
@@ -56,7 +48,6 @@ fun SettingsScreen(
     val importDataLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
         onResult = { uri: Uri? ->
-            // Just notify the ViewModel.
             uri?.let { settingsViewModel.importData(it) }
         }
     )
@@ -98,7 +89,8 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             OutlinedButton(
-                onClick = { showResetConfirmDialog = true },
+                // UPDATED: onClick now calls the ViewModel function.
+                onClick = { settingsViewModel.onResetDatabaseClicked() },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
             ) {
@@ -107,22 +99,23 @@ fun SettingsScreen(
         }
     }
 
-    if (showResetConfirmDialog) {
+    // UPDATED: Dialog visibility is now controlled by the UiState from the ViewModel.
+    if (uiState.showResetConfirmDialog) {
         ResetConfirmationDialog(
             onConfirm = {
                 Log.i("SettingsScreen", "Database reset confirmed")
-                // Just notify the ViewModel.
-                settingsViewModel.resetDatabase()
-                showResetConfirmDialog = false
+                // UPDATED: onConfirm now calls the ViewModel function.
+                settingsViewModel.onResetDatabaseConfirm()
             },
             onDismiss = {
-                showResetConfirmDialog = false
+                // UPDATED: onDismiss now calls the ViewModel function.
+                settingsViewModel.onResetDatabaseDismiss()
             }
         )
     }
 }
 
-// Private helper composables remain unchanged as they are pure UI
+// Private helper composable remain unchanged as they are pure UI
 @Composable
 private fun SettingsButton(text: String, onClick: () -> Unit) {
     Button(
@@ -162,9 +155,6 @@ private fun ResetConfirmationDialog(
 @Composable
 fun SettingsScreenPreview() {
     ComboGeneratorTheme {
-        // Your preview can be simplified as it doesn't need a real ViewModel
-        // You may need a Fake ViewModel implementation if you want to preview UI states
-        // For now, this will render the initial layout.
         SettingsScreen(onNavigateUp = {})
     }
 }

@@ -46,7 +46,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,7 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.navigation.NavController
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.MoveTag
 
@@ -65,11 +64,16 @@ fun ComboGeneratorScreen(
     onNavigateUp: () -> Unit,
     comboGeneratorViewModel: ComboGeneratorViewModel = hiltViewModel()
 ) {
-    val uiState by comboGeneratorViewModel.uiState.collectAsState()
+    val uiState by comboGeneratorViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(uiState.snackbarMessage) {
-        uiState.snackbarMessage?.let {
+    // Create convenience variables for cleaner access
+    val settings = uiState.settings
+    val generatedCombo = uiState.generatedCombo
+    val dialogAndMessages = uiState.dialogAndMessages
+
+    LaunchedEffect(dialogAndMessages.snackbarMessage) {
+        dialogAndMessages.snackbarMessage?.let {
             snackbarHostState.showSnackbar(it)
             comboGeneratorViewModel.onSnackbarShown()
         }
@@ -91,7 +95,8 @@ fun ComboGeneratorScreen(
             )
         },
         floatingActionButton = {
-            if (uiState.currentGeneratedMoves.isNotEmpty()) {
+            // UPDATED: Access generatedCombo state
+            if (generatedCombo.moves.isNotEmpty()) {
                 ExtendedFloatingActionButton(
                     onClick = { comboGeneratorViewModel.saveCombo() },
                     icon = {
@@ -114,28 +119,30 @@ fun ComboGeneratorScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
         ) {
-            TabRow(selectedTabIndex = uiState.currentMode.ordinal) {
+            // UPDATED: Access settings state
+            TabRow(selectedTabIndex = settings.currentMode.ordinal) {
                 GenerationMode.entries.forEach { mode ->
                     Tab(
-                        selected = uiState.currentMode == mode,
+                        selected = settings.currentMode == mode,
                         onClick = { comboGeneratorViewModel.onModeChange(mode) },
                         text = { Text(mode.name) }
                     )
                 }
             }
 
-            when (uiState.currentMode) {
+            // UPDATED: Access settings state
+            when (settings.currentMode) {
                 GenerationMode.Random -> {
                     RandomModeUI(
                         allMoveTags = uiState.allTags,
-                        selectedMoveTags = uiState.selectedTags,
+                        selectedMoveTags = settings.selectedTags,
                         onTagsChange = { comboGeneratorViewModel.onTagsChange(it) },
-                        selectedLength = uiState.selectedLength,
+                        selectedLength = settings.selectedLength,
                         onLengthChange = { comboGeneratorViewModel.onLengthChange(it) },
-                        lengthDropdownExpanded = uiState.lengthDropdownExpanded,
+                        lengthDropdownExpanded = dialogAndMessages.lengthDropdownExpanded,
                         onDropdownExpand = { comboGeneratorViewModel.onDropdownExpand(it) },
                         lengthOptions = listOf(null) + (3..8).toList(),
-                        allowRepeats = uiState.allowRepeats,
+                        allowRepeats = settings.allowRepeats,
                         onAllowRepeatsChange = { comboGeneratorViewModel.onAllowRepeatsChange(it) }
                     )
                 }
@@ -143,7 +150,7 @@ fun ComboGeneratorScreen(
                 GenerationMode.Structured -> {
                     StructuredModeUI(
                         allMoveTags = uiState.allTags,
-                        moveTagSequence = uiState.structuredMoveTagSequence,
+                        moveTagSequence = settings.structuredMoveTagSequence,
                         onAddTagToSequence = { comboGeneratorViewModel.onAddTagToSequence(it) },
                         onRemoveLastTagFromSequence = { comboGeneratorViewModel.onRemoveLastTagFromSequence() }
                     )
@@ -155,7 +162,8 @@ fun ComboGeneratorScreen(
             Button(
                 onClick = { comboGeneratorViewModel.generateCombo() },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = (uiState.currentMode == GenerationMode.Random && uiState.selectedTags.isNotEmpty()) || (uiState.currentMode == GenerationMode.Structured && uiState.structuredMoveTagSequence.isNotEmpty())
+                // UPDATED: Access settings state
+                enabled = (settings.currentMode == GenerationMode.Random && settings.selectedTags.isNotEmpty()) || (settings.currentMode == GenerationMode.Structured && settings.structuredMoveTagSequence.isNotEmpty())
             ) {
                 Text(stringResource(id = R.string.combo_generator_generate_combo_button))
             }
@@ -172,7 +180,8 @@ fun ComboGeneratorScreen(
                     .defaultMinSize(minHeight = AppStyleDefaults.SpacingExtraLarge * 2)
             ) {
                 Text(
-                    text = uiState.generatedComboText,
+                    // UPDATED: Access generatedCombo state
+                    text = generatedCombo.text,
                     modifier = Modifier.padding(AppStyleDefaults.SpacingLarge),
                     style = MaterialTheme.typography.bodyLarge
                 )
@@ -180,11 +189,12 @@ fun ComboGeneratorScreen(
         }
     }
 
-    if (uiState.showLengthWarningDialog) {
+    // UPDATED: Access dialogAndMessages state
+    if (dialogAndMessages.showLengthWarningDialog) {
         AlertDialog(
             onDismissRequest = { comboGeneratorViewModel.onDismissLengthWarning() },
             title = { Text(stringResource(id = R.string.combo_generator_length_warning_dialog_title)) },
-            text = { Text(uiState.warningDialogMessage) },
+            text = { Text(dialogAndMessages.warningDialogMessage) },
             confirmButton = {
                 TextButton(onClick = { comboGeneratorViewModel.onDismissLengthWarning() }) {
                     Text(stringResource(id = R.string.common_ok))
@@ -357,41 +367,42 @@ fun StructuredModeUI(
         // Buttons to add or remove tags
         Row(
             horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium),
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth()
         ) {
             Button(
                 onClick = {
                     selectedTagForDropdown?.let {
                         onAddTagToSequence(it)
-                        // Optional: Clear selection after adding
-                        // selectedTagForDropdown = null
                     }
                 },
-                enabled = selectedTagForDropdown != null && moveTagSequence.size < 10 // Limit sequence length
+                enabled = selectedTagForDropdown != null,
+                modifier = Modifier.weight(1f)
             ) {
-                Text(stringResource(id = R.string.combo_generator_add_to_sequence_button))
+                Text(stringResource(id = R.string.combo_generator_add_tag_button))
             }
-
-            if (moveTagSequence.isNotEmpty()) {
-                TextButton(onClick = { onRemoveLastTagFromSequence() }) {
-                    Text(stringResource(id = R.string.common_undo))
-                }
+            Button(
+                onClick = onRemoveLastTagFromSequence,
+                enabled = moveTagSequence.isNotEmpty(),
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(stringResource(id = R.string.combo_generator_remove_last_tag_button))
             }
         }
 
-        // Display for the current sequence
-        if (moveTagSequence.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingSmall))
+        // Display the current sequence
+        Text(
+            stringResource(id = R.string.combo_generator_current_sequence_label),
+            style = MaterialTheme.typography.titleSmall
+        )
+        Card(modifier = Modifier.fillMaxWidth()) {
             Text(
-                stringResource(id = R.string.combo_generator_current_sequence_label),
-                style = MaterialTheme.typography.titleMedium
+                text = if (moveTagSequence.isEmpty()) {
+                    stringResource(id = R.string.combo_generator_sequence_empty_message)
+                } else {
+                    moveTagSequence.joinToString(" -> ") { it.name }
+                },
+                modifier = Modifier.padding(AppStyleDefaults.SpacingLarge)
             )
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = moveTagSequence.joinToString(" -> ") { it.name },
-                    modifier = Modifier.padding(AppStyleDefaults.SpacingLarge)
-                )
-            }
         }
     }
 }

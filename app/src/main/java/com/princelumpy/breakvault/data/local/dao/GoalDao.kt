@@ -31,21 +31,16 @@ interface GoalDao {
     fun getAllActiveGoalsWithStages(): Flow<List<GoalWithStages>>
 
     @Transaction
-    @Query("SELECT * FROM goals WHERE id = :goalId")
-    suspend fun getGoalWithStages(goalId: String): GoalWithStages?
-
-    @Transaction
     @Query("SELECT * FROM goals WHERE isArchived = 1 ORDER BY lastUpdated DESC")
     fun getArchivedGoalsWithStages(): Flow<List<GoalWithStages>>
 
-    @Query("SELECT * FROM goals WHERE isArchived = 0 ORDER BY lastUpdated DESC")
-    fun getAllActiveGoals(): Flow<List<Goal>>
+    // UPDATED: Changed from suspend fun to return a Flow for reactive updates
+    @Transaction
+    @Query("SELECT * FROM goals WHERE id = :goalId")
+    fun getGoalWithStages(goalId: String): Flow<GoalWithStages?>
 
     @Query("SELECT * FROM goals WHERE id = :goalId")
-    fun getGoal(goalId: String): Flow<Goal?>
-
-    @Query("SELECT * FROM goals WHERE id = :goalId")
-    fun getGoalById(goalId: String): Goal?
+    suspend fun getGoalById(goalId: String): Goal? // Changed from Flow to suspend fun
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGoal(goal: Goal)
@@ -60,10 +55,7 @@ interface GoalDao {
     fun getStagesForGoal(goalId: String): Flow<List<GoalStage>>
 
     @Query("SELECT * FROM goal_stages WHERE id = :stageId")
-    suspend fun getGoalStage(stageId: String): GoalStage?
-
-    @Query("SELECT * FROM goal_stages WHERE id = :stageId")
-    fun getGoalStageById(stageId: String): GoalStage?
+    suspend fun getGoalStageById(stageId: String): GoalStage? // Renamed for clarity from getGoalStage
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertGoalStage(stage: GoalStage)
@@ -76,4 +68,19 @@ interface GoalDao {
 
     @Query("DELETE FROM goal_stages WHERE goalId = :goalId")
     suspend fun deleteAllStagesForGoal(goalId: String)
+
+    // ADDED: Transaction to ensure atomic deletion of a goal and its stages
+    @Transaction
+    suspend fun deleteGoalAndStages(goalId: String) {
+        // First, get the goal to delete it by object, which cascades deletes if set up,
+        // or just to ensure it exists before deleting its children.
+        getGoalById(goalId)?.let {
+            deleteAllStagesForGoal(goalId)
+            deleteGoal(it)
+        }
+    }
+
+    // ADDED: Query to archive a goal
+    @Query("UPDATE goals SET isArchived = 1, lastUpdated = :timestamp WHERE id = :goalId")
+    suspend fun archiveGoal(goalId: String, timestamp: Long = System.currentTimeMillis())
 }

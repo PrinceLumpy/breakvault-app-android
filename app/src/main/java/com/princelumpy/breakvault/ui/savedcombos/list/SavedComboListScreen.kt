@@ -1,8 +1,8 @@
 package com.princelumpy.breakvault.ui.savedcombos.list
 
+import AppStyleDefaults
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,7 +30,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,22 +37,23 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.SavedCombo
 import com.princelumpy.breakvault.ui.theme.ComboGeneratorTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SavedCombosScreen(
+fun SavedComboListScreen(
     onNavigateToAddEditCombo: (String?) -> Unit,
     savedComboListViewModel: SavedComboListViewModel = hiltViewModel()
 ) {
-    val uiState by savedComboListViewModel.uiState.collectAsState()
+    // UPDATED: Use collectAsStateWithLifecycle
+    val uiState by savedComboListViewModel.uiState.collectAsStateWithLifecycle()
 
-    SavedCombosContent(
+    SavedComboListContent(
         uiState = uiState,
         onNavigateToAddEditCombo = onNavigateToAddEditCombo,
         onShowDeleteDialog = savedComboListViewModel::onShowDeleteDialog,
@@ -64,13 +64,16 @@ fun SavedCombosScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SavedCombosContent(
+fun SavedComboListContent(
     uiState: SavedCombosUiState,
     onNavigateToAddEditCombo: (String?) -> Unit,
     onShowDeleteDialog: (SavedCombo) -> Unit,
     onCancelDelete: () -> Unit,
     onConfirmDelete: () -> Unit
 ) {
+    // Create a convenience variable for cleaner access
+    val dialogState = uiState.dialogState
+
     Scaffold(
         topBar = {
             TopAppBar(title = { Text(stringResource(id = R.string.saved_combos_screen_title)) })
@@ -91,7 +94,7 @@ fun SavedCombosContent(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(16.dp),
+                    .padding(AppStyleDefaults.SpacingLarge),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -105,12 +108,12 @@ fun SavedCombosContent(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(vertical = 8.dp)
+                    modifier = Modifier.padding(vertical = AppStyleDefaults.SpacingMedium)
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingLarge))
                 Button(onClick = { onNavigateToAddEditCombo(null) }) {
                     Icon(Icons.Filled.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.padding(4.dp))
+                    Spacer(modifier = Modifier.padding(AppStyleDefaults.SpacingSmall))
                     Text(stringResource(id = R.string.create_combo_button_text))
                 }
             }
@@ -119,8 +122,8 @@ fun SavedCombosContent(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                contentPadding = AppStyleDefaults.LazyListPadding,
+                verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
             ) {
                 items(
                     uiState.savedCombos,
@@ -138,7 +141,8 @@ fun SavedCombosContent(
         }
     }
 
-    uiState.comboToDelete?.let { combo ->
+    // UPDATED: Access the combo from the nested dialogState object
+    dialogState.comboToDelete?.let { combo ->
         AlertDialog(
             onDismissRequest = { onCancelDelete() },
             title = { Text(stringResource(id = R.string.common_confirm_deletion_title)) },
@@ -176,11 +180,14 @@ fun SavedComboItem(
     Card(
         modifier = Modifier
             .fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = AppStyleDefaults.SpacingSmall)
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(
+                    horizontal = AppStyleDefaults.SpacingLarge,
+                    vertical = AppStyleDefaults.SpacingMedium
+                )
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -191,7 +198,7 @@ fun SavedComboItem(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingSmall))
                 Text(
                     text = savedCombo.moves.joinToString(separator = " -> "),
                     style = MaterialTheme.typography.bodyMedium,
@@ -202,7 +209,7 @@ fun SavedComboItem(
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(start = 8.dp)
+                modifier = Modifier.padding(start = AppStyleDefaults.SpacingMedium)
             ) {
                 IconButton(onClick = onEditClick) {
                     Icon(
@@ -225,16 +232,24 @@ fun SavedComboItem(
 
 @Preview(showBackground = true)
 @Composable
-fun SavedCombosScreenPreview() {
+fun SavedComboListScreenPreview() {
     val previewUiState = SavedCombosUiState(
         savedCombos = listOf(
-            SavedCombo(id = "1", name = "Windmill Freeze", moves = listOf("Windmill", "Baby Freeze")),
-            SavedCombo(id = "2", name = "Flare Swipe", moves = listOf("Flare", "Swipe", "Elbow Freeze")),
+            SavedCombo(
+                id = "1",
+                name = "Windmill Freeze",
+                moves = listOf("Windmill", "Baby Freeze")
+            ),
+            SavedCombo(
+                id = "2",
+                name = "Flare Swipe",
+                moves = listOf("Flare", "Swipe", "Elbow Freeze")
+            ),
         )
     )
 
     ComboGeneratorTheme {
-        SavedCombosContent(
+        SavedComboListContent(
             uiState = previewUiState,
             onNavigateToAddEditCombo = {},
             onShowDeleteDialog = {},

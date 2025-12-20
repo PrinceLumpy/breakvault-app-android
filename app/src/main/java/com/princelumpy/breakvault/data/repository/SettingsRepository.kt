@@ -1,14 +1,21 @@
 package com.princelumpy.breakvault.data.repository
 
+import android.content.Context
+import android.net.Uri
 import androidx.room.withTransaction
 import com.princelumpy.breakvault.data.local.database.AppDB
 import com.princelumpy.breakvault.data.service.export.model.AppDataExport
+import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.BufferedReader
+import java.io.FileOutputStream
+import java.io.InputStreamReader
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class SettingsRepository @Inject constructor(
-    private val db: AppDB
+    private val db: AppDB,
+    @ApplicationContext private val context: Context // Injecting the Application Context
 ) {
     suspend fun getAppDataForExport(): AppDataExport {
         val moveDao = db.moveDao()
@@ -52,5 +59,23 @@ class SettingsRepository @Inject constructor(
 
     suspend fun resetDatabase() {
         db.clearAllTables()
+    }
+
+    // ADDED: Function to write data to a user-selected file URI.
+    fun writeDataToUri(uri: Uri, jsonString: String) {
+        context.contentResolver.openFileDescriptor(uri, "w")?.use { parcelFileDescriptor ->
+            FileOutputStream(parcelFileDescriptor.fileDescriptor).use { fileOutputStream ->
+                fileOutputStream.write(jsonString.toByteArray())
+            }
+        }
+    }
+
+    // ADDED: Function to read data from a user-selected file URI.
+    fun readDataFromUri(uri: Uri): String? {
+        return context.contentResolver.openInputStream(uri)?.use { inputStream ->
+            BufferedReader(InputStreamReader(inputStream)).use { reader ->
+                reader.readText()
+            }
+        }
     }
 }

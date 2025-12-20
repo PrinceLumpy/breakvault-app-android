@@ -4,27 +4,37 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.princelumpy.breakvault.data.local.entity.Move
 import com.princelumpy.breakvault.data.local.entity.MoveTag
-import com.princelumpy.breakvault.data.local.relation.MoveWithTags
 import com.princelumpy.breakvault.data.repository.MoveRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 
-data class AddEditMoveUiState(
-    val moveId: String? = null,
+// State for the user's direct text inputs.
+data class UserInputs(
     val moveName: String = "",
     val newTagName: String = "",
+    val selectedTags: Set<String> = emptySet()
+)
+
+// State for transient UI events like dialogs or snackbars.
+data class DialogState(
+    val snackbarMessage: String? = null
+)
+
+// The final, combined state for the UI to consume.
+data class AddEditMoveUiState(
+    val moveId: String? = null,
     val allTags: List<MoveTag> = emptyList(),
-    val selectedTags: Set<MoveTag> = emptySet(),
-    val snackbarMessage: String? = null,
+    val userInputs: UserInputs = UserInputs(),
+    val dialogState: DialogState = DialogState(),
     val isNewMove: Boolean = true
 )
 
@@ -33,135 +43,122 @@ class AddEditMoveViewModel @Inject constructor(
     private val moveRepository: MoveRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(AddEditMoveUiState())
-    val uiState: StateFlow<AddEditMoveUiState> = _uiState.asStateFlow()
+    // Separate state flows for each concern.
+    private val _userInputs = MutableStateFlow(UserInputs())
+    private val _dialogState = MutableStateFlow(DialogState())
+    private val _metadata = MutableStateFlow<Pair<String?, Boolean>>(null to true) // Pair<moveId, isNewMove>
 
-    private var newlyAddedTagName: String? = null
-    private val allTags: Flow<List<MoveTag>> = moveRepository.getAllTags()
-
-    init {
-        allTags.onEach { tags ->
-            _uiState.update { currentState ->
-                val newTagName = newlyAddedTagName
-                if (newTagName != null) {
-                    val newTagObject = tags.find { it.name.equals(newTagName, ignoreCase = true) }
-                    if (newTagObject != null) {
-                        newlyAddedTagName = null
-                        return@update currentState.copy(
-                            allTags = tags,
-                            selectedTags = currentState.selectedTags + newTagObject
-                        )
-                    }
-                }
-                currentState.copy(allTags = tags)
-            }
-        }.launchIn(viewModelScope)
-    }
+    val uiState: StateFlow<AddEditMoveUiState> = combine(
+        moveRepository.getAllTags(),
+        _userInputs,
+        _dialogState,
+        _metadata
+    ) { allTags, userInputs, dialogState, metadata ->
+        AddEditMoveUiState(
+            moveId = metadata.first,
+            allTags = allTags,
+            userInputs = userInputs,
+            dialogState = dialogState,
+            isNewMove = metadata.second
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = AddEditMoveUiState()
+    )
 
     fun loadMove(moveId: String?) {
         if (moveId == null) {
-            _uiState.value = AddEditMoveUiState()
+            _metadata.value = null to true
+            _userInputs.value = UserInputs()
             return
         }
 
         viewModelScope.launch {
-            val moveBeingEdited = getMoveForEditing(moveId)
-            if (moveBeingEdited != null) {
-                _uiState.update { currentState ->
-                    currentState.copy(
-                        moveId = moveId,
-                        moveName = moveBeingEdited.move.name,
-                        selectedTags = moveBeingEdited.moveTags.toSet(),
-                        isNewMove = false
-                    )
-                }
+            val moveWithTags = moveRepository.getMoveWithTags(moveId)
+            if (moveWithTags != null) {
+                _userInputs.value = UserInputs(
+                    moveName = moveWithTags.move.name,
+                    selectedTags = moveWithTags.moveTags.map { it.id }.toSet()
+                )
+                _metadata.value = moveId to false
             } else {
-                _uiState.update { it.copy(snackbarMessage = "Could not find move with ID $moveId") }
+                _dialogState.update { it.copy(snackbarMessage = "Could not find move with ID $moveId") }
             }
         }
     }
 
     fun onMoveNameChange(newName: String) {
         if (newName.length <= 100) {
-            _uiState.update { it.copy(moveName = newName) }
+            _userInputs.update { it.copy(moveName = newName) }
         }
     }
 
     fun onNewTagNameChange(newName: String) {
         if (newName.length <= 30) {
-            _uiState.update { it.copy(newTagName = newName) }
+            _userInputs.update { it.copy(newTagName = newName) }
         }
     }
 
-    fun onTagSelected(tag: MoveTag) {
-        val currentSelectedTags = _uiState.value.selectedTags
-        val newSelectedTags = if (currentSelectedTags.any { it.id == tag.id }) {
-            currentSelectedTags.filterNot { it.id == tag.id }.toSet()
-        } else {
-            currentSelectedTags + tag
+    fun onTagSelected(tagId: String) {
+        _userInputs.update { currentInputs ->
+            val newSelectedTags = if (tagId in currentInputs.selectedTags) {
+                currentInputs.selectedTags - tagId
+            } else {
+                currentInputs.selectedTags + tagId
+            }
+            currentInputs.copy(selectedTags = newSelectedTags)
         }
-        _uiState.update { it.copy(selectedTags = newSelectedTags) }
     }
 
     fun addTag() {
-        val newTagName = _uiState.value.newTagName.trim()
+        val newTagName = uiState.value.userInputs.newTagName.trim()
         if (newTagName.isNotBlank()) {
-            if (!_uiState.value.allTags.any { it.name.equals(newTagName, ignoreCase = true) }) {
-                newlyAddedTagName = newTagName
-                addTag(newTagName)
-                _uiState.update { it.copy(newTagName = "") }
+            // Use the most recent list of tags from the UI state to check for existence.
+            val allTagNames = uiState.value.allTags.map { it.name }
+            if (!allTagNames.any { it.equals(newTagName, ignoreCase = true) }) {
+                viewModelScope.launch {
+                    val newTagId = UUID.randomUUID().toString()
+                    moveRepository.insertMoveTag(MoveTag(id = newTagId, name = newTagName))
+                    // After inserting, update user inputs to clear the field and select the new tag.
+                    _userInputs.update {
+                        it.copy(
+                            newTagName = "",
+                            selectedTags = it.selectedTags + newTagId
+                        )
+                    }
+                }
             } else {
-                _uiState.update { it.copy(snackbarMessage = "Tag '$newTagName' already exists.") }
+                _dialogState.update { it.copy(snackbarMessage = "Tag '$newTagName' already exists.") }
             }
         }
     }
 
     fun saveMove(onSuccess: () -> Unit) {
-        val currentUiState = _uiState.value
-        if (currentUiState.moveName.isNotBlank()) {
+        val currentUiState = uiState.value
+        val inputs = currentUiState.userInputs
+        if (inputs.moveName.isBlank()) {
+            _dialogState.update { it.copy(snackbarMessage = "Move name cannot be blank.") }
+            return
+        }
+
+        viewModelScope.launch {
+            val selectedTagObjects = moveRepository.getAllTags().first()
+                .filter { it.id in inputs.selectedTags }
+
             if (currentUiState.isNewMove) {
-                addMove(currentUiState.moveName, currentUiState.selectedTags.toList())
+                val newMove = Move(id = UUID.randomUUID().toString(), name = inputs.moveName)
+                moveRepository.insertMoveWithTags(newMove, selectedTagObjects)
             } else {
-                updateMoveAndTags(
-                    currentUiState.moveId!!,
-                    currentUiState.moveName,
-                    currentUiState.selectedTags.toList()
-                )
+                currentUiState.moveId?.let { moveId ->
+                    moveRepository.updateMoveWithTags(moveId, inputs.moveName, selectedTagObjects)
+                }
             }
             onSuccess()
-        } else {
-            _uiState.update { it.copy(snackbarMessage = "Move name cannot be blank.") }
         }
     }
 
     fun onSnackbarMessageShown() {
-        _uiState.update { it.copy(snackbarMessage = null) }
-    }
-
-    private fun addMove(moveName: String, selectedMoveTags: List<MoveTag>) {
-        viewModelScope.launch {
-            val newMoveId = UUID.randomUUID().toString()
-            val move = Move(id = newMoveId, name = moveName)
-            moveRepository.insertMoveWithTags(move, selectedMoveTags)
-        }
-    }
-
-    private fun addTag(tagName: String) {
-        viewModelScope.launch {
-            moveRepository.insertMoveTag(MoveTag(id = UUID.randomUUID().toString(), name = tagName))
-        }
-    }
-
-    private suspend fun getMoveForEditing(moveId: String): MoveWithTags? =
-        moveRepository.getMoveWithTags(moveId)
-
-    private fun updateMoveAndTags(
-        moveId: String,
-        newName: String,
-        newSelectedMoveTags: List<MoveTag>
-    ) {
-        viewModelScope.launch {
-            moveRepository.updateMoveWithTags(moveId, newName, newSelectedMoveTags)
-        }
+        _dialogState.update { it.copy(snackbarMessage = null) }
     }
 }

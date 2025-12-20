@@ -1,4 +1,4 @@
-package com.princelumpy.breakvault.ui.battles.managetags
+package com.princelumpy.breakvault.ui.battlecombos.managetags // Corrected package name
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -6,22 +6,33 @@ import com.princelumpy.breakvault.data.local.entity.BattleTag
 import com.princelumpy.breakvault.data.repository.BattleRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 
-data class BattleTagListUiState(
-    val tags: List<BattleTag> = emptyList(),
-    val showAddDialog: Boolean = false,
-    val showEditDialog: BattleTag? = null,
-    val showDeleteDialog: BattleTag? = null,
+// State representing the user's direct inputs.
+data class UserInputs(
     val newTagName: String = "",
     val tagNameForEdit: String = ""
+)
+
+// State for transient UI events like showing dialogs.
+data class DialogState(
+    val showAddDialog: Boolean = false,
+    val tagForEditDialog: BattleTag? = null,
+    val tagForDeleteDialog: BattleTag? = null
+)
+
+// Final state for the UI, combining all data sources.
+data class BattleTagListUiState(
+    val tags: List<BattleTag> = emptyList(),
+    val userInputs: UserInputs = UserInputs(),
+    val dialogState: DialogState = DialogState()
 )
 
 @HiltViewModel
@@ -29,86 +40,102 @@ class BattleTagListViewModel @Inject constructor(
     private val battleRepository: BattleRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(BattleTagListUiState())
-    val uiState: StateFlow<BattleTagListUiState> = _uiState.asStateFlow()
+    // Private state flows for each distinct concern
+    private val _userInputs = MutableStateFlow(UserInputs())
+    private val _dialogState = MutableStateFlow(DialogState())
 
-    init {
-        // Use Flow and collect it within the viewModelScope
-        battleRepository.getAllTags()
-            .onEach { tags ->
-                _uiState.update { it.copy(tags = tags) }
-            }.launchIn(viewModelScope)
-    }
+    // The single source of truth for the UI
+    val uiState: StateFlow<BattleTagListUiState> = combine(
+        battleRepository.getAllTags(), // Data from repository
+        _userInputs,                   // User's text input
+        _dialogState                   // State of dialogs
+    ) { tags, userInputs, dialogState ->
+        BattleTagListUiState(
+            tags = tags,
+            userInputs = userInputs,
+            dialogState = dialogState
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000L),
+        initialValue = BattleTagListUiState()
+    )
 
-    fun onAddTagClicked() {
-        _uiState.update { it.copy(showAddDialog = true, newTagName = "") }
-    }
-
-    fun onAddTagDialogDismiss() {
-        _uiState.update { it.copy(showAddDialog = false) }
-    }
+    // --- User Input Handlers ---
 
     fun onNewTagNameChange(name: String) {
         if (name.length <= 30) {
-            _uiState.update { it.copy(newTagName = name) }
+            _userInputs.update { it.copy(newTagName = name) }
         }
-    }
-
-    fun onAddTag() {
-        val newTagName = _uiState.value.newTagName.trim()
-        if (newTagName.isNotBlank()) {
-            viewModelScope.launch {
-                val newBattleTag = BattleTag(name = newTagName, id = UUID.randomUUID().toString())
-                // Use repository to insert the tag
-                battleRepository.insertBattleTag(newBattleTag)
-                _uiState.update { it.copy(showAddDialog = false) }
-            }
-        }
-    }
-
-    fun onEditTagClicked(tag: BattleTag) {
-        _uiState.update { it.copy(showEditDialog = tag, tagNameForEdit = tag.name) }
-    }
-
-    fun onEditTagDialogDismiss() {
-        _uiState.update { it.copy(showEditDialog = null) }
     }
 
     fun onTagNameForEditChange(name: String) {
         if (name.length <= 30) {
-            _uiState.update { it.copy(tagNameForEdit = name) }
+            _userInputs.update { it.copy(tagNameForEdit = name) }
+        }
+    }
+
+    // --- Dialog State Handlers ---
+
+    fun onAddTagClicked() {
+        _userInputs.update { it.copy(newTagName = "") } // Clear previous input
+        _dialogState.update { it.copy(showAddDialog = true) }
+    }
+
+    fun onAddTagDialogDismiss() {
+        _dialogState.update { it.copy(showAddDialog = false) }
+    }
+
+    fun onEditTagClicked(tag: BattleTag) {
+        _userInputs.update { it.copy(tagNameForEdit = tag.name) } // Pre-fill input
+        _dialogState.update { it.copy(tagForEditDialog = tag) }
+    }
+
+    fun onEditTagDialogDismiss() {
+        _dialogState.update { it.copy(tagForEditDialog = null) }
+    }
+
+    fun onDeleteTagClicked(tag: BattleTag) {
+        _dialogState.update { it.copy(tagForDeleteDialog = tag) }
+    }
+
+    fun onDeleteTagDialogDismiss() {
+        _dialogState.update { it.copy(tagForDeleteDialog = null) }
+    }
+
+    // --- Data Operation Handlers ---
+
+    fun onAddTag() {
+        val newTagName = _userInputs.value.newTagName.trim()
+        if (newTagName.isNotBlank()) {
+            viewModelScope.launch {
+                val newBattleTag = BattleTag(name = newTagName, id = UUID.randomUUID().toString())
+                battleRepository.insertBattleTag(newBattleTag)
+                // Hide dialog on success
+                _dialogState.update { it.copy(showAddDialog = false) }
+            }
         }
     }
 
     fun onUpdateTag() {
-        val state = _uiState.value
-        val tagToEdit = state.showEditDialog ?: return
-        val newName = state.tagNameForEdit.trim()
+        val tagToEdit = _dialogState.value.tagForEditDialog ?: return
+        val newName = _userInputs.value.tagNameForEdit.trim()
 
         if (newName.isNotBlank() && newName != tagToEdit.name) {
             viewModelScope.launch {
-                // Use repository to update the tag name
                 battleRepository.updateTagName(tagToEdit.id, newName)
-                _uiState.update { it.copy(showEditDialog = null) }
+                // Hide dialog on success
+                _dialogState.update { it.copy(tagForEditDialog = null) }
             }
         }
     }
 
-    fun onDeleteTagClicked(tag: BattleTag) {
-        _uiState.update { it.copy(showDeleteDialog = tag) }
-    }
-
-    fun onDeleteTagDialogDismiss() {
-        _uiState.update { it.copy(showDeleteDialog = null) }
-    }
-
     fun onDeleteTag() {
-        _uiState.value.showDeleteDialog?.let { tagToDelete ->
-            viewModelScope.launch {
-                // Use repository to delete the tag
-                battleRepository.deleteTagCompletely(tagToDelete)
-                _uiState.update { it.copy(showDeleteDialog = null) }
-            }
+        val tagToDelete = _dialogState.value.tagForDeleteDialog ?: return
+        viewModelScope.launch {
+            battleRepository.deleteTagCompletely(tagToDelete)
+            // Hide dialog on success
+            _dialogState.update { it.copy(tagForDeleteDialog = null) }
         }
     }
 }

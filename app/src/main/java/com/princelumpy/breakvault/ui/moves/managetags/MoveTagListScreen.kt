@@ -30,13 +30,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.MoveTag
 import com.princelumpy.breakvault.ui.theme.ComboGeneratorTheme
@@ -48,7 +48,8 @@ fun MoveTagListScreen(
     onNavigateBack: () -> Unit,
     moveTagListViewModel: MoveTagListViewModel = hiltViewModel()
 ) {
-    val uiState by moveTagListViewModel.uiState.collectAsState()
+    // UPDATED: Use collectAsStateWithLifecycle for better lifecycle management.
+    val uiState by moveTagListViewModel.uiState.collectAsStateWithLifecycle()
 
     MoveTagListContent(
         uiState = uiState,
@@ -86,12 +87,16 @@ fun MoveTagListContent(
     onDeleteTagDialogDismiss: () -> Unit,
     onDeleteTag: () -> Unit
 ) {
+    // Create convenience variables for cleaner access
+    val userInputs = uiState.userInputs
+    val dialogState = uiState.dialogState
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(id = R.string.tag_list_manage_tags_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) { // <-- Bug fix here
+                    IconButton(onClick = onNavigateBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(id = R.string.common_back_button_description)
@@ -116,7 +121,8 @@ fun MoveTagListContent(
                 .padding(AppStyleDefaults.SpacingLarge),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (uiState.tags.isEmpty() && !uiState.showAddDialog) {
+            // UPDATED: Check dialogState for visibility
+            if (uiState.tags.isEmpty() && !dialogState.showAddDialog) {
                 Text(stringResource(id = R.string.tag_list_no_tags_message))
             }
             LazyColumn(
@@ -140,13 +146,15 @@ fun MoveTagListContent(
         }
     }
 
-    if (uiState.showAddDialog) {
+    // UPDATED: Use dialogState.showAddDialog
+    if (dialogState.showAddDialog) {
         AlertDialog(
             onDismissRequest = onAddTagDialogDismiss,
             title = { Text(stringResource(id = R.string.tag_list_add_new_tag_dialog_title)) },
             text = {
                 OutlinedTextField(
-                    value = uiState.newTagName,
+                    // UPDATED: Use userInputs.newTagName
+                    value = userInputs.newTagName,
                     onValueChange = onNewTagNameChange,
                     label = { Text(stringResource(id = R.string.tag_list_tag_name_label)) },
                     singleLine = true,
@@ -156,7 +164,8 @@ fun MoveTagListContent(
             confirmButton = {
                 TextButton(
                     onClick = onAddTag,
-                    enabled = uiState.newTagName.isNotBlank()
+                    // UPDATED: Use userInputs.newTagName
+                    enabled = userInputs.newTagName.isNotBlank()
                 ) {
                     Text(stringResource(id = R.string.common_add))
                 }
@@ -169,13 +178,15 @@ fun MoveTagListContent(
         )
     }
 
-    uiState.showEditDialog?.let { tagToEdit ->
+    // UPDATED: Use dialogState.tagForEditDialog
+    dialogState.tagForEditDialog?.let { tagToEdit ->
         AlertDialog(
             onDismissRequest = onEditTagDialogDismiss,
             title = { Text(stringResource(id = R.string.tag_list_edit_tag_name_dialog_title)) },
             text = {
                 OutlinedTextField(
-                    value = uiState.tagNameForEdit,
+                    // UPDATED: Use userInputs.tagNameForEdit
+                    value = userInputs.tagNameForEdit,
                     onValueChange = onTagNameForEditChange,
                     label = { Text(stringResource(id = R.string.tag_list_new_tag_name_label)) },
                     singleLine = true,
@@ -185,7 +196,8 @@ fun MoveTagListContent(
             confirmButton = {
                 TextButton(
                     onClick = onUpdateTag,
-                    enabled = uiState.tagNameForEdit.isNotBlank()
+                    // UPDATED: Use userInputs.tagNameForEdit
+                    enabled = userInputs.tagNameForEdit.isNotBlank()
                 ) {
                     Text(stringResource(id = R.string.common_save))
                 }
@@ -198,7 +210,8 @@ fun MoveTagListContent(
         )
     }
 
-    uiState.showDeleteDialog?.let { tagToDelete ->
+    // UPDATED: Use dialogState.tagForDeleteDialog
+    dialogState.tagForDeleteDialog?.let { tagToDelete ->
         AlertDialog(
             onDismissRequest = onDeleteTagDialogDismiss,
             title = { Text(stringResource(id = R.string.common_confirm_deletion_title)) },
@@ -274,11 +287,11 @@ fun TagListItem(
     }
 }
 
+// Preview can be updated to use the new UiState structure for better accuracy
 @Preview(showBackground = true)
 @Composable
 fun MoveTagListScreenPreview() {
     ComboGeneratorTheme {
-        // Preview the content composable with a sample state
         MoveTagListContent(
             uiState = MoveTagListUiState(
                 tags = listOf(

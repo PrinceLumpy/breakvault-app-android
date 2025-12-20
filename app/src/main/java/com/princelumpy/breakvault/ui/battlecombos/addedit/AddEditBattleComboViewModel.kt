@@ -19,18 +19,26 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class AddEditBattleComboUiState(
+// State representing the user's direct inputs and selections.
+// CORRECTED: Removed 'private' to make it visible to AddEditBattleComboUiState.
+// It remains file-local and won't pollute the global namespace.
+data class UserInputs(
     val comboId: String? = null,
     val description: String = "",
     val selectedEnergy: EnergyLevel = EnergyLevel.NONE,
     val selectedStatus: TrainingStatus = TrainingStatus.TRAINING,
     val isUsed: Boolean = false,
-    val allBattleTags: List<BattleTag> = emptyList(),
-    val allPracticeCombos: List<SavedCombo> = emptyList(),
     val selectedTags: Set<String> = emptySet(),
     val newTagName: String = "",
+    val isNewCombo: Boolean = true
+)
+
+// Final state for the UI, combining UserInputs and data from repositories.
+data class AddEditBattleComboUiState(
+    val userInputs: UserInputs = UserInputs(),
+    val allBattleTags: List<BattleTag> = emptyList(),
+    val allPracticeCombos: List<SavedCombo> = emptyList(),
     val showImportDialog: Boolean = false,
-    val isNewCombo: Boolean = true,
     val snackbarMessage: String? = null
 )
 
@@ -40,16 +48,26 @@ class AddEditBattleComboViewModel @Inject constructor(
     private val savedComboRepository: SavedComboRepository
 ) : ViewModel() {
 
-    private val _internalState = MutableStateFlow(AddEditBattleComboUiState())
+    // Holds the state of user's direct inputs.
+    private val _userInputs = MutableStateFlow(UserInputs())
+
+    // For transient UI states like dialogs and snack bars.
+    private val _showImportDialog = MutableStateFlow(false)
+    private val _snackbarMessage = MutableStateFlow<String?>(null)
 
     val uiState: StateFlow<AddEditBattleComboUiState> = combine(
-        _internalState,
+        _userInputs,
         battleRepository.getAllTags(),
-        savedComboRepository.getSavedCombos()
-    ) { state, tags, practiceCombos ->
-        state.copy(
+        savedComboRepository.getSavedCombos(),
+        _showImportDialog,
+        _snackbarMessage
+    ) { userInputs, tags, practiceCombos, showImportDialog, snackbarMessage ->
+        AddEditBattleComboUiState(
+            userInputs = userInputs,
             allBattleTags = tags,
-            allPracticeCombos = practiceCombos
+            allPracticeCombos = practiceCombos,
+            showImportDialog = showImportDialog,
+            snackbarMessage = snackbarMessage
         )
     }.stateIn(
         scope = viewModelScope,
@@ -60,48 +78,46 @@ class AddEditBattleComboViewModel @Inject constructor(
     /** Loads a combo for editing or prepares for creating a new one. */
     fun loadCombo(comboId: String?) {
         if (comboId == null) {
-            _internalState.value = AddEditBattleComboUiState()
+            _userInputs.value = UserInputs() // Reset to a fresh state for new combo
             return
         }
 
         viewModelScope.launch {
             val comboWithTags = battleRepository.getBattleComboWithTags(comboId)
-            _internalState.update {
-                if (comboWithTags != null) {
-                    it.copy(
-                        comboId = comboId,
-                        description = comboWithTags.battleCombo.description,
-                        selectedEnergy = comboWithTags.battleCombo.energy,
-                        selectedStatus = comboWithTags.battleCombo.status,
-                        isUsed = comboWithTags.battleCombo.isUsed,
-                        selectedTags = comboWithTags.tags.map { tag -> tag.name }.toSet(),
-                        isNewCombo = false
-                    )
-                } else {
-                    it.copy(snackbarMessage = "Could not find combo.")
-                }
+            if (comboWithTags != null) {
+                _userInputs.value = UserInputs(
+                    comboId = comboId,
+                    description = comboWithTags.battleCombo.description,
+                    selectedEnergy = comboWithTags.battleCombo.energy,
+                    selectedStatus = comboWithTags.battleCombo.status,
+                    isUsed = comboWithTags.battleCombo.isUsed,
+                    selectedTags = comboWithTags.tags.map { it.name }.toSet(),
+                    isNewCombo = false
+                )
+            } else {
+                _snackbarMessage.value = "Could not find combo."
             }
         }
     }
 
     /** Updates the combo description. */
     fun onDescriptionChange(newDescription: String) {
-        _internalState.update { it.copy(description = newDescription) }
+        _userInputs.update { it.copy(description = newDescription) }
     }
 
     /** Updates the selected energy level. */
     fun onEnergyChange(newEnergy: EnergyLevel) {
-        _internalState.update { it.copy(selectedEnergy = newEnergy) }
+        _userInputs.update { it.copy(selectedEnergy = newEnergy) }
     }
 
     /** Updates the selected training status. */
     fun onStatusChange(newStatus: TrainingStatus) {
-        _internalState.update { it.copy(selectedStatus = newStatus) }
+        _userInputs.update { it.copy(selectedStatus = newStatus) }
     }
 
     /** Toggles the selection of a tag. */
     fun onTagSelected(tagName: String) {
-        _internalState.update { state ->
+        _userInputs.update { state ->
             val newTags = if (tagName in state.selectedTags) {
                 state.selectedTags - tagName
             } else {
@@ -113,13 +129,14 @@ class AddEditBattleComboViewModel @Inject constructor(
 
     /** Updates the name for a new tag. */
     fun onNewTagNameChange(newTagName: String) {
-        _internalState.update { it.copy(newTagName = newTagName) }
+        _userInputs.update { it.copy(newTagName = newTagName) }
     }
 
     /** Adds a new tag to the database. */
     fun addBattleTag() {
-        val newTagName = uiState.value.newTagName.trim()
+        val newTagName = uiState.value.userInputs.newTagName.trim()
         val allTagNames = uiState.value.allBattleTags.map { it.name }
+
         if (newTagName.isNotBlank() && !allTagNames.any {
                 it.equals(
                     newTagName,
@@ -128,7 +145,8 @@ class AddEditBattleComboViewModel @Inject constructor(
             }) {
             viewModelScope.launch {
                 battleRepository.insertBattleTag(BattleTag(name = newTagName))
-                _internalState.update {
+                // After inserting, update the user inputs state
+                _userInputs.update {
                     it.copy(
                         newTagName = "",
                         selectedTags = it.selectedTags + newTagName // Auto-select new tag
@@ -136,52 +154,47 @@ class AddEditBattleComboViewModel @Inject constructor(
                 }
             }
         } else {
-            _internalState.update { it.copy(snackbarMessage = "Tag already exists or is empty.") }
+            _snackbarMessage.value = "Tag already exists or is empty."
         }
     }
 
     /** Imports moves from a saved practice combo into the description. */
     fun onImportCombo(combo: SavedCombo) {
-        _internalState.update {
-            it.copy(
-                description = combo.moves.joinToString(" -> "),
-                showImportDialog = false
-            )
-        }
+        _userInputs.update { it.copy(description = combo.moves.joinToString(" -> ")) }
+        showImportDialog(false)
     }
 
     /** Shows or hides the import dialog. */
     fun showImportDialog(show: Boolean) {
-        _internalState.update { it.copy(showImportDialog = show) }
+        _showImportDialog.value = show
     }
 
     /** Saves the new or edited combo to the database. */
     fun saveCombo(onSuccess: () -> Unit) {
-        val currentUiState = uiState.value
-        if (currentUiState.description.isBlank()) {
-            _internalState.update { it.copy(snackbarMessage = "Description cannot be empty") }
+        val currentInputs = _userInputs.value
+        if (currentInputs.description.isBlank()) {
+            _snackbarMessage.value = "Description cannot be empty"
             return
         }
 
         viewModelScope.launch {
             val battleCombo = BattleCombo(
-                id = currentUiState.comboId ?: "", // ID will be replaced for new combos
-                description = currentUiState.description,
-                energy = currentUiState.selectedEnergy,
-                status = currentUiState.selectedStatus,
-                isUsed = currentUiState.isUsed
+                id = currentInputs.comboId ?: "", // ID will be replaced for new combos
+                description = currentInputs.description,
+                energy = currentInputs.selectedEnergy,
+                status = currentInputs.selectedStatus,
+                isUsed = currentInputs.isUsed
             )
 
-
-            if (currentUiState.isNewCombo) {
+            if (currentInputs.isNewCombo) {
                 battleRepository.insertBattleComboWithTags(
                     battleCombo,
-                    currentUiState.selectedTags.toList()
+                    currentInputs.selectedTags.toList()
                 )
             } else {
                 battleRepository.updateBattleComboWithTags(
                     battleCombo,
-                    currentUiState.selectedTags.toList()
+                    currentInputs.selectedTags.toList()
                 )
             }
             onSuccess()
@@ -190,6 +203,6 @@ class AddEditBattleComboViewModel @Inject constructor(
 
     /** Clears the snackbar message after it has been shown. */
     fun onSnackbarMessageShown() {
-        _internalState.update { it.copy(snackbarMessage = null) }
+        _snackbarMessage.value = null
     }
 }

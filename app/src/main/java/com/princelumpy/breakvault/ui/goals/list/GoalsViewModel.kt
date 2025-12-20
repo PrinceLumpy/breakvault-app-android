@@ -15,15 +15,19 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
+ * State to manage which dialogs are shown.
+ */
+data class DialogState(
+    val goalToArchive: GoalWithStages? = null
+)
+
+/**
  * UI State for the Goals screen.
- * @param goals The list of active goals to display.
- * @param isLoading Whether the initial data is being loaded.
- * @param goalToArchive The goal selected by the user for the archive confirmation dialog.
  */
 data class GoalsScreenUiState(
     val goals: List<GoalWithStages> = emptyList(),
-    val isLoading: Boolean = true,
-    val goalToArchive: GoalWithStages? = null
+    val dialogState: DialogState = DialogState(),
+    val isLoading: Boolean = true
 )
 
 @HiltViewModel
@@ -31,48 +35,48 @@ class GoalsViewModel @Inject constructor(
     private val goalRepository: GoalRepository
 ) : ViewModel() {
 
-    private val _goalToArchive = MutableStateFlow<GoalWithStages?>(null)
-    private val _isLoading = MutableStateFlow(true)
+    // Single source of truth for all dialog-related states.
+    private val _dialogState = MutableStateFlow(DialogState())
 
     /** The single source of truth for the UI's state, combining multiple flows. */
     val uiState: StateFlow<GoalsScreenUiState> = combine(
         goalRepository.getActiveGoalsWithStages(),
-        _isLoading,
-        _goalToArchive
-    ) { goals, isLoading, goalToArchive ->
-        // Once the first list of goals is emitted, we can set isLoading to false
-        if (_isLoading.value) {
-            _isLoading.value = false
-        }
+        _dialogState
+    ) { goals, dialogState ->
         GoalsScreenUiState(
             goals = goals,
-            isLoading = isLoading,
-            goalToArchive = goalToArchive
+            dialogState = dialogState,
+            // Loading is implicitly handled by the initial value of stateIn.
+            // Once the first list of goals is emitted, the UI will update.
+            isLoading = false
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = GoalsScreenUiState()
+        initialValue = GoalsScreenUiState() // isLoading is true in the initial state
     )
 
     /** Marks a goal to be archived and shows the confirmation dialog. */
     fun onGoalArchiveClicked(goal: GoalWithStages) {
-        _goalToArchive.value = goal
+        _dialogState.update { it.copy(goalToArchive = goal) }
     }
 
     /** Cancels the archive action and hides the dialog. */
     fun onCancelGoalArchive() {
-        _goalToArchive.value = null
+        _dialogState.update { it.copy(goalToArchive = null) }
     }
 
     /** Confirms the archive action and updates the goal in the database. */
     fun onConfirmGoalArchive() {
-        viewModelScope.launch {
-            _goalToArchive.value?.let { goalToArchive ->
-                val archivedGoal = goalToArchive.goal.copy(isArchived = true)
+        _dialogState.value.goalToArchive?.let { goalToArchive ->
+            viewModelScope.launch {
+                val archivedGoal = goalToArchive.goal.copy(
+                    isArchived = true,
+                    lastUpdated = System.currentTimeMillis()
+                )
                 goalRepository.updateGoal(archivedGoal)
                 // Hide the dialog after the operation is complete
-                _goalToArchive.value = null
+                onCancelGoalArchive()
             }
         }
     }

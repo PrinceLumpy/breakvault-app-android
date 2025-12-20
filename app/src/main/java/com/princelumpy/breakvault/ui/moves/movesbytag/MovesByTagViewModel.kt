@@ -1,15 +1,19 @@
 package com.princelumpy.breakvault.ui.moves.movesbytag
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.princelumpy.breakvault.data.local.database.AppDB
 import com.princelumpy.breakvault.data.local.entity.Move
-import kotlinx.coroutines.flow.MutableStateFlow
+import com.princelumpy.breakvault.data.repository.MoveRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
+import javax.inject.Inject
 
 data class MovesByTagUiState(
     val moves: List<Move> = emptyList(),
@@ -17,18 +21,42 @@ data class MovesByTagUiState(
     val isLoading: Boolean = true
 )
 
-class MovesByTagViewModel(application: Application) : AndroidViewModel(application) {
+@OptIn(ExperimentalCoroutinesApi::class)
+@HiltViewModel
+class MovesByTagViewModel @Inject constructor(
+    private val moveRepository: MoveRepository,
+    savedStateHandle: SavedStateHandle
+) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(MovesByTagUiState())
-    val uiState: StateFlow<MovesByTagUiState> = _uiState.asStateFlow()
+    // Reactively get the tagId from navigation arguments.
+    private val tagId: StateFlow<String?> = savedStateHandle.getStateFlow("tagId", null)
 
-    private val moveDao = AppDB.getDatabase(application).moveDao()
+    // The single source of truth for the UI.
+    val uiState: StateFlow<MovesByTagUiState> = combine(
+        // Get the tagName from navigation arguments.
+        savedStateHandle.getStateFlow("tagName", ""),
 
-    fun loadMovesByTag(tagId: String, tagName: String) {
-        _uiState.update { it.copy(tagName = tagName) }
-        viewModelScope.launch {
-            val moves = moveDao.getTagWithMoves(tagId)?.moves ?: emptyList()
-            _uiState.update { it.copy(moves = moves, isLoading = false) }
+        // Use flatMapLatest to reactively fetch moves whenever the tagId changes.
+        tagId.flatMapLatest { id ->
+            if (id == null) {
+                // If there's no tagId, return a flow with an empty list.
+                flowOf(emptyList())
+            } else {
+                // Fetch the moves for the given tagId from the repository.
+                moveRepository.getMovesByTagId(id)
+            }
         }
-    }
+    ) { tagName, moves ->
+        MovesByTagUiState(
+            tagName = tagName,
+            moves = moves,
+            // Loading is complete once the first set of moves is emitted.
+            isLoading = false
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        // The initial state shows a loading indicator.
+        initialValue = MovesByTagUiState()
+    )
 }

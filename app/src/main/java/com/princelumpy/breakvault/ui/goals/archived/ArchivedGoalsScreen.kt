@@ -21,13 +21,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.navigation.NavController
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.ui.goals.list.GoalCard
 
@@ -35,12 +34,15 @@ import com.princelumpy.breakvault.ui.goals.list.GoalCard
 @Composable
 fun ArchivedGoalsScreen(
     onNavigateUp: () -> Unit,
-    onNavigateToAddEditGoal: (String) -> Unit,
     archivedGoalsViewModel: ArchivedGoalsViewModel = hiltViewModel()
 ) {
-    val uiState by archivedGoalsViewModel.uiState.collectAsState()
+    // UPDATED: Use collectAsStateWithLifecycle for better lifecycle management
+    val uiState by archivedGoalsViewModel.uiState.collectAsStateWithLifecycle()
+    // Create a convenience variable for the dialog state
+    val dialogState = uiState.dialogState
 
-    uiState.goalToUnarchive?.let { goalWithStages ->
+    // UPDATED: Access the goal from the nested dialogState object
+    dialogState.goalToUnarchive?.let { goalWithStages ->
         AlertDialog(
             onDismissRequest = { archivedGoalsViewModel.onCancelGoalUnarchive() },
             title = { Text(stringResource(id = R.string.archived_goals_unarchive_dialog_title)) },
@@ -65,7 +67,8 @@ fun ArchivedGoalsScreen(
         )
     }
 
-    uiState.goalToDelete?.let { goalWithStages ->
+    // UPDATED: Access the goal from the nested dialogState object
+    dialogState.goalToDelete?.let { goalWithStages ->
         AlertDialog(
             onDismissRequest = { archivedGoalsViewModel.onCancelGoalDelete() },
             title = { Text(stringResource(id = R.string.archived_goals_delete_dialog_title)) },

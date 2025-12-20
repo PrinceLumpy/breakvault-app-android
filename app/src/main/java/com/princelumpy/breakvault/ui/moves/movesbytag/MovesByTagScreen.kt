@@ -14,14 +14,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,15 +27,13 @@ import com.princelumpy.breakvault.R
 fun MovesByTagScreen(
     onNavigateUp: () -> Unit,
     onNavigateToMove: (String) -> Unit,
-    tagId: String,
-    tagName: String,
-    movesByTagViewModel: MovesByTagViewModel = viewModel()
+    // The ViewModel is now injected by Hilt and gets its own arguments.
+    movesByTagViewModel: MovesByTagViewModel = hiltViewModel()
 ) {
-    val uiState by movesByTagViewModel.uiState.collectAsState()
+    // UPDATED: Use collectAsStateWithLifecycle for better lifecycle management.
+    val uiState by movesByTagViewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(key1 = tagId) {
-        movesByTagViewModel.loadMovesByTag(tagId, tagName)
-    }
+    // REMOVED: The LaunchedEffect is no longer needed as the ViewModel is fully reactive.
 
     Scaffold(
         topBar = {
@@ -54,28 +50,36 @@ fun MovesByTagScreen(
             )
         }
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium),
-            contentPadding = PaddingValues(AppStyleDefaults.SpacingLarge)
-        ) {
-            if (uiState.moves.isEmpty()) {
-                item {
-                    Box(
-                        modifier = Modifier.fillParentMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(stringResource(R.string.no_moves_for_tag_message))
-                    }
-                }
-            } else {
-                items(uiState.moves) { move ->
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else if (uiState.moves.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(stringResource(R.string.no_moves_for_tag_message))
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium),
+                contentPadding = AppStyleDefaults.LazyListPadding // Using the consistent padding value
+            ) {
+                items(uiState.moves, key = { it.id }) { move ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onNavigateToMove(move.id) }) {
+                            .clickable { onNavigateToMove(move.id) }
+                    ) {
                         Text(
                             text = move.name,
                             modifier = Modifier.padding(AppStyleDefaults.SpacingLarge)

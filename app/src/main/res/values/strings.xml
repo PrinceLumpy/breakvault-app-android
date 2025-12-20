@@ -111,7 +111,7 @@
     <string name="settings_reset_dialog_message">Are you sure you want to reset all data? This action cannot be undone.</string>
     <string name="settings_reset_dialog_confirm_button">Reset</string>
 
-    <!-- SavedCombosScreen -->
+    <!-- SavedComboListScreen -->
     <string name="saved_combos_screen_title">Saved Combos</string>
     <string name="saved_combos_no_combos_message">No saved combos yet.</string>
     <string name="saved_combos_delete_combo_description">Delete Combo</string>
@@ -226,5 +226,8 @@
     <string name="saved_combos_delete_confirmation_message">Are you sure you want to delete?</string>
     <string name="create_combo_button_text">Create Combo</string>
     <string name="saved_combos_empty_state_subtitle">Create a new combo to get started!</string>
+    <string name="combo_generator_add_tag_button">Add Tag to Sequence</string>
+    <string name="combo_generator_remove_last_tag_button">Remove Last Tag in Sequence</string>
+    <string name="combo_generator_sequence_empty_message">Sequence is Currently Empty</string>
 
 </resources>

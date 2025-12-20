@@ -2,6 +2,7 @@ package com.princelumpy.breakvault.ui.goals.list
 
 import AppStyleDefaults
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +23,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -31,8 +33,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,7 +42,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.navigation.NavController
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.relation.GoalWithStages
 
@@ -51,9 +53,13 @@ fun GoalsScreen(
     onNavigateToArchivedGoals: () -> Unit,
     goalsViewModel: GoalsViewModel = hiltViewModel()
 ) {
-    val uiState by goalsViewModel.uiState.collectAsState()
+    // UPDATED: Use collectAsStateWithLifecycle
+    val uiState by goalsViewModel.uiState.collectAsStateWithLifecycle()
+    // Create a convenience variable for the dialog state
+    val dialogState = uiState.dialogState
 
-    uiState.goalToArchive?.let { goalWithStagesToArchive ->
+    // UPDATED: Access the goal from the nested dialogState object
+    dialogState.goalToArchive?.let { goalWithStagesToArchive ->
         AlertDialog(
             onDismissRequest = { goalsViewModel.onCancelGoalArchive() },
             title = { Text(stringResource(id = R.string.goals_screen_archive_goal_dialog_title)) },
@@ -82,8 +88,22 @@ fun GoalsScreen(
     }
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Goals") },
+                actions = {
+                    IconButton(onClick = onNavigateToArchivedGoals) {
+                        Icon(
+                            imageVector = Icons.Filled.Archive,
+                            contentDescription = "Archived Goals"
+                        )
+                    }
+                }
+            )
+        },
         floatingActionButton = {
-            if (uiState.goals.isNotEmpty()) {
+            // Floating action button is now always visible unless loading
+            if (!uiState.isLoading) {
                 FloatingActionButton(onClick = {
                     onNavigateToAddEditGoal(null)
                 }) {
@@ -95,15 +115,22 @@ fun GoalsScreen(
             }
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(AppStyleDefaults.SpacingLarge)
-        ) {
-            if (uiState.goals.isEmpty()) {
-                Column(
+        when {
+            uiState.isLoading -> {
+                Box(
                     modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            uiState.goals.isEmpty() -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(AppStyleDefaults.SpacingLarge),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -130,14 +157,21 @@ fun GoalsScreen(
                         Text(stringResource(id = R.string.goals_screen_create_goal_button))
                     }
                 }
-            } else {
+            }
+
+            else -> {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium),
+                    contentPadding = AppStyleDefaults.LazyListPadding
                 ) {
-                    items(uiState.goals) { goalWithStages ->
+                    items(uiState.goals, key = { it.goal.id }) { goalWithStages ->
                         GoalCard(
                             goalWithStages = goalWithStages,
                             onEditClick = { onNavigateToAddEditGoal(goalWithStages.goal.id) },
+                            onArchiveClick = { goalsViewModel.onGoalArchiveClicked(goalWithStages) }
                         )
                     }
                 }
@@ -155,7 +189,10 @@ fun GoalCard(
     onUnarchiveClick: (() -> Unit)? = null
 ) {
     val progress = if (goalWithStages.stages.isNotEmpty()) {
-        goalWithStages.stages.sumOf { it.currentCount.toDouble() / it.targetCount } / goalWithStages.stages.size
+        val totalProgress = goalWithStages.stages.sumOf {
+            it.currentCount.toDouble().coerceAtMost(it.targetCount.toDouble()) / it.targetCount
+        }
+        totalProgress / goalWithStages.stages.size
     } else {
         0.0
     }

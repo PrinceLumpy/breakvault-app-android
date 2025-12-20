@@ -36,18 +36,58 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.BattleTag
 
-@OptIn(ExperimentalMaterial3Api::class)
+// --- STATEFUL COMPOSABLE (The "Smart" one) ---
+
 @Composable
 fun BattleTagListScreen(
     onNavigateUp: () -> Unit,
     battleTagListViewModel: BattleTagListViewModel = hiltViewModel()
 ) {
     val uiState by battleTagListViewModel.uiState.collectAsStateWithLifecycle()
+
+    BattleTagListContent(
+        uiState = uiState,
+        onNavigateUp = onNavigateUp,
+        onAddTagClicked = battleTagListViewModel::onAddTagClicked,
+        onEditTagClicked = battleTagListViewModel::onEditTagClicked,
+        onDeleteTagClicked = battleTagListViewModel::onDeleteTagClicked,
+        onNewTagNameChange = battleTagListViewModel::onNewTagNameChange,
+        onTagNameForEditChange = battleTagListViewModel::onTagNameForEditChange,
+        onAddTag = battleTagListViewModel::onAddTag,
+        onUpdateTag = battleTagListViewModel::onUpdateTag,
+        onDeleteTag = battleTagListViewModel::onDeleteTag,
+        onAddTagDialogDismiss = battleTagListViewModel::onAddTagDialogDismiss,
+        onEditTagDialogDismiss = battleTagListViewModel::onEditTagDialogDismiss,
+        onDeleteTagDialogDismiss = battleTagListViewModel::onDeleteTagDialogDismiss
+    )
+}
+
+
+// --- STATELESS COMPOSABLE (The "Dumb" UI) ---
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BattleTagListContent(
+    uiState: BattleTagListUiState,
+    onNavigateUp: () -> Unit,
+    onAddTagClicked: () -> Unit,
+    onEditTagClicked: (BattleTag) -> Unit,
+    onDeleteTagClicked: (BattleTag) -> Unit,
+    onNewTagNameChange: (String) -> Unit,
+    onTagNameForEditChange: (String) -> Unit,
+    onAddTag: () -> Unit,
+    onUpdateTag: () -> Unit,
+    onDeleteTag: () -> Unit,
+    onAddTagDialogDismiss: () -> Unit,
+    onEditTagDialogDismiss: () -> Unit,
+    onDeleteTagDialogDismiss: () -> Unit
+) {
     // Create convenience variables for cleaner access
     val dialogState = uiState.dialogState
     val userInputs = uiState.userInputs
@@ -57,7 +97,7 @@ fun BattleTagListScreen(
             TopAppBar(
                 title = { Text(stringResource(id = R.string.battle_tag_list_title)) },
                 navigationIcon = {
-                    IconButton(onClick = { onNavigateUp() }) {
+                    IconButton(onClick = onNavigateUp) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(id = R.string.common_back_button_description)
@@ -67,7 +107,7 @@ fun BattleTagListScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { battleTagListViewModel.onAddTagClicked() }) {
+            FloatingActionButton(onClick = onAddTagClicked) {
                 Icon(
                     Icons.Filled.Add,
                     contentDescription = stringResource(id = R.string.battle_tag_list_add_fab_description)
@@ -82,7 +122,6 @@ fun BattleTagListScreen(
                 .padding(AppStyleDefaults.SpacingLarge),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // UPDATED: Check dialog state for visibility
             if (uiState.tags.isEmpty() && !dialogState.showAddDialog) {
                 Text(stringResource(id = R.string.battle_tag_list_no_tags_message))
             }
@@ -96,86 +135,79 @@ fun BattleTagListScreen(
                 ) { tag ->
                     BattleTagListItem(
                         tag = tag,
-                        onEditClick = { battleTagListViewModel.onEditTagClicked(it) },
-                        onDeleteClick = { battleTagListViewModel.onDeleteTagClicked(it) }
+                        onEditClick = { onEditTagClicked(tag) },
+                        onDeleteClick = { onDeleteTagClicked(tag) }
                     )
                 }
             }
         }
     }
 
-    // UPDATED: Use dialogState.showAddDialog
     if (dialogState.showAddDialog) {
         AlertDialog(
-            onDismissRequest = { battleTagListViewModel.onAddTagDialogDismiss() },
+            onDismissRequest = onAddTagDialogDismiss,
             title = { Text(stringResource(id = R.string.battle_tag_list_add_dialog_title)) },
             text = {
                 OutlinedTextField(
-                    // UPDATED: Use userInputs.newTagName
                     value = userInputs.newTagName,
-                    onValueChange = { battleTagListViewModel.onNewTagNameChange(it) },
+                    onValueChange = onNewTagNameChange,
                     label = { Text(stringResource(id = R.string.battle_tag_list_tag_name_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { battleTagListViewModel.onAddTag() })
+                    keyboardActions = KeyboardActions(onDone = { onAddTag() })
                 )
             },
             confirmButton = {
                 TextButton(
-                    onClick = { battleTagListViewModel.onAddTag() },
-                    // UPDATED: Use userInputs.newTagName
+                    onClick = onAddTag,
                     enabled = userInputs.newTagName.isNotBlank()
                 ) {
                     Text(stringResource(id = R.string.common_add))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { battleTagListViewModel.onAddTagDialogDismiss() }) {
+                TextButton(onClick = onAddTagDialogDismiss) {
                     Text(stringResource(id = R.string.common_cancel))
                 }
             }
         )
     }
 
-    // UPDATED: Use dialogState.tagForEditDialog
-    dialogState.tagForEditDialog?.let { tagToEdit ->
+    dialogState.tagForEditDialog?.let {
         AlertDialog(
-            onDismissRequest = { battleTagListViewModel.onEditTagDialogDismiss() },
+            onDismissRequest = onEditTagDialogDismiss,
             title = { Text(stringResource(id = R.string.battle_tag_list_edit_dialog_title)) },
             text = {
                 OutlinedTextField(
-                    // UPDATED: Use userInputs.tagNameForEdit
                     value = userInputs.tagNameForEdit,
-                    onValueChange = { battleTagListViewModel.onTagNameForEditChange(it) },
+                    onValueChange = onTagNameForEditChange,
                     label = { Text(stringResource(id = R.string.battle_tag_list_new_tag_name_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { battleTagListViewModel.onUpdateTag() })
+                    keyboardActions = KeyboardActions(onDone = { onUpdateTag() })
                 )
             },
             confirmButton = {
                 TextButton(
-                    onClick = { battleTagListViewModel.onUpdateTag() },
-                    // UPDATED: Use userInputs.tagNameForEdit
+                    onClick = onUpdateTag,
                     enabled = userInputs.tagNameForEdit.isNotBlank()
                 ) {
                     Text(stringResource(id = R.string.common_save))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { battleTagListViewModel.onEditTagDialogDismiss() }) {
+                TextButton(onClick = onEditTagDialogDismiss) {
                     Text(stringResource(id = R.string.common_cancel))
                 }
             }
         )
     }
 
-    // UPDATED: Use dialogState.tagForDeleteDialog
     dialogState.tagForDeleteDialog?.let { tagToDelete ->
         AlertDialog(
-            onDismissRequest = { battleTagListViewModel.onDeleteTagDialogDismiss() },
+            onDismissRequest = onDeleteTagDialogDismiss,
             title = { Text(stringResource(id = R.string.common_confirm_deletion_title)) },
             text = {
                 Text(
@@ -187,14 +219,14 @@ fun BattleTagListScreen(
             },
             confirmButton = {
                 TextButton(
-                    onClick = { battleTagListViewModel.onDeleteTag() },
+                    onClick = onDeleteTag,
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
                     Text(stringResource(id = R.string.common_delete))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { battleTagListViewModel.onDeleteTagDialogDismiss() }) {
+                TextButton(onClick = onDeleteTagDialogDismiss) {
                     Text(stringResource(id = R.string.common_cancel))
                 }
             }
@@ -205,8 +237,8 @@ fun BattleTagListScreen(
 @Composable
 fun BattleTagListItem(
     tag: BattleTag,
-    onEditClick: (BattleTag) -> Unit,
-    onDeleteClick: (BattleTag) -> Unit
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -228,13 +260,13 @@ fun BattleTagListItem(
                 modifier = Modifier.weight(1f)
             )
             Row {
-                IconButton(onClick = { onEditClick(tag) }) {
+                IconButton(onClick = onEditClick) {
                     Icon(
                         Icons.Filled.Edit,
                         contentDescription = stringResource(id = R.string.battle_tag_list_edit_icon_desc)
                     )
                 }
-                IconButton(onClick = { onDeleteClick(tag) }) {
+                IconButton(onClick = onDeleteClick) {
                     Icon(
                         Icons.Filled.Delete,
                         contentDescription = stringResource(id = R.string.battle_tag_list_delete_icon_desc),
@@ -243,5 +275,135 @@ fun BattleTagListItem(
                 }
             }
         }
+    }
+}
+
+
+// --- PREVIEWS ---
+
+@Preview(showBackground = true, name = "Populated List")
+@Composable
+private fun BattleTagListContentPreview_Populated() {
+    val tags = listOf(
+        BattleTag(id = "1", name = "Boxing"),
+        BattleTag(id = "2", name = "Kicking"),
+        BattleTag(id = "3", name = "Power")
+    )
+    MaterialTheme {
+        BattleTagListContent(
+            uiState = BattleTagListUiState(tags = tags),
+            onNavigateUp = {},
+            onAddTagClicked = {},
+            onEditTagClicked = {},
+            onDeleteTagClicked = {},
+            onNewTagNameChange = {},
+            onTagNameForEditChange = {},
+            onAddTag = {},
+            onUpdateTag = {},
+            onDeleteTag = {},
+            onAddTagDialogDismiss = {},
+            onEditTagDialogDismiss = {},
+            onDeleteTagDialogDismiss = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Empty List")
+@Composable
+private fun BattleTagListContentPreview_Empty() {
+    MaterialTheme {
+        BattleTagListContent(
+            uiState = BattleTagListUiState(tags = emptyList()),
+            onNavigateUp = {},
+            onAddTagClicked = {},
+            onEditTagClicked = {},
+            onDeleteTagClicked = {},
+            onNewTagNameChange = {},
+            onTagNameForEditChange = {},
+            onAddTag = {},
+            onUpdateTag = {},
+            onDeleteTag = {},
+            onAddTagDialogDismiss = {},
+            onEditTagDialogDismiss = {},
+            onDeleteTagDialogDismiss = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Add Dialog Open")
+@Composable
+private fun BattleTagListContentPreview_AddDialog() {
+    MaterialTheme {
+        BattleTagListContent(
+            uiState = BattleTagListUiState(
+                dialogState = DialogState(showAddDialog = true),
+                userInputs = UserInputs(newTagName = "New Tag")
+            ),
+            onNavigateUp = {},
+            onAddTagClicked = {},
+            onEditTagClicked = {},
+            onDeleteTagClicked = {},
+            onNewTagNameChange = {},
+            onTagNameForEditChange = {},
+            onAddTag = {},
+            onUpdateTag = {},
+            onDeleteTag = {},
+            onAddTagDialogDismiss = {},
+            onEditTagDialogDismiss = {},
+            onDeleteTagDialogDismiss = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Edit Dialog Open")
+@Composable
+private fun BattleTagListContentPreview_EditDialog() {
+    val tagToEdit = BattleTag(id = "1", name = "Boxing")
+    MaterialTheme {
+        BattleTagListContent(
+            uiState = BattleTagListUiState(
+                tags = listOf(tagToEdit),
+                dialogState = DialogState(tagForEditDialog = tagToEdit),
+                userInputs = UserInputs(tagNameForEdit = "Boxing Edit")
+            ),
+            onNavigateUp = {},
+            onAddTagClicked = {},
+            onEditTagClicked = {},
+            onDeleteTagClicked = {},
+            onNewTagNameChange = {},
+            onTagNameForEditChange = {},
+            onAddTag = {},
+            onUpdateTag = {},
+            onDeleteTag = {},
+            onAddTagDialogDismiss = {},
+            onEditTagDialogDismiss = {},
+            onDeleteTagDialogDismiss = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Delete Dialog Open")
+@Composable
+private fun BattleTagListContentPreview_DeleteDialog() {
+    val tagToDelete = BattleTag(id = "1", name = "Boxing")
+    MaterialTheme {
+        BattleTagListContent(
+            uiState = BattleTagListUiState(
+                tags = listOf(tagToDelete),
+                dialogState = DialogState(tagForDeleteDialog = tagToDelete)
+            ),
+            onNavigateUp = {},
+            onAddTagClicked = {},
+            onEditTagClicked = {},
+            onDeleteTagClicked = {},
+            onNewTagNameChange = {},
+            onTagNameForEditChange = {},
+            onAddTag = {},
+            onUpdateTag = {},
+            onDeleteTag = {},
+            onAddTagDialogDismiss = {},
+            onEditTagDialogDismiss = {},
+            onDeleteTagDialogDismiss = {}
+        )
     }
 }

@@ -50,63 +50,77 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
-import com.princelumpy.breakvault.ui.theme.ComboGeneratorTheme
+import com.princelumpy.breakvault.data.local.entity.MoveTag
+import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+/**
+ * The main, stateful screen composable that holds the ViewModel and state.
+ */
 @Composable
 fun AddEditMoveScreen(
     onNavigateUp: () -> Unit,
     moveId: String?,
     moveViewModel: AddEditMoveViewModel = hiltViewModel()
 ) {
-    // UPDATED: Use collectAsStateWithLifecycle for better lifecycle management.
     val uiState by moveViewModel.uiState.collectAsStateWithLifecycle()
-    val focusManager = LocalFocusManager.current
     val snackbarHostState = remember { SnackbarHostState() }
-
-    // Create convenience variables for cleaner access.
-    val userInputs = uiState.userInputs
-    val dialogState = uiState.dialogState
+    val focusManager = LocalFocusManager.current
 
     LaunchedEffect(key1 = moveId) {
         moveViewModel.loadMove(moveId)
     }
 
-    LaunchedEffect(dialogState.snackbarMessage) {
-        dialogState.snackbarMessage?.let {
+    LaunchedEffect(uiState.dialogState.snackbarMessage) {
+        uiState.dialogState.snackbarMessage?.let {
             snackbarHostState.showSnackbar(it)
             moveViewModel.onSnackbarMessageShown()
         }
     }
 
+    AddEditMoveScaffold(
+        uiState = uiState,
+        snackbarHostState = snackbarHostState,
+        onNavigateUp = onNavigateUp,
+        onMoveNameChange = { moveViewModel.onMoveNameChange(it) },
+        onTagSelected = { moveViewModel.onTagSelected(it) },
+        onNewTagNameChange = { moveViewModel.onNewTagNameChange(it) },
+        onAddTag = { moveViewModel.addTag() },
+        onSaveMove = {
+            moveViewModel.saveMove {
+                focusManager.clearFocus()
+                onNavigateUp()
+            }
+        }
+    )
+}
+
+/**
+ * A stateless scaffold that handles the overall layout for the Add/Edit Move screen.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddEditMoveScaffold(
+    uiState: AddEditMoveUiState,
+    snackbarHostState: SnackbarHostState,
+    onNavigateUp: () -> Unit,
+    onMoveNameChange: (String) -> Unit,
+    onTagSelected: (String) -> Unit,
+    onNewTagNameChange: (String) -> Unit,
+    onAddTag: () -> Unit,
+    onSaveMove: () -> Unit
+) {
+    val focusManager = LocalFocusManager.current
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        if (uiState.isNewMove) stringResource(id = R.string.add_edit_move_add_new_move_title) else stringResource(
-                            id = R.string.add_edit_move_edit_move_title
-                        )
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { onNavigateUp() }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(id = R.string.common_back_button_description)
-                        )
-                    }
-                }
+            AddEditMoveTopBar(
+                isNewMove = uiState.isNewMove,
+                onNavigateUp = onNavigateUp
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                moveViewModel.saveMove {
-                    focusManager.clearFocus()
-                    onNavigateUp()
-                }
-            }) {
+            FloatingActionButton(onClick = onSaveMove) {
                 Icon(
                     Icons.Filled.Save,
                     contentDescription = stringResource(id = R.string.add_edit_move_save_move_fab_description)
@@ -114,117 +128,249 @@ fun AddEditMoveScreen(
             }
         }
     ) { paddingValues ->
-        Column(
+        AddEditMoveContent(
             modifier = Modifier
                 .padding(paddingValues)
-                .padding(AppStyleDefaults.SpacingLarge)
-                .verticalScroll(rememberScrollState())
-                .fillMaxSize()
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) { focusManager.clearFocus() },
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
+            userInputs = uiState.userInputs,
+            allTags = uiState.allTags,
+            onMoveNameChange = onMoveNameChange,
+            onTagSelected = onTagSelected,
+            onNewTagNameChange = onNewTagNameChange,
+            onAddTag = onAddTag,
+            onSaveMove = onSaveMove
+        )
+    }
+}
+
+/**
+ * A stateless top bar for the Add/Edit Move screen.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddEditMoveTopBar(
+    isNewMove: Boolean,
+    onNavigateUp: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            Text(
+                if (isNewMove) stringResource(id = R.string.add_edit_move_add_new_move_title)
+                else stringResource(id = R.string.add_edit_move_edit_move_title)
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onNavigateUp) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(id = R.string.common_back_button_description)
+                )
+            }
+        }
+    )
+}
+
+/**
+ * The main, stateless content of the screen containing the input form.
+ */
+@Composable
+private fun AddEditMoveContent(
+    modifier: Modifier = Modifier,
+    userInputs: UserInputs,
+    allTags: List<MoveTag>,
+    onMoveNameChange: (String) -> Unit,
+    onTagSelected: (String) -> Unit,
+    onNewTagNameChange: (String) -> Unit,
+    onAddTag: () -> Unit,
+    onSaveMove: () -> Unit
+) {
+    Column(
+        modifier = modifier
+            .padding(AppStyleDefaults.SpacingLarge)
+            .verticalScroll(rememberScrollState())
+            .fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
+    ) {
+        OutlinedTextField(
+            value = userInputs.moveName,
+            onValueChange = onMoveNameChange,
+            label = { Text(stringResource(id = R.string.add_edit_move_move_name_label)) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onSaveMove() })
+        )
+
+        MoveTagsSection(
+            allTags = allTags,
+            selectedTags = userInputs.selectedTags,
+            onTagSelected = onTagSelected
+        )
+
+        Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingMedium))
+
+        AddNewTagSection(
+            newTagName = userInputs.newTagName,
+            onNewTagNameChange = onNewTagNameChange,
+            onAddTag = onAddTag
+        )
+    }
+}
+
+/**
+ * A stateless section for displaying and selecting move tags.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MoveTagsSection(
+    allTags: List<MoveTag>,
+    selectedTags: Set<String>,
+    onTagSelected: (String) -> Unit
+) {
+    Text(
+        stringResource(id = R.string.add_edit_move_select_tags_label),
+        style = MaterialTheme.typography.titleMedium
+    )
+    if (allTags.isEmpty()) {
+        Text(
+            stringResource(id = R.string.add_edit_move_no_tags_available_message),
+            style = MaterialTheme.typography.bodySmall
+        )
+    } else {
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium),
+            verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)
         ) {
-            OutlinedTextField(
-                // UPDATED: Access state from userInputs
-                value = userInputs.moveName,
-                onValueChange = { moveViewModel.onMoveNameChange(it) },
-                label = { Text(stringResource(id = R.string.add_edit_move_move_name_label)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { moveViewModel.saveMove { onNavigateUp() } })
-            )
-
-            Text(
-                stringResource(id = R.string.add_edit_move_select_tags_label),
-                style = MaterialTheme.typography.titleMedium
-            )
-            // UPDATED: Access state from userInputs
-            if (uiState.allTags.isEmpty() && userInputs.newTagName.isBlank()) {
-                Text(
-                    stringResource(id = R.string.add_edit_move_no_tags_available_message),
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium),
-                verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)
-            ) {
-                uiState.allTags.forEach { tag ->
-                    // UPDATED: Check for tag ID in userInputs.selectedTags
-                    val isSelected = userInputs.selectedTags.contains(tag.id)
-                    FilterChip(
-                        selected = isSelected,
-                        // UPDATED: Pass the tag's ID instead of the object
-                        onClick = { moveViewModel.onTagSelected(tag.id) },
-                        label = { Text(tag.name) },
-                        leadingIcon = if (isSelected) {
-                            {
-                                Icon(
-                                    Icons.Filled.Done,
-                                    stringResource(id = R.string.add_edit_move_selected_chip_description),
-                                    Modifier.size(FilterChipDefaults.IconSize)
-                                )
-                            }
-                        } else {
-                            null
+            allTags.forEach { tag ->
+                val isSelected = selectedTags.contains(tag.id)
+                FilterChip(
+                    selected = isSelected,
+                    onClick = { onTagSelected(tag.id) },
+                    label = { Text(tag.name) },
+                    leadingIcon = if (isSelected) {
+                        {
+                            Icon(
+                                Icons.Filled.Done,
+                                stringResource(id = R.string.add_edit_move_selected_chip_description),
+                                Modifier.size(FilterChipDefaults.IconSize)
+                            )
                         }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingMedium))
-
-            Text(
-                stringResource(id = R.string.add_edit_move_add_new_tag_label),
-                style = MaterialTheme.typography.titleMedium
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
-            ) {
-                OutlinedTextField(
-                    // UPDATED: Access state from userInputs
-                    value = userInputs.newTagName,
-                    onValueChange = { moveViewModel.onNewTagNameChange(it) },
-                    label = { Text(stringResource(id = R.string.add_edit_move_new_tag_name_label)) },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { moveViewModel.addTag() })
+                    } else {
+                        null
+                    }
                 )
-                Button(onClick = { moveViewModel.addTag() }) {
-                    Text(stringResource(id = R.string.common_add))
-                }
             }
         }
     }
 }
 
-// Previews remain the same as they don't depend on internal ViewModel logic.
-@Preview(showBackground = true, name = "Add Mode")
+/**
+ * A stateless section for adding a new tag.
+ */
 @Composable
-fun AddEditMoveScreenPreview_AddMode() {
-    ComboGeneratorTheme {
-        AddEditMoveScreen(
-            onNavigateUp = {},
-            moveId = null
+private fun AddNewTagSection(
+    newTagName: String,
+    onNewTagNameChange: (String) -> Unit,
+    onAddTag: () -> Unit
+) {
+    Text(
+        stringResource(id = R.string.add_edit_move_add_new_tag_label),
+        style = MaterialTheme.typography.titleMedium
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
+    ) {
+        OutlinedTextField(
+            value = newTagName,
+            onValueChange = onNewTagNameChange,
+            label = { Text(stringResource(id = R.string.add_edit_move_new_tag_name_label)) },
+            modifier = Modifier.weight(1f),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onAddTag() })
+        )
+        Button(onClick = onAddTag) {
+            Text(stringResource(id = R.string.common_add))
+        }
+    }
+}
+
+
+//region Previews
+
+@Preview(showBackground = true, name = "Add/Edit Content")
+@Composable
+private fun AddEditMoveContentPreview() {
+    val dummyTags = listOf(
+        MoveTag(id = "1", name = "Freezes"),
+        MoveTag(id = "2", name = "Power"),
+        MoveTag(id = "3", name = "Footwork")
+    )
+    BreakVaultTheme {
+        AddEditMoveContent(
+            userInputs = UserInputs(
+                moveName = "Windmill",
+                selectedTags = setOf("2")
+            ),
+            allTags = dummyTags,
+            onMoveNameChange = {},
+            onTagSelected = {},
+            onNewTagNameChange = {},
+            onAddTag = {},
+            onSaveMove = {}
         )
     }
 }
 
-@Preview(showBackground = true, name = "Edit Mode")
+@Preview(showBackground = true)
 @Composable
-fun AddEditMoveScreenPreview_EditMode() {
-    ComboGeneratorTheme {
-        AddEditMoveScreen(
-            onNavigateUp = {},
-            moveId = "previewEditId"
-        )
+private fun AddEditMoveTopBar_AddPreview() {
+    BreakVaultTheme {
+        AddEditMoveTopBar(isNewMove = true, onNavigateUp = {})
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+private fun AddEditMoveTopBar_EditPreview() {
+    BreakVaultTheme {
+        AddEditMoveTopBar(isNewMove = false, onNavigateUp = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MoveTagsSection_WithTags_Preview() {
+    val dummyTags = listOf(
+        MoveTag(id = "1", name = "Freezes"),
+        MoveTag(id = "2", name = "Power")
+    )
+    BreakVaultTheme {
+        MoveTagsSection(allTags = dummyTags, selectedTags = setOf("1"), onTagSelected = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MoveTagsSection_NoTags_Preview() {
+    BreakVaultTheme {
+        MoveTagsSection(allTags = emptyList(), selectedTags = emptySet(), onTagSelected = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun AddNewTagSectionPreview() {
+    BreakVaultTheme {
+        AddNewTagSection(newTagName = "New Style", onNewTagNameChange = {}, onAddTag = {})
+    }
+}
+
+//endregion

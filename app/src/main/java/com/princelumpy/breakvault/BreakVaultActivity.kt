@@ -39,7 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.princelumpy.breakvault.ui.theme.ComboGeneratorTheme
+import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -49,7 +49,7 @@ class BreakVaultActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            ComboGeneratorTheme {
+            BreakVaultTheme {
                 MainAppScreen()
             }
         }
@@ -194,7 +194,7 @@ fun MainAppScreen() {
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
-    ComboGeneratorTheme {
+    BreakVaultTheme {
         MainAppScreen()
     }
 }

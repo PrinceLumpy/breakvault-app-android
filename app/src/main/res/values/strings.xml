@@ -54,7 +54,7 @@
     <string name="move_list_manage_tags_button">Manage Tags</string>
 
     <!-- AddEditMoveScreen -->
-    <string name="add_edit_move_add_new_move_title">Add New Move</string>
+    <string name="add_edit_move_add_new_move_title">Create Move</string>
     <string name="add_edit_move_edit_move_title">Edit Move</string>
     <string name="add_edit_move_save_move_fab_description">Save Move</string>
     <string name="add_edit_move_move_name_label">Move Name</string>
@@ -132,7 +132,7 @@
 
     <!-- AddEditBattleComboScreen -->
     <string name="add_edit_battle_combo_edit_title">Edit Battle Combo</string>
-    <string name="add_edit_battle_combo_new_title">New Battle Combo</string>
+    <string name="add_edit_battle_combo_new_title">Create Battle Combo</string>
     <string name="add_edit_battle_combo_description_label">Combo Description</string>
     <string name="add_edit_battle_combo_description_placeholder">e.g. 6-step -> freeze -> power move</string>
     <string name="add_edit_battle_combo_import_button">Import from Practice Mode</string>
@@ -229,5 +229,6 @@
     <string name="combo_generator_add_tag_button">Add Tag to Sequence</string>
     <string name="combo_generator_remove_last_tag_button">Remove Last Tag in Sequence</string>
     <string name="combo_generator_sequence_empty_message">Sequence is Currently Empty</string>
+    <string name="add_edit_goal_add_reps_dialog_title">Add reps</string>
 
 </resources>

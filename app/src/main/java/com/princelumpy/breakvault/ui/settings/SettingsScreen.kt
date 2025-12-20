@@ -1,7 +1,6 @@
 package com.princelumpy.breakvault.ui.settings
 
 import android.net.Uri
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -18,23 +17,23 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
-import com.princelumpy.breakvault.ui.theme.ComboGeneratorTheme
+import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * The main, stateful screen composable that holds the ViewModel and state.
+ */
 @Composable
 fun SettingsScreen(
     onNavigateUp: () -> Unit,
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
-    // UPDATED: Use collectAsStateWithLifecycle for better lifecycle management.
     val uiState by settingsViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // UPDATED: LaunchedEffect now reacts to changes in the snackbarMessage from the UiState.
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let { message ->
             snackbarHostState.showSnackbar(message)
-            settingsViewModel.onSnackbarShown() // Notify ViewModel that snackbar was shown
+            settingsViewModel.onSnackbarShown()
         }
     }
 
@@ -52,13 +51,43 @@ fun SettingsScreen(
         }
     )
 
+    SettingsScaffold(
+        onNavigateUp = onNavigateUp,
+        snackbarHostState = snackbarHostState,
+        onExportClick = { exportDataLauncher.launch("combos_backup.json") },
+        onImportClick = { importDataLauncher.launch(arrayOf("application/json")) },
+        onResetClick = { settingsViewModel.onResetDatabaseClicked() }
+    )
+
+    if (uiState.showResetConfirmDialog) {
+        ResetConfirmationDialog(
+            onConfirm = { settingsViewModel.onResetDatabaseConfirm() },
+            onDismiss = { settingsViewModel.onResetDatabaseDismiss() }
+        )
+    }
+}
+
+/**
+ * A stateless scaffold that handles the overall layout for the Settings screen.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SettingsScaffold(
+    onNavigateUp: () -> Unit,
+    snackbarHostState: SnackbarHostState,
+    onExportClick: () -> Unit,
+    onImportClick: () -> Unit,
+    onResetClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Scaffold(
+        modifier = modifier,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(id = R.string.settings_title)) },
                 navigationIcon = {
-                    IconButton(onClick = { onNavigateUp() }) {
+                    IconButton(onClick = onNavigateUp) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(id = R.string.common_back_button_description)
@@ -68,54 +97,55 @@ fun SettingsScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        SettingsContent(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            SettingsButton(text = stringResource(id = R.string.settings_export_data_button)) {
-                Log.i("SettingsScreen", "Export Data Clicked")
-                exportDataLauncher.launch("combos_backup.json")
-            }
-
-            SettingsButton(text = stringResource(id = R.string.settings_import_data_button)) {
-                Log.i("SettingsScreen", "Import Data Clicked")
-                importDataLauncher.launch(arrayOf("application/json"))
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            OutlinedButton(
-                // UPDATED: onClick now calls the ViewModel function.
-                onClick = { settingsViewModel.onResetDatabaseClicked() },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-            ) {
-                Text(stringResource(id = R.string.settings_reset_database_button))
-            }
-        }
-    }
-
-    // UPDATED: Dialog visibility is now controlled by the UiState from the ViewModel.
-    if (uiState.showResetConfirmDialog) {
-        ResetConfirmationDialog(
-            onConfirm = {
-                Log.i("SettingsScreen", "Database reset confirmed")
-                // UPDATED: onConfirm now calls the ViewModel function.
-                settingsViewModel.onResetDatabaseConfirm()
-            },
-            onDismiss = {
-                // UPDATED: onDismiss now calls the ViewModel function.
-                settingsViewModel.onResetDatabaseDismiss()
-            }
+                .padding(paddingValues),
+            onExportClick = onExportClick,
+            onImportClick = onImportClick,
+            onResetClick = onResetClick
         )
     }
 }
 
-// Private helper composable remain unchanged as they are pure UI
+/**
+ * The main, stateless content of the screen containing the settings buttons.
+ */
+@Composable
+private fun SettingsContent(
+    onExportClick: () -> Unit,
+    onImportClick: () -> Unit,
+    onResetClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        SettingsButton(
+            text = stringResource(id = R.string.settings_export_data_button),
+            onClick = onExportClick
+        )
+
+        SettingsButton(
+            text = stringResource(id = R.string.settings_import_data_button),
+            onClick = onImportClick
+        )
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        OutlinedButton(
+            onClick = onResetClick,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+        ) {
+            Text(stringResource(id = R.string.settings_reset_database_button))
+        }
+    }
+}
+
+
 @Composable
 private fun SettingsButton(text: String, onClick: () -> Unit) {
     Button(
@@ -151,18 +181,26 @@ private fun ResetConfirmationDialog(
     )
 }
 
+//region Previews
+
 @Preview(showBackground = true)
 @Composable
-fun SettingsScreenPreview() {
-    ComboGeneratorTheme {
-        SettingsScreen(onNavigateUp = {})
+private fun SettingsContentPreview() {
+    BreakVaultTheme {
+        SettingsContent(
+            onExportClick = {},
+            onImportClick = {},
+            onResetClick = {}
+        )
     }
 }
 
 @Preview
 @Composable
-fun ResetConfirmationDialogPreview() {
-    ComboGeneratorTheme {
+private fun ResetConfirmationDialogPreview() {
+    BreakVaultTheme {
         ResetConfirmationDialog(onConfirm = {}, onDismiss = {})
     }
 }
+
+//endregion

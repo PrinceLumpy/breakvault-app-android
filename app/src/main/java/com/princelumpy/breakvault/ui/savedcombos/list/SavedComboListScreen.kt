@@ -42,44 +42,54 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.SavedCombo
-import com.princelumpy.breakvault.ui.theme.ComboGeneratorTheme
+import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * The main, stateful screen composable that holds the ViewModel and state.
+ */
 @Composable
 fun SavedComboListScreen(
     onNavigateToAddEditCombo: (String?) -> Unit,
     savedComboListViewModel: SavedComboListViewModel = hiltViewModel()
 ) {
-    // UPDATED: Use collectAsStateWithLifecycle
     val uiState by savedComboListViewModel.uiState.collectAsStateWithLifecycle()
-
-    SavedComboListContent(
-        uiState = uiState,
-        onNavigateToAddEditCombo = onNavigateToAddEditCombo,
-        onShowDeleteDialog = savedComboListViewModel::onShowDeleteDialog,
-        onCancelDelete = savedComboListViewModel::onCancelDelete,
-        onConfirmDelete = savedComboListViewModel::onConfirmDelete
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SavedComboListContent(
-    uiState: SavedCombosUiState,
-    onNavigateToAddEditCombo: (String?) -> Unit,
-    onShowDeleteDialog: (SavedCombo) -> Unit,
-    onCancelDelete: () -> Unit,
-    onConfirmDelete: () -> Unit
-) {
-    // Create a convenience variable for cleaner access
     val dialogState = uiState.dialogState
 
+    SavedComboListScaffold(
+        savedCombos = uiState.savedCombos,
+        onNavigateToAddEditCombo = onNavigateToAddEditCombo,
+        onEditClick = { onNavigateToAddEditCombo(it.id) },
+        onDeleteClick = savedComboListViewModel::onShowDeleteDialog
+    )
+
+    dialogState.comboToDelete?.let { combo ->
+        DeleteComboDialog(
+            comboName = combo.name,
+            onDismiss = savedComboListViewModel::onCancelDelete,
+            onConfirm = savedComboListViewModel::onConfirmDelete
+        )
+    }
+}
+
+/**
+ * A stateless scaffold that handles the overall layout for the Saved Combo List screen.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SavedComboListScaffold(
+    savedCombos: List<SavedCombo>,
+    onNavigateToAddEditCombo: (String?) -> Unit,
+    onEditClick: (SavedCombo) -> Unit,
+    onDeleteClick: (SavedCombo) -> Unit,
+    modifier: Modifier = Modifier
+) {
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(title = { Text(stringResource(id = R.string.saved_combos_screen_title)) })
         },
         floatingActionButton = {
-            if (uiState.savedCombos.isNotEmpty()) {
+            if (savedCombos.isNotEmpty()) {
                 FloatingActionButton(onClick = { onNavigateToAddEditCombo(null) }) {
                     Icon(
                         Icons.Filled.Add,
@@ -89,88 +99,129 @@ fun SavedComboListContent(
             }
         }
     ) { paddingValues ->
-        if (uiState.savedCombos.isEmpty()) {
-            Column(
+        if (savedCombos.isEmpty()) {
+            EmptyState(
+                onNavigateToAddEditCombo = { onNavigateToAddEditCombo(null) },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(AppStyleDefaults.SpacingLarge),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = stringResource(id = R.string.saved_combos_no_combos_message),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = stringResource(id = R.string.saved_combos_empty_state_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(vertical = AppStyleDefaults.SpacingMedium)
-                )
-                Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingLarge))
-                Button(onClick = { onNavigateToAddEditCombo(null) }) {
-                    Icon(Icons.Filled.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.padding(AppStyleDefaults.SpacingSmall))
-                    Text(stringResource(id = R.string.create_combo_button_text))
-                }
-            }
+            )
         } else {
-            LazyColumn(
+            ComboList(
+                savedCombos = savedCombos,
+                onEditClick = onEditClick,
+                onDeleteClick = onDeleteClick,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = AppStyleDefaults.LazyListPadding,
-                verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
-            ) {
-                items(
-                    uiState.savedCombos,
-                    key = { it.id }
-                ) { savedCombo ->
-                    SavedComboItem(
-                        savedCombo = savedCombo,
-                        onEditClick = {
-                            onNavigateToAddEditCombo(savedCombo.id)
-                        },
-                        onDeleteClick = { onShowDeleteDialog(savedCombo) }
-                    )
-                }
-            }
+                    .padding(paddingValues)
+            )
         }
-    }
-
-    // UPDATED: Access the combo from the nested dialogState object
-    dialogState.comboToDelete?.let { combo ->
-        AlertDialog(
-            onDismissRequest = { onCancelDelete() },
-            title = { Text(stringResource(id = R.string.common_confirm_deletion_title)) },
-            text = {
-                Text(
-                    stringResource(
-                        id = R.string.saved_combos_delete_confirmation_message,
-                        combo.name
-                    )
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { onConfirmDelete() },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text(stringResource(id = R.string.common_delete))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { onCancelDelete() }) {
-                    Text(stringResource(id = R.string.common_cancel))
-                }
-            }
-        )
     }
 }
 
+/**
+ * A stateless list of saved combos.
+ */
+@Composable
+private fun ComboList(
+    savedCombos: List<SavedCombo>,
+    onEditClick: (SavedCombo) -> Unit,
+    onDeleteClick: (SavedCombo) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = AppStyleDefaults.LazyListPadding,
+        verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
+    ) {
+        items(
+            savedCombos,
+            key = { it.id }
+        ) { savedCombo ->
+            SavedComboItem(
+                savedCombo = savedCombo,
+                onEditClick = { onEditClick(savedCombo) },
+                onDeleteClick = { onDeleteClick(savedCombo) }
+            )
+        }
+    }
+}
+
+/**
+ * A stateless composable for the empty state of the combo list.
+ */
+@Composable
+private fun EmptyState(
+    onNavigateToAddEditCombo: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.padding(AppStyleDefaults.SpacingLarge),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = stringResource(id = R.string.saved_combos_no_combos_message),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = stringResource(id = R.string.saved_combos_empty_state_subtitle),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(vertical = AppStyleDefaults.SpacingMedium)
+        )
+        Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingLarge))
+        Button(onClick = onNavigateToAddEditCombo) {
+            Icon(Icons.Filled.Add, contentDescription = null)
+            Spacer(modifier = Modifier.padding(AppStyleDefaults.SpacingSmall))
+            Text(stringResource(id = R.string.create_combo_button_text))
+        }
+    }
+}
+
+/**
+ * A stateless dialog for confirming combo deletion.
+ */
+@Composable
+private fun DeleteComboDialog(
+    comboName: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    AlertDialog(
+        modifier = modifier,
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(id = R.string.common_confirm_deletion_title)) },
+        text = {
+            Text(
+                stringResource(
+                    id = R.string.saved_combos_delete_confirmation_message,
+                    comboName
+                )
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text(stringResource(id = R.string.common_delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(id = R.string.common_cancel))
+            }
+        }
+    )
+}
+
+/**
+ * A stateless item for a single saved combo in the list.
+ */
 @Composable
 fun SavedComboItem(
     savedCombo: SavedCombo,
@@ -230,39 +281,51 @@ fun SavedComboItem(
     }
 }
 
+// Previews
+
 @Preview(showBackground = true)
 @Composable
-fun SavedComboListScreenPreview() {
-    val previewUiState = SavedCombosUiState(
-        savedCombos = listOf(
-            SavedCombo(
-                id = "1",
-                name = "Windmill Freeze",
-                moves = listOf("Windmill", "Baby Freeze")
-            ),
-            SavedCombo(
-                id = "2",
-                name = "Flare Swipe",
-                moves = listOf("Flare", "Swipe", "Elbow Freeze")
-            ),
-        )
+private fun SavedComboListScaffold_WithCombos_Preview() {
+    val previewCombos = listOf(
+        SavedCombo(
+            id = "1",
+            name = "Windmill Freeze",
+            moves = listOf("Windmill", "Baby Freeze")
+        ),
+        SavedCombo(
+            id = "2",
+            name = "Flare Swipe",
+            moves = listOf("Flare", "Swipe", "Elbow Freeze")
+        ),
     )
 
-    ComboGeneratorTheme {
-        SavedComboListContent(
-            uiState = previewUiState,
+    BreakVaultTheme {
+        SavedComboListScaffold(
+            savedCombos = previewCombos,
             onNavigateToAddEditCombo = {},
-            onShowDeleteDialog = {},
-            onCancelDelete = {},
-            onConfirmDelete = {}
+            onEditClick = {},
+            onDeleteClick = {}
         )
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun SavedComboItemPreview() {
-    ComboGeneratorTheme {
+private fun SavedComboListScaffold_Empty_Preview() {
+    BreakVaultTheme {
+        SavedComboListScaffold(
+            savedCombos = emptyList(),
+            onNavigateToAddEditCombo = {},
+            onEditClick = {},
+            onDeleteClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SavedComboItemPreview() {
+    BreakVaultTheme {
         val sampleCombo = SavedCombo(
             id = "preview1",
             name = "Awesome Combo",
@@ -272,6 +335,18 @@ fun SavedComboItemPreview() {
             savedCombo = sampleCombo,
             onEditClick = {},
             onDeleteClick = {}
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun DeleteComboDialogPreview() {
+    BreakVaultTheme {
+        DeleteComboDialog(
+            comboName = "My Awesome Combo",
+            onDismiss = { },
+            onConfirm = { }
         )
     }
 }

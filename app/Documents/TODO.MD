@@ -25,9 +25,14 @@
 
   -- EditMove --
 
--- Combo Generator --
+-- Moves by Tag
+
+* Ui looks greyed out, fix it
+  -- Combo Generator --
 
 -- Saved Combos --
+
+* should be renamed everywhere to Practice Combos
 
 -- Edit Saved Combo --
 

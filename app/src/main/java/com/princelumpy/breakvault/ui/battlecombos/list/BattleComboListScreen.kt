@@ -48,7 +48,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.isEmpty
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
@@ -62,7 +61,6 @@ import com.princelumpy.breakvault.data.local.entity.BattleTag
 import com.princelumpy.breakvault.data.local.entity.EnergyLevel
 import com.princelumpy.breakvault.data.local.entity.TrainingStatus
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BattleComboListScreen(
     onNavigateUp: () -> Unit,
@@ -72,6 +70,32 @@ fun BattleComboListScreen(
 ) {
     val uiState by battleComboListViewModel.uiState.collectAsState()
 
+    BattleComboListContent(
+        uiState = uiState,
+        onSortOptionChange = battleComboListViewModel::onSortOptionChange,
+        onTagSelected = battleComboListViewModel::onTagSelected,
+        onShowResetDialog = battleComboListViewModel::onShowResetDialog,
+        onConfirmReset = battleComboListViewModel::onConfirmReset,
+        onCancelReset = battleComboListViewModel::onCancelReset,
+        onToggleUsed = battleComboListViewModel::toggleUsed,
+        onNavigateToAddEditBattleCombo = onNavigateToAddEditBattleCombo,
+        onNavigateToBattleTagList = onNavigateToBattleTagList
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BattleComboListContent(
+    uiState: BattleComboListUiState,
+    onSortOptionChange: (BattleSortOption) -> Unit,
+    onTagSelected: (String) -> Unit,
+    onShowResetDialog: () -> Unit,
+    onConfirmReset: () -> Unit,
+    onCancelReset: () -> Unit,
+    onToggleUsed: (BattleCombo) -> Unit,
+    onNavigateToAddEditBattleCombo: (String?) -> Unit,
+    onNavigateToBattleTagList: () -> Unit
+) {
     var showSortMenu by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -80,7 +104,7 @@ fun BattleComboListScreen(
                 title = { Text("Battle Combos") },
                 actions = {
                     // Manage Tags Button
-                    IconButton(onClick = { onNavigateToBattleTagList() }) {
+                    IconButton(onClick = onNavigateToBattleTagList) {
                         Icon(
                             Icons.AutoMirrored.Filled.Label,
                             contentDescription = "Manage Battle Tags"
@@ -98,35 +122,35 @@ fun BattleComboListScreen(
                             DropdownMenuItem(
                                 text = { Text("Energy: High -> Low") },
                                 onClick = {
-                                    battleComboListViewModel.onSortOptionChange(BattleSortOption.EnergyHighToLow)
+                                    onSortOptionChange(BattleSortOption.EnergyHighToLow)
                                     showSortMenu = false
                                 }
                             )
                             DropdownMenuItem(
                                 text = { Text("Energy: Low -> High") },
                                 onClick = {
-                                    battleComboListViewModel.onSortOptionChange(BattleSortOption.EnergyLowToHigh)
+                                    onSortOptionChange(BattleSortOption.EnergyLowToHigh)
                                     showSortMenu = false
                                 }
                             )
                             DropdownMenuItem(
                                 text = { Text("Status: Battle Ready") },
                                 onClick = {
-                                    battleComboListViewModel.onSortOptionChange(BattleSortOption.StatusFireFirst)
+                                    onSortOptionChange(BattleSortOption.StatusFireFirst)
                                     showSortMenu = false
                                 }
                             )
                             DropdownMenuItem(
                                 text = { Text("Status: Training") },
                                 onClick = {
-                                    battleComboListViewModel.onSortOptionChange(BattleSortOption.StatusHammerFirst)
+                                    onSortOptionChange(BattleSortOption.StatusHammerFirst)
                                     showSortMenu = false
                                 }
                             )
                         }
                     }
                     // Clean Slate Button
-                    IconButton(onClick = { battleComboListViewModel.onShowResetDialog() }) {
+                    IconButton(onClick = onShowResetDialog) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Clean Slate")
                     }
                 }
@@ -134,9 +158,7 @@ fun BattleComboListScreen(
         },
         floatingActionButton = {
             if (uiState.allCombos.isNotEmpty()) {
-                FloatingActionButton(onClick = {
-                    onNavigateToAddEditBattleCombo(null)
-                }) {
+                FloatingActionButton(onClick = { onNavigateToAddEditBattleCombo(null) }) {
                     Icon(Icons.Filled.Add, contentDescription = "Add Battle Combo")
                 }
             }
@@ -167,10 +189,10 @@ fun BattleComboListScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(uiState.allTags) { tag ->
+                    items(uiState.allTags, key = { it.name }) { tag ->
                         FilterChip(
                             selected = uiState.selectedTagNames.contains(tag.name),
-                            onClick = { battleComboListViewModel.onTagSelected(tag.name) },
+                            onClick = { onTagSelected(tag.name) },
                             label = { Text(tag.name) }
                         )
                     }
@@ -219,10 +241,12 @@ fun BattleComboListScreen(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 80.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(uiState.filteredAndSortedCombos, key = { it.battleCombo.id }) { comboWithTags ->
+                    items(
+                        uiState.filteredAndSortedCombos,
+                        key = { it.battleCombo.id }) { comboWithTags ->
                         BattleComboItem(
                             comboWithTags = comboWithTags,
-                            onClick = { battleComboListViewModel.toggleUsed(comboWithTags.battleCombo) },
+                            onClick = { onToggleUsed(comboWithTags.battleCombo) },
                             onEditClick = {
                                 onNavigateToAddEditBattleCombo(comboWithTags.battleCombo.id)
                             }
@@ -235,22 +259,23 @@ fun BattleComboListScreen(
 
     if (uiState.showResetConfirmDialog) {
         AlertDialog(
-            onDismissRequest = { battleComboListViewModel.onCancelReset() },
+            onDismissRequest = onCancelReset,
             title = { Text("Clean Slate?") },
             text = { Text("This will set all combos to unused. \nAre you ready?") },
             confirmButton = {
-                TextButton(onClick = { battleComboListViewModel.onConfirmReset() }) {
+                TextButton(onClick = onConfirmReset) {
                     Text("Clean Slate")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { battleComboListViewModel.onCancelReset() }) {
+                TextButton(onClick = onCancelReset) {
                     Text("Cancel")
                 }
             }
         )
     }
 }
+
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -331,5 +356,99 @@ fun BattleComboItem(
                 )
             }
         }
+    }
+}
+
+// --- PREVIEWS ---
+
+@Preview(showBackground = true, name = "Populated List")
+@Composable
+private fun BattleComboListContentPreview_Populated() {
+    val fakeCombos = listOf(
+        BattleComboWithTags(
+            BattleCombo("1", "Jab, Cross, Hook", EnergyLevel.HIGH, TrainingStatus.READY, false),
+            listOf(BattleTag("1","Boxing"), BattleTag("2","Power"))
+        ),
+        BattleComboWithTags(
+            BattleCombo("2", "Low Kick, High Kick", EnergyLevel.MEDIUM, TrainingStatus.TRAINING, true),
+            listOf(BattleTag("3","Kicking"))
+        ),
+        BattleComboWithTags(
+            BattleCombo("3", "Spinning Backfist", EnergyLevel.LOW, TrainingStatus.READY, false),
+            listOf()
+        )
+    )
+    val fakeTags = listOf(BattleTag("1","Boxing"), BattleTag("3","Kicking"), BattleTag("2","Power"))
+
+    val uiState = BattleComboListUiState(
+        allCombos = fakeCombos,
+        allTags = fakeTags,
+        filteredAndSortedCombos = fakeCombos,
+        selectedTagNames = setOf("Boxing")
+    )
+
+    MaterialTheme {
+        BattleComboListContent(
+            uiState = uiState,
+            onSortOptionChange = {},
+            onTagSelected = {},
+            onShowResetDialog = {},
+            onConfirmReset = {},
+            onCancelReset = {},
+            onToggleUsed = {},
+            onNavigateToAddEditBattleCombo = {},
+            onNavigateToBattleTagList = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Initial Empty State")
+@Composable
+private fun BattleComboListContentPreview_Empty() {
+    MaterialTheme {
+        BattleComboListContent(
+            uiState = BattleComboListUiState(), // Default empty state
+            onSortOptionChange = {},
+            onTagSelected = {},
+            onShowResetDialog = {},
+            onConfirmReset = {},
+            onCancelReset = {},
+            onToggleUsed = {},
+            onNavigateToAddEditBattleCombo = {},
+            onNavigateToBattleTagList = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Filtered Empty State")
+@Composable
+private fun BattleComboListContentPreview_FilteredEmpty() {
+    val fakeCombos = listOf(
+        BattleComboWithTags(
+            BattleCombo("1", "Jab, Cross", EnergyLevel.LOW, TrainingStatus.READY, false),
+            listOf(BattleTag("1","Boxing"))
+        )
+    )
+    val fakeTags = listOf(BattleTag("1","Boxing"), BattleTag("3","Kicking"))
+
+    val uiState = BattleComboListUiState(
+        allCombos = fakeCombos,
+        allTags = fakeTags,
+        filteredAndSortedCombos = emptyList(), // No combos match the filter
+        selectedTagNames = setOf("Kicking") // "Kicking" is selected, but combo is "Boxing"
+    )
+
+    MaterialTheme {
+        BattleComboListContent(
+            uiState = uiState,
+            onSortOptionChange = {},
+            onTagSelected = {},
+            onShowResetDialog = {},
+            onConfirmReset = {},
+            onCancelReset = {},
+            onToggleUsed = {},
+            onNavigateToAddEditBattleCombo = {},
+            onNavigateToBattleTagList = {}
+        )
     }
 }

@@ -34,22 +34,25 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavController
+import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 import kotlinx.coroutines.delay
 
 private const val PREFS_NAME = "timer_prefs"
 private const val KEY_LAST_DURATION = "last_duration"
 
-// Dummy resource references as requested. 
+// Dummy resource references as requested.
 // Replace 0 with R.raw.your_file_name when files are added.
 private const val RES_ID_BEEP = 0 // e.g., R.raw.beep
 private const val RES_ID_START = 0 // e.g., R.raw.start_beep
 private const val RES_ID_FINISH = 0 // e.g., R.raw.finish_beep
 
+/**
+ * The main, stateful screen composable that holds the timer logic and state.
+ */
 @Composable
-fun TimerScreen(
-) {
+fun TimerScreen() {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     val focusManager = LocalFocusManager.current
@@ -81,11 +84,10 @@ fun TimerScreen(
         if (resId != 0) {
             try {
                 MediaPlayer.create(context, resId)?.apply {
-                    setOnCompletionListener { release() }
+                    setOnCompletionListener { it.release() }
                     start()
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
                 // Fallback if media creation fails
                 toneGenerator.startTone(fallbackTone, 200)
             }
@@ -97,62 +99,40 @@ fun TimerScreen(
     LaunchedEffect(isRunning, isPreTimer) {
         if (isRunning) {
             val startTime = System.currentTimeMillis()
-            // Use 3000L explicitly for pre-timer to ensure it is exactly 3 seconds
-            val totalDuration = if (isPreTimer) 3100L else (timeLeft * 1000L)
-            // Added 100ms buffer to pre-timer to ensure the "3" is seen/heard clearly before tick
-
+            val totalDuration =
+                if (isPreTimer) 3100L else (durationInput.toLongOrNull() ?: 30L) * 1000L
             val endTime = startTime + totalDuration
 
-            // Track last seconds to trigger ticks
-            var lastSeconds = if (isPreTimer) 4L else timeLeft + 1
+            var lastSeconds = if (isPreTimer) 4L else (durationInput.toLongOrNull() ?: 30L) + 1
 
-            while (isRunning) {
-                val now = System.currentTimeMillis()
-                val remaining = endTime - now
+            while (System.currentTimeMillis() < endTime && isRunning) {
+                val remaining = endTime - System.currentTimeMillis()
+                val currentSeconds = (remaining + 999) / 1000 // Ceiling division
 
-                if (remaining <= 0) {
-                    if (isPreTimer) {
-                        // PRE-TIMER FINISHED -> GO!
-                        playSound(RES_ID_START, ToneGenerator.TONE_DTMF_D) // Higher pitch for Start
-                        isPreTimer = false
-                        // Start main timer
-                        val duration = durationInput.toLongOrNull() ?: 30L
-                        timeLeft = duration
-                        break // Restart effect for main timer
-                    } else {
-                        // MAIN TIMER FINISHED
-                        playSound(
-                            RES_ID_FINISH,
-                            ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD
-                        ) // Distinct finish sound
-                        isRunning = false
-                        timeLeft = 0
-                        break
-                    }
-                } else {
-                    // Calculate seconds for display (ceiling)
-                    // e.g. 3000ms -> 3, 2900 -> 3, ..., 2000 -> 2 (wait, 2000/1000 = 2. We want 3 until it hits 2000?)
-                    // Usually countdowns: 2999 is 2s 999ms, usually displayed as 3.
-                    // When it hits 2000, it is exactly 2s. Display 2.
+                if (currentSeconds != lastSeconds) {
+                    timeLeft = currentSeconds
+                    lastSeconds = currentSeconds
 
-                    // Logic: (remaining - 1) / 1000 + 1
-                    val currentSeconds =
-                        if (remaining % 1000 == 0L) remaining / 1000 else (remaining / 1000) + 1
-
-                    if (currentSeconds != lastSeconds) {
-                        // A second has passed
-                        timeLeft = currentSeconds
-                        lastSeconds = currentSeconds
-
-                        if (isPreTimer) {
-                            // Play tick sound for 3, 2, 1
-                            if (currentSeconds > 0) {
-                                playSound(RES_ID_BEEP, ToneGenerator.TONE_DTMF_1)
-                            }
-                        }
+                    if (isPreTimer && currentSeconds > 0) {
+                        playSound(RES_ID_BEEP, ToneGenerator.TONE_DTMF_1)
                     }
                 }
-                delay(50) // Update frequently
+                delay(50)
+            }
+
+            if (isRunning) { // Only proceed if not manually stopped
+                if (isPreTimer) {
+                    // PRE-TIMER FINISHED -> GO!
+                    playSound(RES_ID_START, ToneGenerator.TONE_DTMF_D)
+                    isPreTimer = false
+                    timeLeft = durationInput.toLongOrNull() ?: 30L
+                    // The LaunchedEffect will restart for the main timer
+                } else {
+                    // MAIN TIMER FINISHED
+                    playSound(RES_ID_FINISH, ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD)
+                    isRunning = false
+                    timeLeft = 0
+                }
             }
         }
     }
@@ -165,47 +145,25 @@ fun TimerScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (isRunning) {
-            Text(
-                text = if (isPreTimer) "Get Ready!" else "Go!",
-                style = MaterialTheme.typography.headlineSmall,
-                color = if (isPreTimer) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+            TimerRunning(
+                timeLeft = timeLeft,
+                isPreTimer = isPreTimer,
+                onStopClick = {
+                    isRunning = false
+                    isPreTimer = false // Ensure pre-timer stops as well
+                    timeLeft = 0
+                }
             )
-            Text(
-                text = "$timeLeft",
-                style = MaterialTheme.typography.displayLarge,
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(32.dp))
-            Button(onClick = { isRunning = false }) {
-                Icon(Icons.Default.Stop, contentDescription = null)
-                Text("Stop")
-            }
         } else {
-            Text(
-                text = "Set Timer (seconds)",
-                style = MaterialTheme.typography.titleMedium
-            )
-            OutlinedTextField(
-                value = durationInput,
-                onValueChange = {
+            TimerSetup(
+                durationInput = durationInput,
+                onDurationChange = {
                     if (it.length <= 4 && it.all { char -> char.isDigit() }) {
                         durationInput = it
                         it.toLongOrNull()?.let { time -> saveDuration(time) }
                     }
                 },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Number,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = { focusManager.clearFocus() }
-                ),
-                modifier = Modifier.padding(vertical = 16.dp)
-            )
-
-            Button(
-                onClick = {
+                onStartClick = {
                     val duration = durationInput.toLongOrNull() ?: 30L
                     if (duration > 0) {
                         timeLeft = 3 // Start with 3s pre-timer visually
@@ -214,10 +172,125 @@ fun TimerScreen(
                         focusManager.clearFocus()
                     }
                 }
-            ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null)
-                Text("Start")
-            }
+            )
         }
     }
 }
+
+/**
+ * A stateless composable for displaying the running timer.
+ */
+@Composable
+private fun TimerRunning(
+    timeLeft: Long,
+    isPreTimer: Boolean,
+    onStopClick: () -> Unit
+) {
+    Text(
+        text = if (isPreTimer) "Get Ready!" else "Go!",
+        style = MaterialTheme.typography.headlineSmall,
+        color = if (isPreTimer) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+    )
+    Text(
+        text = "$timeLeft",
+        style = MaterialTheme.typography.displayLarge,
+        textAlign = TextAlign.Center
+    )
+    Spacer(modifier = Modifier.height(32.dp))
+    Button(onClick = onStopClick) {
+        Icon(Icons.Default.Stop, contentDescription = "Stop Timer")
+        Text("Stop")
+    }
+}
+
+/**
+ * A stateless composable for setting up the timer.
+ */
+@Composable
+private fun TimerSetup(
+    durationInput: String,
+    onDurationChange: (String) -> Unit,
+    onStartClick: () -> Unit
+) {
+    val focusManager = LocalFocusManager.current
+    Text(
+        text = "Set Timer (seconds)",
+        style = MaterialTheme.typography.titleMedium
+    )
+    OutlinedTextField(
+        value = durationInput,
+        onValueChange = onDurationChange,
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Number,
+            imeAction = ImeAction.Done
+        ),
+        keyboardActions = KeyboardActions(
+            onDone = { focusManager.clearFocus() }
+        ),
+        modifier = Modifier.padding(vertical = 16.dp)
+    )
+
+    Button(onClick = onStartClick) {
+        Icon(Icons.Default.PlayArrow, contentDescription = "Start Timer")
+        Text("Start")
+    }
+}
+
+//region Previews
+
+@Preview(showBackground = true)
+@Composable
+private fun TimerSetupPreview() {
+    BreakVaultTheme {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            TimerSetup(
+                durationInput = "60",
+                onDurationChange = {},
+                onStartClick = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun TimerRunning_PreTimer_Preview() {
+    BreakVaultTheme {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            TimerRunning(
+                timeLeft = 3,
+                isPreTimer = true,
+                onStopClick = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun TimerRunning_MainTimer_Preview() {
+    BreakVaultTheme {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            TimerRunning(
+                timeLeft = 45,
+                isPreTimer = false,
+                onStopClick = {}
+            )
+        }
+    }
+}
+
+//endregion

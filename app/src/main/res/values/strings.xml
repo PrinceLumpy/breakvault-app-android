@@ -230,5 +230,6 @@
     <string name="combo_generator_remove_last_tag_button">Remove Last Tag in Sequence</string>
     <string name="combo_generator_sequence_empty_message">Sequence is Currently Empty</string>
     <string name="add_edit_goal_add_reps_dialog_title">Add reps</string>
+    <string name="move_list_clear_filters_button">Clear Filters</string>
 
 </resources>

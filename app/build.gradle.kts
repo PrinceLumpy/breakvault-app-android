@@ -15,7 +15,7 @@ android {
     defaultConfig {
         applicationId = "com.princelumpy.breakvault" // CRITICAL: Updated applicationId
         minSdk = 24
-        targetSdk = 34 // Updated to a more common stable API for production
+        targetSdk = 36 // Updated to a more common stable API for production
         versionCode = 1
         versionName = "1.0"
 
@@ -39,14 +39,12 @@ android {
     kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+            freeCompilerArgs.add("-XXLanguage:+PropertyParamAnnotationDefaultTargetMode")
         }
     }
     buildFeatures {
         compose = true
         buildConfig = true
-    }
-    kotlinOptions {
-        freeCompilerArgs = listOf("-XXLanguage:+PropertyParamAnnotationDefaultTargetMode")
     }
 }
 

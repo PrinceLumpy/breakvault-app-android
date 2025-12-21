@@ -38,7 +38,7 @@ class MoveListViewModel @Inject constructor(
     // Consolidate user-driven state
     private val _userInteractions = MutableStateFlow(UserInteractions())
 
-    // State for transient UI events (dialogs, snackbars)
+    // State for transient UI events (dialogs, snack bars)
     private val _moveToDelete = MutableStateFlow<MoveWithTags?>(null)
     private val _userMessage = MutableStateFlow<String?>(null)
 

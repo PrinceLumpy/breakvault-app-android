@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -38,6 +39,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 import kotlinx.coroutines.delay
+import androidx.core.content.edit
 
 private const val PREFS_NAME = "timer_prefs"
 private const val KEY_LAST_DURATION = "last_duration"
@@ -61,7 +63,7 @@ fun TimerScreen() {
     var durationInput by remember {
         mutableStateOf(prefs.getLong(KEY_LAST_DURATION, 30L).toString())
     }
-    var timeLeft by remember { mutableStateOf(0L) }
+    var timeLeft by remember { mutableLongStateOf(0L) }
     var isRunning by remember { mutableStateOf(false) }
     var isPreTimer by remember { mutableStateOf(false) } // 3-second countdown
 
@@ -77,7 +79,7 @@ fun TimerScreen() {
 
     // Save duration when modified
     fun saveDuration(duration: Long) {
-        prefs.edit().putLong(KEY_LAST_DURATION, duration).apply()
+        prefs.edit { putLong(KEY_LAST_DURATION, duration) }
     }
 
     fun playSound(resId: Int, fallbackTone: Int) {
@@ -87,8 +89,7 @@ fun TimerScreen() {
                     setOnCompletionListener { it.release() }
                     start()
                 }
-            } catch (e: Exception) {
-                // Fallback if media creation fails
+            } catch (_: Exception) {
                 toneGenerator.startTone(fallbackTone, 200)
             }
         } else {

@@ -24,7 +24,7 @@ data class UserInputs(
     val selectedTags: Set<String> = emptySet()
 )
 
-// State for transient UI events like dialogs or snackbars.
+// State for transient UI events like dialogs or snack bars.
 data class DialogState(
     val snackbarMessage: String? = null
 )
@@ -46,7 +46,8 @@ class AddEditMoveViewModel @Inject constructor(
     // Separate state flows for each concern.
     private val _userInputs = MutableStateFlow(UserInputs())
     private val _dialogState = MutableStateFlow(DialogState())
-    private val _metadata = MutableStateFlow<Pair<String?, Boolean>>(null to true) // Pair<moveId, isNewMove>
+    private val _metadata =
+        MutableStateFlow<Pair<String?, Boolean>>(null to true) // Pair<moveId, isNewMove>
 
     val uiState: StateFlow<AddEditMoveUiState> = combine(
         moveRepository.getAllTags(),

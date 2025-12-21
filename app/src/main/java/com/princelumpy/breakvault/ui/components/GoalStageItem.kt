@@ -145,7 +145,7 @@ private fun GoalStageItemPreview() {
             goalStage = GoalStage(
                 id = "456",
                 goalId = "123",
-                name = "Pushups",
+                name = "Push-ups",
                 currentCount = 25,
                 targetCount = 100,
                 unit = "reps"

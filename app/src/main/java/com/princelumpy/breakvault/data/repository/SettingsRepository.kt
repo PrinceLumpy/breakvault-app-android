@@ -6,6 +6,8 @@ import androidx.room.withTransaction
 import com.princelumpy.breakvault.data.local.database.AppDB
 import com.princelumpy.breakvault.data.service.export.model.AppDataExport
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.FileOutputStream
 import java.io.InputStreamReader
@@ -58,7 +60,10 @@ class SettingsRepository @Inject constructor(
     }
 
     suspend fun resetDatabase() {
-        db.clearAllTables()
+        withContext(Dispatchers.IO) {
+            db.clearAllTables()
+            db.prepopulateExampleData()
+        }
     }
 
     // ADDED: Function to write data to a user-selected file URI.

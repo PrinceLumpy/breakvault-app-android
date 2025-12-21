@@ -2,7 +2,6 @@ package com.princelumpy.breakvault.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
-import com.princelumpy.breakvault.data.local.entity.BattleTag
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -14,13 +13,13 @@ import kotlinx.serialization.Serializable
             entity = BattleCombo::class,
             parentColumns = ["id"],
             childColumns = ["battleComboId"],
-            onDelete = ForeignKey.Companion.CASCADE
+            onDelete = ForeignKey.CASCADE
         ),
         ForeignKey(
             entity = BattleTag::class,
             parentColumns = ["id"],
             childColumns = ["battleTagId"],
-            onDelete = ForeignKey.Companion.CASCADE
+            onDelete = ForeignKey.CASCADE
         )
     ]
 )

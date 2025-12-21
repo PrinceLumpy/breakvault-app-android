@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
@@ -59,6 +60,7 @@ fun MoveListScreen(
         onNavigateToAddEditMove = onNavigateToAddEditMove,
         onNavigateToComboGenerator = onNavigateToComboGenerator,
         onToggleTagFilter = viewModel::toggleTagFilter,
+        onClearFilters = viewModel::clearFilters,
         onDeleteMoveClick = viewModel::onDeleteMoveClick,
         onConfirmMoveDelete = viewModel::onConfirmMoveDelete,
         onCancelMoveDelete = viewModel::onCancelMoveDelete
@@ -74,6 +76,7 @@ fun MoveListContent(
     onNavigateToAddEditMove: (String?) -> Unit,
     onNavigateToComboGenerator: () -> Unit,
     onToggleTagFilter: (String) -> Unit,
+    onClearFilters: () -> Unit,
     onDeleteMoveClick: (MoveWithTags) -> Unit,
     onConfirmMoveDelete: () -> Unit,
     onCancelMoveDelete: () -> Unit
@@ -103,7 +106,8 @@ fun MoveListContent(
                 TagFilterRow(
                     tags = uiState.allTags,
                     selectedTagNames = uiState.selectedTagNames,
-                    onToggleTag = onToggleTagFilter
+                    onToggleTag = onToggleTagFilter,
+                    onClearFilters = onClearFilters
                 )
             }
 
@@ -147,18 +151,33 @@ fun GenerateComboButton(onClick: () -> Unit) {
 fun TagFilterRow(
     tags: List<MoveTag>,
     selectedTagNames: Set<String>,
-    onToggleTag: (String) -> Unit
+    onToggleTag: (String) -> Unit,
+    onClearFilters: () -> Unit
 ) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = AppStyleDefaults.SpacingLarge),
-        horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        items(tags) { tag ->
-            FilterChip(
-                selected = selectedTagNames.contains(tag.name),
-                onClick = { onToggleTag(tag.name) },
-                label = { Text(tag.name) }
-            )
+        LazyRow(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(horizontal = AppStyleDefaults.SpacingLarge),
+            horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)
+        ) {
+            items(tags) { tag ->
+                FilterChip(
+                    selected = selectedTagNames.contains(tag.name),
+                    onClick = { onToggleTag(tag.name) },
+                    label = { Text(tag.name) }
+                )
+            }
+        }
+        if (selectedTagNames.isNotEmpty()) {
+            IconButton(onClick = onClearFilters) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = stringResource(id = R.string.move_list_clear_filters_button)
+                )
+            }
         }
     }
 }
@@ -336,7 +355,8 @@ fun PreviewTagFilterRow() {
                 MoveTag(id = "3", name = "Defense")
             ),
             selectedTagNames = setOf("Punch"),
-            onToggleTag = {}
+            onToggleTag = {},
+            onClearFilters = {}
         )
     }
 }

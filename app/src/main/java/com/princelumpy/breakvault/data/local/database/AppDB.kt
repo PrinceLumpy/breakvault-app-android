@@ -50,6 +50,117 @@ abstract class AppDB : RoomDatabase() {
     abstract fun battleDao(): BattleDao
     abstract fun goalDao(): GoalDao
 
+    suspend fun prepopulateExampleData() {
+        val moveTagDao = this.moveDao()
+        val savedComboDao = this.savedComboDao()
+        val battleDao = this.battleDao()
+
+        // --- 1. Tags ---
+        val tagsToEnsure = listOf("Toprock", "Footwork", "Freeze", "Power")
+        val tagMap = mutableMapOf<String, String>() // Name -> ID
+        tagsToEnsure.forEach { name ->
+            val newMoveTag = MoveTag(id = UUID.randomUUID().toString(), name = name)
+            moveTagDao.insertMoveTag(newMoveTag)
+            tagMap[name] = newMoveTag.id
+        }
+
+        // Only prepopulate the following data if developing, not in production
+        if (BuildConfig.DEBUG) {
+            // --- 2. Moves ---
+            val movesData = listOf(
+                Pair("6-Step", "Footwork"),
+                Pair("CC", "Footwork"),
+                Pair("Windmill", "Power"),
+                Pair("Baby Freeze", "Freeze"),
+                Pair("Toprock Basic", "Toprock"),
+                Pair("Backspin", "Power")
+            )
+            movesData.forEach { (moveName, tagName) ->
+                val realMoveId = UUID.randomUUID().toString()
+                moveTagDao.insertMove(Move(id = realMoveId, name = moveName))
+                tagMap[tagName]?.let { tagId ->
+                    moveTagDao.link(MoveTagCrossRef(moveId = realMoveId, tagId = tagId))
+                }
+            }
+            Log.i("AppDB", "Populated 4 move tags and 6 example moves.")
+
+            // --- 3. Saved Combos ---
+            val savedCombosData = listOf(
+                Pair("Classic Footwork", listOf("6-Step", "CC")),
+                Pair("Power Finisher", listOf("Windmill", "Baby Freeze")),
+                Pair("Top to Down", listOf("Toprock Basic", "Backspin"))
+            )
+
+            savedCombosData.forEach { (name, moves) ->
+                savedComboDao.insertSavedCombo(SavedCombo(name = name, moves = moves))
+            }
+            Log.i("AppDB", "Populated 3 saved combos.")
+
+            // --- 4. Battle Tags ---
+            val battleTagsToEnsure = listOf("Power", "Technique")
+            val battleTagMap = mutableMapOf<String, String>()
+            battleTagsToEnsure.forEach { name ->
+                val newTag = BattleTag(id = UUID.randomUUID().toString(), name = name)
+                battleDao.insertBattleTag(newTag)
+                battleTagMap[name] = newTag.id
+            }
+
+            // --- 5. Battle Combos ---
+            val battleCombosData = listOf(
+                Pair(
+                    BattleCombo(
+                        id = UUID.randomUUID().toString(),
+                        description = "Windmill -> Backspin -> Freeze",
+                        energy = EnergyLevel.HIGH,
+                        status = TrainingStatus.READY
+                    ),
+                    "Power"
+                ),
+                Pair(
+                    BattleCombo(
+                        id = UUID.randomUUID().toString(),
+                        description = "Smooth transitions to CC",
+                        energy = EnergyLevel.MEDIUM,
+                        status = TrainingStatus.READY
+                    ),
+                    "Technique"
+                ),
+                Pair(
+                    BattleCombo(
+                        id = UUID.randomUUID().toString(),
+                        description = "Aggressive Toprock to Drop",
+                        energy = EnergyLevel.HIGH,
+                        status = TrainingStatus.TRAINING
+                    ),
+                    "Technique"
+                ),
+                Pair(
+                    BattleCombo(
+                        id = UUID.randomUUID().toString(),
+                        description = "Slow intro to floor",
+                        energy = EnergyLevel.LOW,
+                        status = TrainingStatus.READY
+                    ),
+                    "Technique"
+                )
+            )
+
+            battleCombosData.forEach { (combo, tagName) ->
+                battleDao.insertBattleCombo(combo)
+                // Link Tags
+                battleTagMap[tagName]?.let { tagId ->
+                    battleDao.link(
+                        BattleComboTagCrossRef(
+                            battleComboId = combo.id,
+                            battleTagId = tagId
+                        )
+                    )
+                }
+            }
+            Log.i("AppDB", "Populated 2 battle tags and 4 battle combos.")
+        }
+    }
+
     companion object {
         @Volatile
         private var INSTANCE: AppDB? = null
@@ -65,130 +176,19 @@ abstract class AppDB : RoomDatabase() {
                     "break_vault_database"
                 )
                     .fallbackToDestructiveMigration(true)
-                    .addCallback(AppDbCallback(appContext))
+                    .addCallback(AppDbCallback(scope = CoroutineScope(Dispatchers.IO)))
                     .build()
                     .also { INSTANCE = it }
             }
         }
-
-        suspend fun prepopulateExampleData(database: AppDB) {
-            val moveTagDao = database.moveDao()
-            val savedComboDao = database.savedComboDao()
-            val battleDao = database.battleDao()
-
-            // --- 1. Tags ---
-            val tagsToEnsure = listOf("Toprock", "Footwork", "Freeze", "Power")
-            val tagMap = mutableMapOf<String, String>() // Name -> ID
-            tagsToEnsure.forEach { name ->
-                val newMoveTag = MoveTag(id = UUID.randomUUID().toString(), name = name)
-                moveTagDao.insertMoveTag(newMoveTag)
-                tagMap[name] = newMoveTag.id
-            }
-
-            // Only prepopulate the following data if developing, not in production
-            if (BuildConfig.DEBUG) {
-                // --- 2. Moves ---
-                val movesData = listOf(
-                    Pair("6-Step", "Footwork"),
-                    Pair("CC", "Footwork"),
-                    Pair("Windmill", "Power"),
-                    Pair("Baby Freeze", "Freeze"),
-                    Pair("Toprock Basic", "Toprock"),
-                    Pair("Backspin", "Power")
-                )
-                movesData.forEach { (moveName, tagName) ->
-                    val realMoveId = UUID.randomUUID().toString()
-                    moveTagDao.insertMove(Move(id = realMoveId, name = moveName))
-                    tagMap[tagName]?.let { tagId ->
-                        moveTagDao.link(MoveTagCrossRef(moveId = realMoveId, tagId = tagId))
-                    }
-                }
-                Log.i("AppDB", "Populated 4 move tags and 6 example moves.")
-
-                // --- 3. Saved Combos ---
-                val savedCombosData = listOf(
-                    Pair("Classic Footwork", listOf("6-Step", "CC")),
-                    Pair("Power Finisher", listOf("Windmill", "Baby Freeze")),
-                    Pair("Top to Down", listOf("Toprock Basic", "Backspin"))
-                )
-
-                savedCombosData.forEach { (name, moves) ->
-                    savedComboDao.insertSavedCombo(SavedCombo(name = name, moves = moves))
-                }
-                Log.i("AppDB", "Populated 3 saved combos.")
-
-                // --- 4. Battle Tags ---
-                val battleTagsToEnsure = listOf("Power", "Technique")
-                val battleTagMap = mutableMapOf<String, String>()
-                battleTagsToEnsure.forEach { name ->
-                    val newTag = BattleTag(id = UUID.randomUUID().toString(), name = name)
-                    battleDao.insertBattleTag(newTag)
-                    battleTagMap[name] = newTag.id
-                }
-
-                // --- 5. Battle Combos ---
-                val battleCombosData = listOf(
-                    Pair(
-                        BattleCombo(
-                            id = UUID.randomUUID().toString(),
-                            description = "Windmill -> Backspin -> Freeze",
-                            energy = EnergyLevel.HIGH,
-                            status = TrainingStatus.READY
-                        ),
-                        "Power"
-                    ),
-                    Pair(
-                        BattleCombo(
-                            id = UUID.randomUUID().toString(),
-                            description = "Smooth transitions to CC",
-                            energy = EnergyLevel.MEDIUM,
-                            status = TrainingStatus.READY
-                        ),
-                        "Technique"
-                    ),
-                    Pair(
-                        BattleCombo(
-                            id = UUID.randomUUID().toString(),
-                            description = "Aggressive Toprock to Drop",
-                            energy = EnergyLevel.HIGH,
-                            status = TrainingStatus.TRAINING
-                        ),
-                        "Technique"
-                    ),
-                    Pair(
-                        BattleCombo(
-                            id = UUID.randomUUID().toString(),
-                            description = "Slow intro to floor",
-                            energy = EnergyLevel.LOW,
-                            status = TrainingStatus.READY
-                        ),
-                        "Technique"
-                    )
-                )
-
-                battleCombosData.forEach { (combo, tagName) ->
-                    battleDao.insertBattleCombo(combo)
-                    // Link Tags
-                    battleTagMap[tagName]?.let { tagId ->
-                        battleDao.link(
-                            BattleComboTagCrossRef(
-                                battleComboId = combo.id,
-                                battleTagId = tagId
-                            )
-                        )
-                    }
-                }
-                Log.i("AppDB", "Populated 2 battle tags and 4 battle combos.")
-            }
-        }
     }
 
-    private class AppDbCallback(private val applicationContext: Context) : Callback() {
+    private class AppDbCallback(private val scope: CoroutineScope) : Callback() {
         override fun onCreate(db: SupportSQLiteDatabase) {
             super.onCreate(db)
-            INSTANCE?.let {
-                CoroutineScope(Dispatchers.IO).launch {
-                    prepopulateExampleData(it)
+            INSTANCE?.let { database ->
+                scope.launch {
+                    database.prepopulateExampleData()
                 }
             } ?: Log.e(
                 "AppDbCallback",

@@ -7,10 +7,10 @@
 
 
 * make dark theme look better
-* Have the add "REPS" in goalstage say the unit that is in the goal stage instead of reps
+* Have the add "REPS" in goal stage say the unit that is in the goal stage instead of reps
   ---- UI ----
   Implement loading bar for all pages
-  Restrusture to have a repository layer
+  Restructure to have a repository layer
 
 * When switching tabs from bottom navbar, the TopNavBar and BottomNavBar show way earlier than the
   actual page, it's very clunky.
@@ -47,7 +47,7 @@
 * typing numbers in target count focuses keyboard on StageName each key press.
 * When saving a goal stage in here, navigating back to the edit Goal screen, the stages list should
   be updated but it's not
-* I think it's fine that it saves the edits to Goal Title and description, I think it definitly
+* I think it's fine that it saves the edits to Goal Title and description, I think it definitely
   should have live data for the stages tho.
 * So when I add a goal stage to an unsaved goal, it saves the goal. then when I save a goal stage
   and it brings me back to goal page, I can save again and it will create a NEW goal. It should ask
@@ -63,7 +63,7 @@
 * Progress bar should not appear when there are no goal stages
 * A progress bar at zero has this weird dot on the right end for some reason
 * When a goal stage is added, the goal itself should be saved. Otherwise a user can exit early and
-  there will be a goalstage pointing to a goal that was never saved.
+  there will be a goal stage pointing to a goal that was never saved.
 * So Apparently a goal with the same goal tag DOES exist, but unnamed. I think that before adding a
   goal stage, Goal Name should be required. How should we fix this?
 * Have three dot menu or edit button on the goals in the list.

@@ -1,9 +1,10 @@
 package com.princelumpy.breakvault.ui.goals.addedit
 
-import androidx.compose.animation.core.copy
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.princelumpy.breakvault.common.Constants.GOAL_DESCRIPTION_CHARACTER_LIMIT
+import com.princelumpy.breakvault.common.Constants.GOAL_TITLE_CHARACTER_LIMIT
 import com.princelumpy.breakvault.data.local.entity.Goal
 import com.princelumpy.breakvault.data.local.entity.GoalStage
 import com.princelumpy.breakvault.data.repository.GoalRepository
@@ -30,8 +31,14 @@ data class UserInputs(
 data class DialogState(
     val snackbarMessage: String? = null,
     val navigateToAddStageWithGoalId: String? = null,
-    val navigateToEditStage: GoalStage? = null,
-    val addingRepsToStage: GoalStage? = null
+    val navigateToEditStage: Pair<String, String>? = null // (goalId, stageId)
+)
+
+// State for UI-specific properties like errors and loading status.
+data class UiState(
+    val titleError: String? = null,
+    val descriptionError: String? = null,
+    val isInitialLoadDone: Boolean = false
 )
 
 // The final, combined state for the UI.
@@ -41,7 +48,9 @@ data class AddEditGoalUiState(
     val userInputs: UserInputs = UserInputs(),
     val dialogState: DialogState = DialogState(),
     val isNewGoal: Boolean = true,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val titleError: String? = null,
+    val descriptionError: String? = null
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -56,7 +65,7 @@ class AddEditGoalViewModel @Inject constructor(
     // Separate state flows for each concern.
     private val _userInputs = MutableStateFlow(UserInputs())
     private val _dialogState = MutableStateFlow(DialogState())
-    private val _isInitialLoadDone = MutableStateFlow(false)
+    private val _uiState = MutableStateFlow(UiState())
 
     val uiState: StateFlow<AddEditGoalUiState> = combine(
         goalId.flatMapLatest { id ->
@@ -70,16 +79,16 @@ class AddEditGoalViewModel @Inject constructor(
         },
         _userInputs,
         _dialogState,
-        _isInitialLoadDone
-    ) { goalWithStages, userInputs, dialogState, isInitialLoadDone ->
+        _uiState
+    ) { goalWithStages, userInputs, dialogState, uiState ->
 
         // This logic runs when loading an existing goal for the first time.
-        if (goalWithStages != null && !isInitialLoadDone) {
+        if (goalWithStages != null && !uiState.isInitialLoadDone) {
             _userInputs.value = UserInputs(
                 title = goalWithStages.goal.title,
                 description = goalWithStages.goal.description
             )
-            _isInitialLoadDone.value = true // Mark initial load as complete.
+            _uiState.update { it.copy(isInitialLoadDone = true) }
         }
 
         AddEditGoalUiState(
@@ -88,7 +97,9 @@ class AddEditGoalViewModel @Inject constructor(
             userInputs = userInputs,
             dialogState = dialogState,
             isNewGoal = goalWithStages == null,
-            isLoading = goalId.value != null && !isInitialLoadDone
+            isLoading = goalId.value != null && !uiState.isInitialLoadDone,
+            titleError = uiState.titleError,
+            descriptionError = uiState.descriptionError
         )
     }.stateIn(
         scope = viewModelScope,
@@ -96,27 +107,50 @@ class AddEditGoalViewModel @Inject constructor(
         initialValue = AddEditGoalUiState()
     )
 
-
     // --- User Input Handlers ---
     fun onTitleChange(newTitle: String) {
-        if (newTitle.length <= 100) {
+        if (newTitle.length <= GOAL_TITLE_CHARACTER_LIMIT) {
             _userInputs.update { it.copy(title = newTitle) }
+            if (_uiState.value.titleError != null) {
+                _uiState.update { it.copy(titleError = null) }
+            }
         }
     }
 
     fun onDescriptionChange(newDescription: String) {
-        _userInputs.update { it.copy(description = newDescription) }
+        if (newDescription.length <= GOAL_DESCRIPTION_CHARACTER_LIMIT) {
+            _userInputs.update { it.copy(description = newDescription) }
+            // Clear error when user starts typing
+            if (_uiState.value.descriptionError != null) {
+                _uiState.update { it.copy(descriptionError = null) }
+            }
+        }
     }
 
     // --- Data Operation Handlers ---
     fun saveGoal(onSuccess: (goalId: String) -> Unit) {
-        viewModelScope.launch {
-            val currentInputs = _userInputs.value
-            if (currentInputs.title.isBlank()) {
-                _dialogState.update { it.copy(snackbarMessage = "Goal title cannot be blank.") }
-                return@launch
-            }
+        val currentInputs = _userInputs.value
 
+        // --- Start of Guarding Block ---
+        when {
+            currentInputs.title.isBlank() -> {
+                _uiState.update { it.copy(titleError = "Goal title cannot be blank.") }
+                return
+            }
+            // Defensive length check for title
+            currentInputs.title.length > GOAL_TITLE_CHARACTER_LIMIT -> {
+                _uiState.update { it.copy(titleError = "Title cannot exceed ${GOAL_TITLE_CHARACTER_LIMIT} characters.") }
+                return
+            }
+            // Defensive length check for description
+            currentInputs.description.length > GOAL_DESCRIPTION_CHARACTER_LIMIT -> {
+                _uiState.update { it.copy(descriptionError = "Description cannot exceed ${GOAL_DESCRIPTION_CHARACTER_LIMIT} characters.") }
+                return
+            }
+        }
+        // --- End of Guarding Block ---
+
+        viewModelScope.launch {
             val currentGoalId = goalId.value
             if (currentGoalId == null) {
                 // Create new goal
@@ -160,18 +194,6 @@ class AddEditGoalViewModel @Inject constructor(
         }
     }
 
-    fun addRepsToStage(stage: GoalStage, reps: Int) {
-        viewModelScope.launch {
-            val newCount = stage.currentCount + reps
-            if (newCount < 0) {
-                _dialogState.update { it.copy(snackbarMessage = "Repetitions cannot be negative.") }
-            } else {
-                goalRepository.updateGoalStage(stage.copy(currentCount = newCount))
-            }
-            onAddRepsDismissed() // Always dismiss dialog after action
-        }
-    }
-
     // --- Navigation and Dialog Handlers ---
     fun onSnackbarMessageShown() {
         _dialogState.update { it.copy(snackbarMessage = null) }
@@ -179,7 +201,9 @@ class AddEditGoalViewModel @Inject constructor(
 
     fun onAddStageClicked() {
         if (uiState.value.isNewGoal) {
-            _dialogState.update { it.copy(snackbarMessage = "Please save the goal before adding a stage.") }
+            saveGoal { newGoalId ->
+                _dialogState.update { it.copy(navigateToAddStageWithGoalId = newGoalId) }
+            }
         } else {
             _dialogState.update { it.copy(navigateToAddStageWithGoalId = uiState.value.goalId) }
         }
@@ -190,18 +214,12 @@ class AddEditGoalViewModel @Inject constructor(
     }
 
     fun onEditStageClicked(stage: GoalStage) {
-        _dialogState.update { it.copy(navigateToEditStage = stage) }
+        uiState.value.goalId?.let { gId ->
+            _dialogState.update { it.copy(navigateToEditStage = Pair(gId, stage.id)) }
+        }
     }
 
     fun onNavigateToEditStageDone() {
         _dialogState.update { it.copy(navigateToEditStage = null) }
-    }
-
-    fun onAddRepsClicked(stage: GoalStage) {
-        _dialogState.update { it.copy(addingRepsToStage = stage) }
-    }
-
-    fun onAddRepsDismissed() {
-        _dialogState.update { it.copy(addingRepsToStage = null) }
     }
 }

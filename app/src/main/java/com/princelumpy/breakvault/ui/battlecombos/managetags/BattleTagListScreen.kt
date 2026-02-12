@@ -1,6 +1,5 @@
 package com.princelumpy.breakvault.ui.battlecombos.managetags
 
-import AppStyleDefaults
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -40,9 +39,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
+import com.princelumpy.breakvault.common.Constants.BATTLE_TAG_CHARACTER_LIMIT
 import com.princelumpy.breakvault.data.local.entity.BattleTag
-
-// --- STATEFUL COMPOSABLE (The "Smart" one) ---
 
 @Composable
 fun BattleTagListScreen(
@@ -110,7 +108,7 @@ fun BattleTagListContent(
             FloatingActionButton(onClick = onAddTagClicked) {
                 Icon(
                     Icons.Filled.Add,
-                    contentDescription = stringResource(id = R.string.battle_tag_list_add_fab_description)
+                    contentDescription = stringResource(id = R.string.battle_tag_list_add_fab_description),
                 )
             }
         }
@@ -144,92 +142,32 @@ fun BattleTagListContent(
     }
 
     if (dialogState.showAddDialog) {
-        AlertDialog(
-            onDismissRequest = onAddTagDialogDismiss,
-            title = { Text(stringResource(id = R.string.battle_tag_list_add_dialog_title)) },
-            text = {
-                OutlinedTextField(
-                    value = userInputs.newTagName,
-                    onValueChange = onNewTagNameChange,
-                    label = { Text(stringResource(id = R.string.battle_tag_list_tag_name_label)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { onAddTag() })
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = onAddTag,
-                    enabled = userInputs.newTagName.isNotBlank()
-                ) {
-                    Text(stringResource(id = R.string.common_add))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onAddTagDialogDismiss) {
-                    Text(stringResource(id = R.string.common_cancel))
-                }
-            }
+        AddTagDialog(
+            newTagName = userInputs.newTagName,
+            isError = uiState.newTagNameError != null,
+            errorMessage = uiState.newTagNameError,
+            onNewTagNameChange = onNewTagNameChange,
+            onAddTag = onAddTag,
+            onAddTagDialogDismiss = onAddTagDialogDismiss
         )
     }
 
     dialogState.tagForEditDialog?.let {
-        AlertDialog(
-            onDismissRequest = onEditTagDialogDismiss,
-            title = { Text(stringResource(id = R.string.battle_tag_list_edit_dialog_title)) },
-            text = {
-                OutlinedTextField(
-                    value = userInputs.tagNameForEdit,
-                    onValueChange = onTagNameForEditChange,
-                    label = { Text(stringResource(id = R.string.battle_tag_list_new_tag_name_label)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { onUpdateTag() })
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = onUpdateTag,
-                    enabled = userInputs.tagNameForEdit.isNotBlank()
-                ) {
-                    Text(stringResource(id = R.string.common_save))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onEditTagDialogDismiss) {
-                    Text(stringResource(id = R.string.common_cancel))
-                }
-            }
+        EditTagDialog(
+            tagNameForEdit = userInputs.tagNameForEdit,
+            isError = uiState.editTagNameError != null,
+            errorMessage = uiState.editTagNameError,
+            onTagNameForEditChange = onTagNameForEditChange,
+            onUpdateTag = onUpdateTag,
+            onEditTagDialogDismiss = onEditTagDialogDismiss
         )
     }
 
     dialogState.tagForDeleteDialog?.let { tagToDelete ->
-        AlertDialog(
-            onDismissRequest = onDeleteTagDialogDismiss,
-            title = { Text(stringResource(id = R.string.common_confirm_deletion_title)) },
-            text = {
-                Text(
-                    stringResource(
-                        id = R.string.battle_tag_list_delete_confirmation,
-                        tagToDelete.name
-                    )
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = onDeleteTag,
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text(stringResource(id = R.string.common_delete))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = onDeleteTagDialogDismiss) {
-                    Text(stringResource(id = R.string.common_cancel))
-                }
-            }
+        DeleteTagDialog(
+            tagToDelete = tagToDelete,
+            onDeleteTag = onDeleteTag,
+            onDeleteTagDialogDismiss = onDeleteTagDialogDismiss
         )
     }
 }
@@ -263,19 +201,161 @@ fun BattleTagListItem(
                 IconButton(onClick = onEditClick) {
                     Icon(
                         Icons.Filled.Edit,
-                        contentDescription = stringResource(id = R.string.battle_tag_list_edit_icon_desc)
+                        contentDescription = stringResource(id = R.string.battle_tag_list_edit_icon_desc),
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
                 IconButton(onClick = onDeleteClick) {
                     Icon(
                         Icons.Filled.Delete,
                         contentDescription = stringResource(id = R.string.battle_tag_list_delete_icon_desc),
-                        tint = MaterialTheme.colorScheme.error
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         }
     }
+}
+
+// --- DIALOGS ---
+
+@Composable
+private fun AddTagDialog(
+    newTagName: String,
+    isError: Boolean,
+    errorMessage: String?,
+    onNewTagNameChange: (String) -> Unit,
+    onAddTag: () -> Unit,
+    onAddTagDialogDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onAddTagDialogDismiss,
+        title = { Text(stringResource(id = R.string.battle_tag_list_add_dialog_title)) },
+        text = {
+            OutlinedTextField(
+                value = newTagName,
+                onValueChange = {
+                    if (it.length <= BATTLE_TAG_CHARACTER_LIMIT) {
+                        onNewTagNameChange(it)
+                    }
+                },
+                label = { Text(stringResource(id = R.string.battle_tag_list_tag_name_label)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { onAddTag() }),
+                isError = isError,
+                supportingText = {
+                    if (isError) {
+                        Text(
+                            text = errorMessage ?: "", // Display the error message
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onAddTag,
+                enabled = newTagName.isNotBlank()
+            ) {
+                Text(stringResource(id = R.string.common_add))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onAddTagDialogDismiss) {
+                Text(stringResource(id = R.string.common_cancel))
+            }
+        }
+    )
+}
+
+@Composable
+private fun EditTagDialog(
+    tagNameForEdit: String,
+    isError: Boolean,
+    errorMessage: String?,
+    onTagNameForEditChange: (String) -> Unit,
+    onUpdateTag: () -> Unit,
+    onEditTagDialogDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onEditTagDialogDismiss,
+        title = { Text(stringResource(id = R.string.battle_tag_list_edit_dialog_title)) },
+        text = {
+            OutlinedTextField(
+                value = tagNameForEdit,
+                onValueChange = {
+                    if (it.length <= BATTLE_TAG_CHARACTER_LIMIT) {
+                        onTagNameForEditChange(it)
+                    }
+                },
+                label = { Text(stringResource(id = R.string.battle_tag_list_new_tag_name_label)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { onUpdateTag() }),
+                isError = isError,
+                supportingText = {
+                    if (isError) {
+                        Text(
+                            text = errorMessage ?: "", // Display the error message
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onUpdateTag,
+                enabled = tagNameForEdit.isNotBlank()
+            ) {
+                Text(stringResource(id = R.string.common_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onEditTagDialogDismiss) {
+                Text(stringResource(id = R.string.common_cancel))
+            }
+        }
+    )
+}
+
+@Composable
+private fun DeleteTagDialog(
+    tagToDelete: BattleTag,
+    onDeleteTag: () -> Unit,
+    onDeleteTagDialogDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDeleteTagDialogDismiss,
+        title = { Text(stringResource(id = R.string.common_confirm_deletion_title)) },
+        text = {
+            Text(
+                stringResource(
+                    id = R.string.battle_tag_list_delete_confirmation,
+                    tagToDelete.name
+                )
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onDeleteTag,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text(stringResource(id = R.string.common_delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDeleteTagDialogDismiss) {
+                Text(stringResource(id = R.string.common_cancel))
+            }
+        }
+    )
 }
 
 
@@ -403,6 +483,105 @@ private fun BattleTagListContentPreview_DeleteDialog() {
             onDeleteTag = {},
             onAddTagDialogDismiss = {},
             onEditTagDialogDismiss = {},
+            onDeleteTagDialogDismiss = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun AddTagDialogPreview() {
+    MaterialTheme {
+        AddTagDialog(
+            newTagName = "New Tag",
+            isError = false,
+            errorMessage = null,
+            onNewTagNameChange = {},
+            onAddTag = {},
+            onAddTagDialogDismiss = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Add Dialog With Error")
+@Composable
+private fun BattleTagListContentPreview_AddDialogError() {
+    MaterialTheme {
+        BattleTagListContent(
+            uiState = BattleTagListUiState(
+                dialogState = DialogState(showAddDialog = true),
+                userInputs = UserInputs(newTagName = ""), // Empty input to trigger error state
+                newTagNameError = "Tag name cannot be empty." // The error message from the ViewModel
+            ),
+            onNavigateUp = {},
+            onAddTagClicked = {},
+            onEditTagClicked = {},
+            onDeleteTagClicked = {},
+            onNewTagNameChange = {},
+            onTagNameForEditChange = {},
+            onAddTag = {},
+            onUpdateTag = {},
+            onDeleteTag = {},
+            onAddTagDialogDismiss = {},
+            onEditTagDialogDismiss = {},
+            onDeleteTagDialogDismiss = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun EditTagDialogPreview() {
+    MaterialTheme {
+        EditTagDialog(
+            tagNameForEdit = "Existing Tag",
+            isError = false,
+            errorMessage = null,
+            onTagNameForEditChange = {},
+            onUpdateTag = {},
+            onEditTagDialogDismiss = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Edit Dialog With Error")
+@Composable
+private fun BattleTagListContentPreview_EditDialogError() {
+    val tags = listOf(
+        BattleTag(id = "1", name = "Boxing"),
+        BattleTag(id = "2", name = "Kicking")
+    )
+    MaterialTheme {
+        BattleTagListContent(
+            uiState = BattleTagListUiState(
+                tags = tags,
+                dialogState = DialogState(tagForEditDialog = tags[1]), // Editing "Kicking"
+                userInputs = UserInputs(tagNameForEdit = "Boxing"), // Trying to rename it to "Boxing"
+                editTagNameError = "Tag 'Boxing' already exists." // The resulting error
+            ),
+            onNavigateUp = {},
+            onAddTagClicked = {},
+            onEditTagClicked = {},
+            onDeleteTagClicked = {},
+            onNewTagNameChange = {},
+            onTagNameForEditChange = {},
+            onAddTag = {},
+            onUpdateTag = {},
+            onDeleteTag = {},
+            onAddTagDialogDismiss = {},
+            onEditTagDialogDismiss = {},
+            onDeleteTagDialogDismiss = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun DeleteTagDialogPreview() {
+    MaterialTheme {
+        DeleteTagDialog(
+            tagToDelete = BattleTag(id = "1", name = "Power Moves"),
+            onDeleteTag = {},
             onDeleteTagDialogDismiss = {}
         )
     }

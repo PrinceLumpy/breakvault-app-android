@@ -71,6 +71,7 @@ interface MoveDao {
     @Query("SELECT * FROM move_tags ORDER BY name ASC")
     fun getAllTagsAsFlow(): Flow<List<MoveTag>>
 
+    @Transaction
     @Query("SELECT * FROM move_tags")
     fun getTagsWithMoves(): Flow<List<TagWithMoves>>
 

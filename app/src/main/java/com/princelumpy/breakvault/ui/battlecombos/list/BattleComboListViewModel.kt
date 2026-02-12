@@ -11,7 +11,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -29,7 +28,8 @@ data class BattleComboListUiState(
     val allTags: List<BattleTag> = emptyList(),
     val selectedTagNames: Set<String> = emptySet(),
     val sortOption: BattleSortOption = BattleSortOption.EnergyLowToHigh,
-    val showResetConfirmDialog: Boolean = false
+    val showResetConfirmDialog: Boolean = false,
+    val isLoading: Boolean = true
 )
 
 // Private state to hold only the user's direct interactions
@@ -48,13 +48,11 @@ class BattleComboListViewModel @Inject constructor(
 
     // This is the single source of truth for the UI.
     val uiState: StateFlow<BattleComboListUiState> = combine(
-        battleRepository.getAllBattleCombosWithTags(), // Cold
-        battleRepository.getAllTags(),                 // Cold
-        _userInteractions,                             // Hot
-        _showResetDialog                               // Hot
+        battleRepository.getAllBattleCombosWithTags(),
+        battleRepository.getAllTags(),
+        _userInteractions,
+        _showResetDialog
     ) { combos, tags, interactions, showReset ->
-        // This logic is now driven by independent, clean sources.
-
         // Perform filtering
         val filteredCombos = if (interactions.selectedTagNames.isEmpty()) {
             combos
@@ -79,15 +77,14 @@ class BattleComboListViewModel @Inject constructor(
             filteredAndSortedCombos = sortedCombos,
             selectedTagNames = interactions.selectedTagNames,
             sortOption = interactions.sortOption,
-            showResetConfirmDialog = showReset
+            showResetConfirmDialog = showReset,
+            isLoading = false
         )
     }.stateIn(
-        // This makes the entire `combine` block lifecycle-aware and shared.
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000L),
-        initialValue = BattleComboListUiState() // Show a default state while loading
+        initialValue = BattleComboListUiState()
     )
-
 
     fun onTagSelected(tagName: String) {
         _userInteractions.update { currentState ->

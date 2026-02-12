@@ -45,6 +45,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
+import com.princelumpy.breakvault.common.Constants.GOAL_STAGE_TITLE_CHARACTER_LIMIT
+import com.princelumpy.breakvault.common.Constants.GOAL_STAGE_UNIT_CHARACTER_LIMIT
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 
 /**
@@ -75,6 +77,8 @@ fun AddEditGoalStageScreen(
 
     uiState?.let { currentUiState ->
         val userInputs = currentUiState.userInputs
+        val dialogState = currentUiState.dialogState
+        val uiState = currentUiState.uiState
 
         Scaffold(
             topBar = {
@@ -89,7 +93,7 @@ fun AddEditGoalStageScreen(
                     onClick = { addEditGoalStageViewModel.saveStage { onNavigateUp() } }
                 ) {
                     Icon(
-                        Icons.Default.Save,
+                        Icons.Filled.Save,
                         contentDescription = stringResource(id = R.string.add_edit_goal_stage_save_description)
                     )
                 }
@@ -104,19 +108,23 @@ fun AddEditGoalStageScreen(
                         onClick = { focusManager.clearFocus() }
                     ),
                 name = userInputs.name,
-                isNameError = userInputs.isNameError,
+                nameError = uiState.nameError,
                 onNameChange = { addEditGoalStageViewModel.onNameChange(it) },
+                currentCount = userInputs.currentCount,
+                currentCountError = uiState.currentCountError,
+                onCurrentCountChange = { addEditGoalStageViewModel.onCurrentCountChange(it) },
                 targetCount = userInputs.targetCount,
-                isTargetError = userInputs.isTargetError,
+                targetError = uiState.targetError,
                 onTargetCountChange = { addEditGoalStageViewModel.onTargetCountChange(it) },
                 unit = userInputs.unit,
+                unitError = uiState.unitError,
                 onUnitChange = { addEditGoalStageViewModel.onUnitChange(it) },
                 focusRequester = focusRequester,
                 onSave = { addEditGoalStageViewModel.saveStage { onNavigateUp() } }
             )
         }
 
-        if (currentUiState.dialogState.showDeleteDialog) {
+        if (dialogState.showDeleteDialog) {
             DeleteGoalStageDialog(
                 onDismiss = { addEditGoalStageViewModel.showDeleteDialog(false) },
                 onConfirmDelete = { addEditGoalStageViewModel.deleteStage { onNavigateUp() } }
@@ -153,9 +161,8 @@ private fun AddEditGoalStageTopBar(
             if (!isNewStage) {
                 IconButton(onClick = onDeleteClick) {
                     Icon(
-                        Icons.Default.Delete,
+                        Icons.Filled.Delete,
                         contentDescription = stringResource(id = R.string.add_edit_goal_stage_delete_description),
-                        tint = MaterialTheme.colorScheme.error
                     )
                 }
             }
@@ -163,19 +170,22 @@ private fun AddEditGoalStageTopBar(
     )
 }
 
-
 /**
  * The main, stateless content of the screen containing the input form.
  */
 @Composable
 private fun AddEditGoalStageContent(
     name: String,
-    isNameError: Boolean,
+    nameError: String?,
     onNameChange: (String) -> Unit,
+    currentCount: String,
+    currentCountError: String?,
+    onCurrentCountChange: (String) -> Unit,
     targetCount: String,
-    isTargetError: Boolean,
+    targetError: String?,
     onTargetCountChange: (String) -> Unit,
     unit: String,
+    unitError: String?,
     onUnitChange: (String) -> Unit,
     focusRequester: FocusRequester,
     onSave: () -> Unit,
@@ -188,11 +198,26 @@ private fun AddEditGoalStageContent(
             .fillMaxSize()
             .padding(AppStyleDefaults.SpacingLarge)
     ) {
+        // Stage Name
         OutlinedTextField(
             value = name,
-            onValueChange = onNameChange,
+            onValueChange = {
+                if (it.length <= GOAL_STAGE_TITLE_CHARACTER_LIMIT) {
+                    onNameChange(it)
+                }
+            },
             label = { Text(stringResource(id = R.string.add_edit_goal_stage_name_label)) },
-            isError = isNameError,
+            isError = nameError != null,
+            supportingText = {
+                nameError?.let { message ->
+                    Text(
+                        text = message,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
             singleLine = true,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences,
@@ -202,17 +227,36 @@ private fun AddEditGoalStageContent(
                 .fillMaxWidth()
                 .focusRequester(focusRequester)
         )
-        if (isNameError) {
-            Text(
-                stringResource(id = R.string.add_edit_goal_stage_name_error),
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
 
         Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingLarge))
 
+        // Current Count and Target Count Row
         Row(modifier = Modifier.fillMaxWidth()) {
+            OutlinedTextField(
+                value = currentCount,
+                onValueChange = onCurrentCountChange,
+                label = { Text(stringResource(id = R.string.add_edit_goal_stage_current_label)) },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Next
+                ),
+                isError = currentCountError != null,
+                supportingText = {
+                    currentCountError?.let { message ->
+                        Text(
+                            text = message,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+
+            Spacer(modifier = Modifier.width(AppStyleDefaults.SpacingMedium))
+
             OutlinedTextField(
                 value = targetCount,
                 onValueChange = onTargetCountChange,
@@ -221,39 +265,57 @@ private fun AddEditGoalStageContent(
                     keyboardType = KeyboardType.Number,
                     imeAction = ImeAction.Next
                 ),
-                isError = isTargetError,
-                singleLine = true,
-                modifier = Modifier.weight(1f)
-            )
-
-            Spacer(modifier = Modifier.width(AppStyleDefaults.SpacingLarge))
-
-            OutlinedTextField(
-                value = unit,
-                onValueChange = onUnitChange,
-                label = { Text(stringResource(id = R.string.add_edit_goal_stage_unit_label)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        focusManager.clearFocus()
-                        onSave()
+                isError = targetError != null,
+                supportingText = {
+                    targetError?.let { message ->
+                        Text(
+                            text = message,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
-                ),
+                },
+                singleLine = true,
                 modifier = Modifier.weight(1f)
             )
         }
 
-        if (isTargetError) {
-            Text(
-                stringResource(id = R.string.add_edit_goal_stage_target_error),
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
+        Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingLarge))
+
+        // Unit Field
+        OutlinedTextField(
+            value = unit,
+            onValueChange = {
+                if (it.length <= GOAL_STAGE_UNIT_CHARACTER_LIMIT) {
+                    onUnitChange(it)
+                }
+            },
+            isError = unitError != null,
+            supportingText = {
+                unitError?.let { message ->
+                    Text(
+                        text = message,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            label = { Text(stringResource(id = R.string.add_edit_goal_stage_unit_label)) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.Sentences,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    focusManager.clearFocus()
+                    onSave()
+                }
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -289,7 +351,7 @@ private fun DeleteGoalStageDialog(
 
 //region Previews
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Add New Stage Top Bar")
 @Composable
 private fun AddEditGoalStageTopBar_AddNewPreview() {
     BreakVaultTheme {
@@ -301,7 +363,7 @@ private fun AddEditGoalStageTopBar_AddNewPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Edit Stage Top Bar")
 @Composable
 private fun AddEditGoalStageTopBar_EditPreview() {
     BreakVaultTheme {
@@ -313,18 +375,22 @@ private fun AddEditGoalStageTopBar_EditPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Add/Edit Stage Content")
 @Composable
 private fun AddEditGoalStageContent_Preview() {
     BreakVaultTheme {
         AddEditGoalStageContent(
             name = "First Set",
-            isNameError = false,
+            nameError = null,
             onNameChange = {},
+            currentCount = "45",
+            currentCountError = null,
+            onCurrentCountChange = {},
             targetCount = "100",
-            isTargetError = false,
+            targetError = null,
             onTargetCountChange = {},
             unit = "reps",
+            unitError = null,
             onUnitChange = {},
             focusRequester = remember { FocusRequester() },
             onSave = {}
@@ -332,18 +398,22 @@ private fun AddEditGoalStageContent_Preview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Stage Content with Errors")
 @Composable
 private fun AddEditGoalStageContent_ErrorPreview() {
     BreakVaultTheme {
         AddEditGoalStageContent(
             name = "",
-            isNameError = true,
+            nameError = "Stage name cannot be empty.",
             onNameChange = {},
+            currentCount = "-5",
+            currentCountError = "Current count must be 0 or greater.",
+            onCurrentCountChange = {},
             targetCount = "abc",
-            isTargetError = true,
+            targetError = "Target count must be a number.",
             onTargetCountChange = {},
-            unit = "reps",
+            unit = "A very long unit name that exceeds the limit",
+            unitError = "Unit cannot exceed 10 characters.",
             onUnitChange = {},
             focusRequester = remember { FocusRequester() },
             onSave = {}
@@ -351,7 +421,7 @@ private fun AddEditGoalStageContent_ErrorPreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true, name = "Delete Stage Dialog")
 @Composable
 private fun DeleteGoalStageDialogPreview() {
     BreakVaultTheme {

@@ -28,8 +28,8 @@ enum class GenerationMode {
 data class GenerationSettings(
     val currentMode: GenerationMode = GenerationMode.Random,
     val selectedTags: Set<MoveTag> = emptySet(),
-    val selectedLength: Int? = 4,
-    val allowRepeats: Boolean = false,
+    val selectedLength: Int? = null,
+    val allowRepeats: Boolean = true,
     val structuredMoveTagSequence: List<MoveTag> = emptyList()
 )
 
@@ -41,10 +41,8 @@ data class GeneratedComboState(
 
 // State for transient UI events like dialogs and messages.
 data class DialogAndMessageState(
-    val showLengthWarningDialog: Boolean = false,
-    val warningDialogMessage: String = "",
     val snackbarMessage: String? = null,
-    val lengthDropdownExpanded: Boolean = false
+    val lengthError: String? = null
 )
 
 // The final, combined state for the UI to consume.
@@ -86,12 +84,24 @@ class ComboGeneratorViewModel @Inject constructor(
     )
 
     fun generateCombo() {
+        // Clear previous length error
+        _dialogAndMessages.update { it.copy(lengthError = null) }
+
+        // Validate length when specified
+        val specifiedLength = _settings.value.selectedLength
+        if (specifiedLength != null && specifiedLength <= 0) {
+            _dialogAndMessages.update { it.copy(lengthError = "Length must be greater than 0") }
+            return
+        }
+
         viewModelScope.launch {
             val moves = when (_settings.value.currentMode) {
                 GenerationMode.Random -> generateRandomMoves()
                 GenerationMode.Structured -> generateStructuredMoves()
             }
-            updateGeneratedCombo(moves)
+            if (moves.isNotEmpty()) {
+                updateGeneratedCombo(moves)
+            }
         }
     }
 
@@ -104,18 +114,16 @@ class ComboGeneratorViewModel @Inject constructor(
             return emptyList()
         }
 
-        val comboLength = settings.selectedLength ?: (3..8).random()
+        val comboLength = settings.selectedLength ?: 4
 
         return if (settings.allowRepeats) {
             (1..comboLength).map { availableMoves.random() }
         } else {
             if (comboLength > availableMoves.size) {
-                _dialogAndMessages.update {
-                    it.copy(
-                        showLengthWarningDialog = true,
-                        warningDialogMessage = "Cannot generate a combo of length $comboLength without repeats from only ${availableMoves.size} moves. Please select more moves or allow repeats."
-                    )
-                }
+                _generatedCombo.value = GeneratedComboState(
+                    moves = listOf(),
+                    text = "Cannot generate a combo of length $comboLength without repeats from only ${availableMoves.size} moves."
+                )
                 return emptyList()
             }
             availableMoves.shuffled().take(comboLength)
@@ -159,8 +167,13 @@ class ComboGeneratorViewModel @Inject constructor(
         _settings.update { it.copy(allowRepeats = allow) }
     }
 
-    fun onLengthChange(length: Int?) {
-        _settings.update { it.copy(selectedLength = length) }
+    fun onLengthChange(length: String) {
+        val lengthAsInt = length.toIntOrNull()
+        _settings.update { it.copy(selectedLength = lengthAsInt) }
+        // Clear error when user changes the value
+        if (_dialogAndMessages.value.lengthError != null) {
+            _dialogAndMessages.update { it.copy(lengthError = null) }
+        }
     }
 
     fun onAddTagToSequence(tag: MoveTag) {
@@ -178,21 +191,8 @@ class ComboGeneratorViewModel @Inject constructor(
     }
 
     // --- Dialog and Message Handlers ---
-    fun onDropdownExpand(expanded: Boolean) {
-        _dialogAndMessages.update { it.copy(lengthDropdownExpanded = expanded) }
-    }
-
     fun onSnackbarShown() {
         _dialogAndMessages.update { it.copy(snackbarMessage = null) }
-    }
-
-    fun onDismissLengthWarning() {
-        _dialogAndMessages.update {
-            it.copy(
-                showLengthWarningDialog = false,
-                warningDialogMessage = ""
-            )
-        }
     }
 
     private fun showSnackbar(message: String) {

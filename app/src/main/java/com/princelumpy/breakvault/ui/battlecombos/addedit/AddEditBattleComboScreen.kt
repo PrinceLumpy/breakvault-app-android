@@ -21,26 +21,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,17 +34,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
+import com.princelumpy.breakvault.common.Constants.BATTLE_COMBO_DESCRIPTION_CHARACTER_LIMIT
+import com.princelumpy.breakvault.common.Constants.BATTLE_TAG_CHARACTER_LIMIT
 import com.princelumpy.breakvault.data.local.entity.BattleTag
 import com.princelumpy.breakvault.data.local.entity.EnergyLevel
 import com.princelumpy.breakvault.data.local.entity.TrainingStatus
 import com.princelumpy.breakvault.data.local.entity.SavedCombo
 
-// --- STATEFUL COMPOSABLE (The "Smart" one) ---
 
+// STATEFUL COMPOSABLE
 @Composable
 fun AddEditBattleComboScreen(
     onNavigateUp: () -> Unit,
@@ -76,14 +62,13 @@ fun AddEditBattleComboScreen(
         viewModel.loadCombo(comboId)
     }
 
-    LaunchedEffect(uiState.snackbarMessage) {
-        uiState.snackbarMessage?.let {
+    LaunchedEffect(uiState.dialogsAndMessages.snackbarMessage) {
+        uiState.dialogsAndMessages.snackbarMessage?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.onSnackbarMessageShown()
         }
     }
 
-    // This composable connects the ViewModel to the stateless UI
     AddEditBattleComboContent(
         uiState = uiState,
         snackbarHostState = snackbarHostState,
@@ -101,12 +86,19 @@ fun AddEditBattleComboScreen(
         onTagSelected = viewModel::onTagSelected,
         onNewTagNameChange = viewModel::onNewTagNameChange,
         onAddBattleTag = viewModel::addBattleTag,
-        onImportCombo = viewModel::onImportCombo
+        onImportCombo = viewModel::onImportCombo,
+        onDeleteComboClick = viewModel::onDeleteComboClick,
+        onConfirmComboDelete = {
+            viewModel.onConfirmComboDelete {
+                keyboardController?.hide()
+                onNavigateUp()
+            }
+        },
+        onCancelComboDelete = viewModel::onCancelComboDelete
     )
 }
 
-// --- STATELESS COMPOSABLE (The "Dumb" UI) ---
-
+// STATELESS COMPOSABLE
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddEditBattleComboContent(
@@ -122,9 +114,12 @@ fun AddEditBattleComboContent(
     onNewTagNameChange: (String) -> Unit,
     onAddBattleTag: () -> Unit,
     onImportCombo: (SavedCombo) -> Unit,
+    onDeleteComboClick: () -> Unit,
+    onConfirmComboDelete: () -> Unit,
+    onCancelComboDelete: () -> Unit
 ) {
-    // A convenience variable to simplify access
     val userInputs = uiState.userInputs
+    val dialogsAndMessages = uiState.dialogsAndMessages
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -132,9 +127,10 @@ fun AddEditBattleComboContent(
             TopAppBar(
                 title = {
                     Text(
-                        if (userInputs.isNewCombo) stringResource(id = R.string.add_edit_battle_combo_new_title) else stringResource(
-                            id = R.string.add_edit_battle_combo_edit_title
-                        )
+                        if (userInputs.isNewCombo)
+                            stringResource(id = R.string.add_edit_battle_combo_new_title)
+                        else
+                            stringResource(id = R.string.add_edit_battle_combo_edit_title)
                     )
                 },
                 navigationIcon = {
@@ -144,11 +140,27 @@ fun AddEditBattleComboContent(
                             contentDescription = stringResource(id = R.string.common_back_button_description)
                         )
                     }
+                },
+                actions = {
+                    if (!userInputs.isNewCombo) {
+                        IconButton(onClick = onDeleteComboClick) {
+                            Icon(
+                                imageVector = Icons.Filled.Delete,
+                                contentDescription = "Delete combo",
+                            )
+                        }
+                    }
                 }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onSaveClick) {
+            FloatingActionButton(
+                onClick = onSaveClick,
+                containerColor = if (uiState.userInputs.description.isNotBlank())
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.surfaceVariant
+            ) {
                 Icon(
                     Icons.Filled.Save,
                     contentDescription = stringResource(id = R.string.common_save)
@@ -164,157 +176,334 @@ fun AddEditBattleComboContent(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
         ) {
-            OutlinedTextField(
-                value = userInputs.description,
-                onValueChange = onDescriptionChange,
-                label = { Text(stringResource(id = R.string.add_edit_battle_combo_description_label)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text(stringResource(id = R.string.add_edit_battle_combo_description_placeholder)) }
+            DescriptionField(
+                description = userInputs.description,
+                descriptionError = dialogsAndMessages.descriptionError,
+                onDescriptionChange = onDescriptionChange
             )
 
             if (userInputs.isNewCombo) {
-                Button(
-                    onClick = { onShowImportDialog(true) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                ) {
-                    Text(stringResource(id = R.string.add_edit_battle_combo_import_button))
-                }
+                ImportButton(onClick = { onShowImportDialog(true) })
             }
 
-            Text(
-                stringResource(id = R.string.add_edit_battle_combo_energy_label),
-                style = MaterialTheme.typography.titleMedium
+            EnergySection(
+                selectedEnergy = userInputs.selectedEnergy,
+                onEnergyChange = onEnergyChange
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                EnergyChip(
-                    label = stringResource(id = R.string.add_edit_battle_combo_energy_low),
-                    color = Color(0xFF4CAF50),
-                    isSelected = userInputs.selectedEnergy == EnergyLevel.LOW,
-                    onClick = { onEnergyChange(EnergyLevel.LOW) }
-                )
-                EnergyChip(
-                    label = stringResource(id = R.string.add_edit_battle_combo_energy_med),
-                    color = Color(0xFFFFC107),
-                    isSelected = userInputs.selectedEnergy == EnergyLevel.MEDIUM,
-                    onClick = { onEnergyChange(EnergyLevel.MEDIUM) }
-                )
-                EnergyChip(
-                    label = stringResource(id = R.string.add_edit_battle_combo_energy_high),
-                    color = Color(0xFFF44336),
-                    isSelected = userInputs.selectedEnergy == EnergyLevel.HIGH,
-                    onClick = { onEnergyChange(EnergyLevel.HIGH) }
-                )
-            }
 
-            Text(
-                stringResource(id = R.string.add_edit_battle_combo_readiness_label),
-                style = MaterialTheme.typography.titleMedium
+            ReadinessSection(
+                selectedStatus = userInputs.selectedStatus,
+                onStatusChange = onStatusChange
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
-            ) {
-                FilterChip(
-                    selected = userInputs.selectedStatus == TrainingStatus.TRAINING,
-                    onClick = { onStatusChange(TrainingStatus.TRAINING) },
-                    label = { Text(stringResource(id = R.string.add_edit_battle_combo_training_label)) },
-                    leadingIcon = { Text("🔨") }
-                )
-                FilterChip(
-                    selected = userInputs.selectedStatus == TrainingStatus.READY,
-                    onClick = { onStatusChange(TrainingStatus.READY) },
-                    label = { Text(stringResource(id = R.string.add_edit_battle_combo_ready_label)) },
-                    leadingIcon = { Text("🔥") }
-                )
-            }
 
-            Text(
-                stringResource(id = R.string.add_edit_battle_combo_tags_label),
-                style = MaterialTheme.typography.titleMedium
+            TagsSection(
+                allBattleTags = uiState.allBattleTags,
+                selectedTags = userInputs.selectedTags,
+                newTagName = userInputs.newTagName,
+                newTagError = dialogsAndMessages.newTagError,
+                onTagSelected = onTagSelected,
+                onNewTagNameChange = onNewTagNameChange,
+                onAddBattleTag = onAddBattleTag
             )
-            if (uiState.allBattleTags.isEmpty() && userInputs.newTagName.isBlank()) {
-                Text(
-                    stringResource(id = R.string.add_edit_battle_combo_no_tags_message),
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium),
-                verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)
-            ) {
-                uiState.allBattleTags.forEach { tag ->
-                    FilterChip(
-                        selected = userInputs.selectedTags.contains(tag.name),
-                        onClick = { onTagSelected(tag.name) },
-                        label = { Text(tag.name) },
-                        leadingIcon = if (userInputs.selectedTags.contains(tag.name)) {
-                            {
-                                Icon(
-                                    Icons.Filled.Check,
-                                    contentDescription = null,
-                                    Modifier.size(FilterChipDefaults.IconSize)
-                                )
-                            }
-                        } else {
-                            null
-                        }
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
-            ) {
-                OutlinedTextField(
-                    value = userInputs.newTagName,
-                    onValueChange = onNewTagNameChange,
-                    label = { Text(stringResource(id = R.string.add_edit_battle_combo_new_tag_label)) },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { onAddBattleTag() })
-                )
-                Button(onClick = onAddBattleTag) {
-                    Text(stringResource(id = R.string.common_add))
-                }
-            }
         }
     }
 
-    if (uiState.showImportDialog) {
-        AlertDialog(
-            onDismissRequest = { onShowImportDialog(false) },
-            title = { Text(stringResource(id = R.string.add_edit_battle_combo_import_dialog_title)) },
-            text = {
-                LazyColumn(
-                    modifier = Modifier
-                        .height(AppStyleDefaults.SpacingExtraLarge * 5)
-                        .fillMaxWidth()
-                ) {
-                    items(uiState.allPracticeCombos, key = { it.id }) { combo ->
-                        ListItem(
-                            headlineContent = { Text(combo.name) },
-                            supportingContent = { Text(combo.moves.joinToString(" -> ")) },
-                            modifier = Modifier.clickable { onImportCombo(combo) }
+    if (dialogsAndMessages.showImportDialog) {
+        ImportDialog(
+            practiceCombos = uiState.allPracticeCombos,
+            onImportCombo = onImportCombo,
+            onDismiss = { onShowImportDialog(false) }
+        )
+    }
+
+    if (dialogsAndMessages.showDeleteDialog) {
+        DeleteComboDialog(
+            comboDescription = userInputs.description,
+            onConfirm = onConfirmComboDelete,
+            onDismiss = onCancelComboDelete
+        )
+    }
+}
+
+// LAYER 1: Input Capping with Supporting Text Error Display
+@Composable
+fun DescriptionField(
+    description: String,
+    descriptionError: String?,
+    onDescriptionChange: (String) -> Unit
+) {
+    OutlinedTextField(
+        value = description,
+        onValueChange = { newText ->
+            if (newText.length <= BATTLE_COMBO_DESCRIPTION_CHARACTER_LIMIT) {
+                onDescriptionChange(newText)
+            }
+        },
+        label = { Text(stringResource(id = R.string.add_edit_battle_combo_description_label)) },
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = { Text(stringResource(id = R.string.add_edit_battle_combo_description_placeholder)) },
+        isError = descriptionError != null,
+        supportingText = {
+            if (descriptionError != null) {
+                Text(descriptionError, color = MaterialTheme.colorScheme.error)
+            } else {
+                Text(
+                    text = "${description.length} / $BATTLE_COMBO_DESCRIPTION_CHARACTER_LIMIT",
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.End
+                )
+            }
+        }
+    )
+}
+
+@Composable
+fun ImportButton(onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+    ) {
+        Text(stringResource(id = R.string.add_edit_battle_combo_import_button))
+    }
+}
+
+@Composable
+fun EnergySection(
+    selectedEnergy: EnergyLevel,
+    onEnergyChange: (EnergyLevel) -> Unit
+) {
+    Text(
+        stringResource(id = R.string.add_edit_battle_combo_energy_label),
+        style = MaterialTheme.typography.titleMedium
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        EnergyChip(
+            label = stringResource(id = R.string.add_edit_battle_combo_energy_low),
+            color = Color(0xFF4CAF50),
+            isSelected = selectedEnergy == EnergyLevel.LOW,
+            onClick = { onEnergyChange(EnergyLevel.LOW) }
+        )
+        EnergyChip(
+            label = stringResource(id = R.string.add_edit_battle_combo_energy_med),
+            color = Color(0xFFFFC107),
+            isSelected = selectedEnergy == EnergyLevel.MEDIUM,
+            onClick = { onEnergyChange(EnergyLevel.MEDIUM) }
+        )
+        EnergyChip(
+            label = stringResource(id = R.string.add_edit_battle_combo_energy_high),
+            color = Color(0xFFF44336),
+            isSelected = selectedEnergy == EnergyLevel.HIGH,
+            onClick = { onEnergyChange(EnergyLevel.HIGH) }
+        )
+    }
+}
+
+@Composable
+fun ReadinessSection(
+    selectedStatus: TrainingStatus,
+    onStatusChange: (TrainingStatus) -> Unit
+) {
+    Text(
+        stringResource(id = R.string.add_edit_battle_combo_readiness_label),
+        style = MaterialTheme.typography.titleMedium
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
+    ) {
+        FilterChip(
+            selected = selectedStatus == TrainingStatus.TRAINING,
+            onClick = { onStatusChange(TrainingStatus.TRAINING) },
+            label = { Text(stringResource(id = R.string.add_edit_battle_combo_training_label)) },
+            leadingIcon = { Text("🔨") }
+        )
+        FilterChip(
+            selected = selectedStatus == TrainingStatus.READY,
+            onClick = { onStatusChange(TrainingStatus.READY) },
+            label = { Text(stringResource(id = R.string.add_edit_battle_combo_ready_label)) },
+            leadingIcon = { Text("🔥") }
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun TagsSection(
+    allBattleTags: List<BattleTag>,
+    selectedTags: Set<String>,
+    newTagName: String,
+    newTagError: String?,
+    onTagSelected: (String) -> Unit,
+    onNewTagNameChange: (String) -> Unit,
+    onAddBattleTag: () -> Unit
+) {
+    Text(
+        stringResource(id = R.string.add_edit_battle_combo_tags_label),
+        style = MaterialTheme.typography.titleMedium
+    )
+
+    if (allBattleTags.isEmpty() && newTagName.isBlank()) {
+        Text(
+            stringResource(id = R.string.add_edit_battle_combo_no_tags_message),
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
+
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium),
+        verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)
+    ) {
+        allBattleTags.forEach { tag ->
+            FilterChip(
+                selected = selectedTags.contains(tag.name),
+                onClick = { onTagSelected(tag.name) },
+                label = { Text(tag.name) },
+                leadingIcon = if (selectedTags.contains(tag.name)) {
+                    {
+                        Icon(
+                            Icons.Filled.Check,
+                            contentDescription = null,
+                            Modifier.size(FilterChipDefaults.IconSize)
                         )
-                        HorizontalDivider()
                     }
+                } else null
+            )
+        }
+    }
+
+    NewTagInput(
+        newTagName = newTagName,
+        newTagError = newTagError,
+        onNewTagNameChange = onNewTagNameChange,
+        onAddBattleTag = onAddBattleTag
+    )
+}
+
+// LAYER 1: Input Capping with Supporting Text Error Display
+@Composable
+fun NewTagInput(
+    newTagName: String,
+    newTagError: String?,
+    onNewTagNameChange: (String) -> Unit,
+    onAddBattleTag: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
+    ) {
+        OutlinedTextField(
+            value = newTagName,
+            onValueChange = { newText ->
+                if (newText.length <= BATTLE_TAG_CHARACTER_LIMIT) {
+                    onNewTagNameChange(newText)
                 }
             },
-            confirmButton = {
-                TextButton(onClick = { onShowImportDialog(false) }) {
-                    Text(stringResource(id = R.string.common_cancel))
+            label = { Text(stringResource(id = R.string.add_edit_battle_combo_new_tag_label)) },
+            modifier = Modifier.weight(1f),
+            singleLine = true,
+            isError = newTagError != null,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onAddBattleTag() }),
+            supportingText = {
+                if (newTagError != null) {
+                    Text(newTagError, color = MaterialTheme.colorScheme.error)
+                } else {
+                    Text(
+                        text = "${newTagName.length} / $BATTLE_TAG_CHARACTER_LIMIT",
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.End
+                    )
                 }
             }
         )
+        Button(onClick = onAddBattleTag) {
+            Text(stringResource(id = R.string.common_add))
+        }
     }
+}
+
+@Composable
+fun ImportDialog(
+    practiceCombos: List<SavedCombo>,
+    onImportCombo: (SavedCombo) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(id = R.string.add_edit_battle_combo_import_dialog_title)) },
+        text = {
+            LazyColumn(
+                modifier = Modifier
+                    .height(AppStyleDefaults.SpacingExtraLarge * 5)
+                    .fillMaxWidth()
+            ) {
+                if (practiceCombos.isEmpty()) {
+                    item {
+                        Text(
+                            stringResource(id = R.string.add_edit_battle_combo_no_practice_combos_message),
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(AppStyleDefaults.SpacingLarge)
+                        )
+                    }
+                } else {
+                    items(practiceCombos) { combo ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = AppStyleDefaults.SpacingSmall)
+                                .clickable { onImportCombo(combo) }
+                        ) {
+                            Text(
+                                text = combo.moves.joinToString(" -> "),
+                                modifier = Modifier.padding(AppStyleDefaults.SpacingMedium),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(id = R.string.common_close))
+            }
+        }
+    )
+}
+
+@Composable
+fun DeleteComboDialog(
+    comboDescription: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(id = R.string.common_confirm_deletion_title)) },
+        text = {
+            Text("Are you sure you want to delete this combo?\n\n$comboDescription")
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text(stringResource(id = R.string.common_delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(id = R.string.common_cancel))
+            }
+        }
+    )
 }
 
 @Composable
@@ -329,109 +518,61 @@ fun EnergyChip(
         onClick = onClick,
         label = { Text(label) },
         colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = color.copy(alpha = 0.2f),
-            selectedLabelColor = Color.Black,
-            selectedLeadingIconColor = color
-        ),
-        border = FilterChipDefaults.filterChipBorder(
-            enabled = true,
-            selected = isSelected,
-            borderColor = if (isSelected) color else Color.Gray
-        ),
-        leadingIcon = if (isSelected) {
-            { Icon(Icons.Default.Check, contentDescription = null) }
-        } else null
+            selectedContainerColor = color.copy(alpha = 0.3f),
+            selectedLabelColor = color
+        )
     )
 }
 
-// --- PREVIEWS ---
-
-@Preview(showBackground = true, name = "Add New Combo")
+// PREVIEWS
+@Preview(showBackground = true)
 @Composable
-private fun AddEditBattleComboContent_AddNewPreview() {
-    MaterialTheme {
-        AddEditBattleComboContent(
-            uiState = AddEditBattleComboUiState(
-                userInputs = UserInputs(isNewCombo = true), // Key for "Add" mode
-                allBattleTags = listOf(
-                    BattleTag("1", "Boxing"),
-                    BattleTag("2", "Kicking")
-                )
-            ),
-            snackbarHostState = remember { SnackbarHostState() },
-            onNavigateUp = {},
-            onSaveClick = {},
-            onDescriptionChange = {},
-            onShowImportDialog = {},
-            onEnergyChange = {},
-            onStatusChange = {},
-            onTagSelected = {},
-            onNewTagNameChange = {},
-            onAddBattleTag = {},
-            onImportCombo = {}
-        )
-    }
+fun PreviewDescriptionField() {
+    DescriptionField(
+        description = "Sample combo description",
+        descriptionError = null,
+        onDescriptionChange = {}
+    )
 }
 
-@Preview(showBackground = true, name = "Edit Existing Combo")
+@Preview(showBackground = true)
 @Composable
-private fun AddEditBattleComboContent_EditPreview() {
-    MaterialTheme {
-        AddEditBattleComboContent(
-            uiState = AddEditBattleComboUiState(
-                userInputs = UserInputs(
-                    isNewCombo = false, // Key for "Edit" mode
-                    description = "Jab, Cross, Hook",
-                    selectedEnergy = EnergyLevel.HIGH,
-                    selectedStatus = TrainingStatus.READY,
-                    selectedTags = setOf("Boxing", "Power")
-                ),
-                allBattleTags = listOf(
-                    BattleTag("1", "Boxing"),
-                    BattleTag("2", "Kicking"),
-                    BattleTag("3", "Power")
-                )
-            ),
-            snackbarHostState = remember { SnackbarHostState() },
-            onNavigateUp = {},
-            onSaveClick = {},
-            onDescriptionChange = {},
-            onShowImportDialog = {},
-            onEnergyChange = {},
-            onStatusChange = {},
-            onTagSelected = {},
-            onNewTagNameChange = {},
-            onAddBattleTag = {},
-            onImportCombo = {}
-        )
-    }
+fun PreviewDescriptionFieldWithError() {
+    DescriptionField(
+        description = "",
+        descriptionError = "Description cannot be empty.",
+        onDescriptionChange = {}
+    )
 }
 
-@Preview(showBackground = true, name = "Import Dialog")
+@Preview(showBackground = true)
 @Composable
-private fun AddEditBattleComboContent_ShowImportDialogPreview() {
-    MaterialTheme {
-        AddEditBattleComboContent(
-            uiState = AddEditBattleComboUiState(
-                userInputs = UserInputs(isNewCombo = true),
-                showImportDialog = true, // Key for this preview
-                allPracticeCombos = listOf(
-                    SavedCombo(id = "1", name = "Classic 1-2", moves = listOf("Jab", "Cross")),
-                    SavedCombo(id = "2", name = "Leg Day", moves = listOf("Left Kick", "Right Kick")),
-                    SavedCombo(id = "3", name = "Muay Thai Basic", moves = listOf("Jab", "Cross", "Left Kick"))
-                )
-            ),
-            snackbarHostState = remember { SnackbarHostState() },
-            onNavigateUp = {},
-            onSaveClick = {},
-            onDescriptionChange = {},
-            onShowImportDialog = {},
-            onEnergyChange = {},
-            onStatusChange = {},
-            onTagSelected = {},
-            onNewTagNameChange = {},
-            onAddBattleTag = {},
-            onImportCombo = {}
-        )
-    }
+fun PreviewNewTagInput() {
+    NewTagInput(
+        newTagName = "New Tag",
+        newTagError = null,
+        onNewTagNameChange = {},
+        onAddBattleTag = {}
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewNewTagInputWithError() {
+    NewTagInput(
+        newTagName = "Power",
+        newTagError = "Tag 'Power' already exists.",
+        onNewTagNameChange = {},
+        onAddBattleTag = {}
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewDeleteComboDialog() {
+    DeleteComboDialog(
+        comboDescription = "Jab -> Cross -> Hook",
+        onConfirm = {},
+        onDismiss = {}
+    )
 }

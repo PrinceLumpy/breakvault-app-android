@@ -2,6 +2,7 @@ package com.princelumpy.breakvault.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -21,6 +22,10 @@ import kotlinx.serialization.Serializable
             childColumns = ["battleTagId"],
             onDelete = ForeignKey.CASCADE
         )
+    ],
+    indices = [
+        Index(value = ["battleComboId"]),
+        Index(value = ["battleTagId"])
     ]
 )
 data class BattleComboTagCrossRef(

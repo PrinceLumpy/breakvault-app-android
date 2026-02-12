@@ -13,11 +13,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,7 +24,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,6 +38,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.SavedCombo
+import com.princelumpy.breakvault.ui.moves.list.GenerateComboButton
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 
 /**
@@ -50,25 +47,17 @@ import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 @Composable
 fun SavedComboListScreen(
     onNavigateToAddEditCombo: (String?) -> Unit,
+    onNavigateToComboGenerator: () -> Unit,
     savedComboListViewModel: SavedComboListViewModel = hiltViewModel()
 ) {
     val uiState by savedComboListViewModel.uiState.collectAsStateWithLifecycle()
-    val dialogState = uiState.dialogState
 
     SavedComboListScaffold(
         savedCombos = uiState.savedCombos,
         onNavigateToAddEditCombo = onNavigateToAddEditCombo,
-        onEditClick = { onNavigateToAddEditCombo(it.id) },
-        onDeleteClick = savedComboListViewModel::onShowDeleteDialog
+        onNavigateToComboGenerator = onNavigateToComboGenerator,
+        onEditClick = { onNavigateToAddEditCombo(it.id) }
     )
-
-    dialogState.comboToDelete?.let { combo ->
-        DeleteComboDialog(
-            comboName = combo.name,
-            onDismiss = savedComboListViewModel::onCancelDelete,
-            onConfirm = savedComboListViewModel::onConfirmDelete
-        )
-    }
 }
 
 /**
@@ -79,8 +68,8 @@ fun SavedComboListScreen(
 private fun SavedComboListScaffold(
     savedCombos: List<SavedCombo>,
     onNavigateToAddEditCombo: (String?) -> Unit,
+    onNavigateToComboGenerator: () -> Unit,
     onEditClick: (SavedCombo) -> Unit,
-    onDeleteClick: (SavedCombo) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -99,6 +88,10 @@ private fun SavedComboListScaffold(
             }
         }
     ) { paddingValues ->
+        GenerateComboButton(onClick = onNavigateToComboGenerator)
+
+        Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingLarge))
+
         if (savedCombos.isEmpty()) {
             EmptyState(
                 onNavigateToAddEditCombo = { onNavigateToAddEditCombo(null) },
@@ -110,7 +103,6 @@ private fun SavedComboListScaffold(
             ComboList(
                 savedCombos = savedCombos,
                 onEditClick = onEditClick,
-                onDeleteClick = onDeleteClick,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
@@ -126,7 +118,6 @@ private fun SavedComboListScaffold(
 private fun ComboList(
     savedCombos: List<SavedCombo>,
     onEditClick: (SavedCombo) -> Unit,
-    onDeleteClick: (SavedCombo) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -140,8 +131,7 @@ private fun ComboList(
         ) { savedCombo ->
             SavedComboItem(
                 savedCombo = savedCombo,
-                onEditClick = { onEditClick(savedCombo) },
-                onDeleteClick = { onDeleteClick(savedCombo) }
+                onEditClick = { onEditClick(savedCombo) }
             )
         }
     }
@@ -182,55 +172,15 @@ private fun EmptyState(
 }
 
 /**
- * A stateless dialog for confirming combo deletion.
- */
-@Composable
-private fun DeleteComboDialog(
-    comboName: String,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    AlertDialog(
-        modifier = modifier,
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(id = R.string.common_confirm_deletion_title)) },
-        text = {
-            Text(
-                stringResource(
-                    id = R.string.saved_combos_delete_confirmation_message,
-                    comboName
-                )
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = onConfirm,
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-            ) {
-                Text(stringResource(id = R.string.common_delete))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(id = R.string.common_cancel))
-            }
-        }
-    )
-}
-
-/**
  * A stateless item for a single saved combo in the list.
  */
 @Composable
 fun SavedComboItem(
     savedCombo: SavedCombo,
-    onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onEditClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = AppStyleDefaults.SpacingSmall)
     ) {
         Row(
@@ -258,24 +208,15 @@ fun SavedComboItem(
                 )
             }
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+            IconButton(
+                onClick = onEditClick,
                 modifier = Modifier.padding(start = AppStyleDefaults.SpacingMedium)
             ) {
-                IconButton(onClick = onEditClick) {
-                    Icon(
-                        Icons.Filled.Edit,
-                        contentDescription = stringResource(id = R.string.edit_combo_description),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-                IconButton(onClick = onDeleteClick) {
-                    Icon(
-                        Icons.Filled.Delete,
-                        contentDescription = stringResource(id = R.string.saved_combos_delete_combo_description),
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
+                Icon(
+                    Icons.Filled.Edit,
+                    contentDescription = stringResource(id = R.string.edit_combo_description),
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }
@@ -303,8 +244,8 @@ private fun SavedComboListScaffold_WithCombos_Preview() {
         SavedComboListScaffold(
             savedCombos = previewCombos,
             onNavigateToAddEditCombo = {},
-            onEditClick = {},
-            onDeleteClick = {}
+            onNavigateToComboGenerator = {},
+            onEditClick = {}
         )
     }
 }
@@ -316,8 +257,8 @@ private fun SavedComboListScaffold_Empty_Preview() {
         SavedComboListScaffold(
             savedCombos = emptyList(),
             onNavigateToAddEditCombo = {},
-            onEditClick = {},
-            onDeleteClick = {}
+            onNavigateToComboGenerator = {},
+            onEditClick = {}
         )
     }
 }
@@ -333,20 +274,7 @@ private fun SavedComboItemPreview() {
         )
         SavedComboItem(
             savedCombo = sampleCombo,
-            onEditClick = {},
-            onDeleteClick = {}
-        )
-    }
-}
-
-@Preview
-@Composable
-private fun DeleteComboDialogPreview() {
-    BreakVaultTheme {
-        DeleteComboDialog(
-            comboName = "My Awesome Combo",
-            onDismiss = { },
-            onConfirm = { }
+            onEditClick = {}
         )
     }
 }

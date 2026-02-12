@@ -1,7 +1,7 @@
 package com.princelumpy.breakvault.ui.goals.addedit
 
 import AppStyleDefaults
-import GoalInputDefaults
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +34,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -49,18 +50,15 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
+import com.princelumpy.breakvault.common.Constants.GOAL_DESCRIPTION_CHARACTER_LIMIT
+import com.princelumpy.breakvault.common.Constants.GOAL_TITLE_CHARACTER_LIMIT
 import com.princelumpy.breakvault.data.local.entity.GoalStage
-import com.princelumpy.breakvault.ui.components.GoalStageItem
-import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
+import com.princelumpy.breakvault.ui.common.AppLinearProgressIndicator
 
-/**
- * The main, stateful screen composable that holds the ViewModel and state.
- */
 @Composable
 fun AddEditGoalScreen(
     onNavigateUp: () -> Unit,
@@ -89,10 +87,8 @@ fun AddEditGoalScreen(
     }
 
     LaunchedEffect(dialogState.navigateToEditStage) {
-        dialogState.navigateToEditStage?.let { stage ->
-            uiState.goalId?.let {
-                onNavigateToAddEditStage(it, stage.id)
-            }
+        dialogState.navigateToEditStage?.let { (goalId, stageId) ->
+            onNavigateToAddEditStage(goalId, stageId)
             addEditGoalViewModel.onNavigateToEditStageDone()
         }
     }
@@ -107,28 +103,19 @@ fun AddEditGoalScreen(
         )
     }
 
-    dialogState.addingRepsToStage?.let { stage ->
-        AddRepsDialog(
-            stageUnit = stage.unit,
-            onDismiss = { addEditGoalViewModel.onAddRepsDismissed() },
-            onConfirm = { reps ->
-                addEditGoalViewModel.addRepsToStage(stage, reps)
-            }
-        )
-    }
-
     AddEditGoalScaffold(
         snackbarHostState = snackbarHostState,
         isNewGoal = uiState.isNewGoal,
         isLoading = uiState.isLoading,
         title = userInputs.title,
         onTitleChange = { addEditGoalViewModel.onTitleChange(it) },
+        titleError = uiState.titleError,
         description = userInputs.description,
         onDescriptionChange = { addEditGoalViewModel.onDescriptionChange(it) },
+        descriptionError = uiState.descriptionError,
         stages = uiState.stages,
         onAddStageClick = { addEditGoalViewModel.onAddStageClicked() },
         onEditStageClick = { addEditGoalViewModel.onEditStageClicked(it) },
-        onAddRepsClick = { addEditGoalViewModel.onAddRepsClicked(it) },
         onArchiveClick = { addEditGoalViewModel.archiveGoal { onNavigateUp() } },
         onDeleteClick = { showDeleteConfirmationDialog = true },
         onSaveClick = { addEditGoalViewModel.saveGoal { onNavigateUp() } },
@@ -136,9 +123,6 @@ fun AddEditGoalScreen(
     )
 }
 
-/**
- * A stateless scaffold for the Add/Edit Goal screen.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddEditGoalScaffold(
@@ -147,12 +131,13 @@ private fun AddEditGoalScaffold(
     isLoading: Boolean,
     title: String,
     onTitleChange: (String) -> Unit,
+    titleError: String?,
     description: String,
     onDescriptionChange: (String) -> Unit,
+    descriptionError: String?,
     stages: List<GoalStage>,
     onAddStageClick: () -> Unit,
     onEditStageClick: (GoalStage) -> Unit,
-    onAddRepsClick: (GoalStage) -> Unit,
     onArchiveClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onSaveClick: () -> Unit,
@@ -171,10 +156,18 @@ private fun AddEditGoalScaffold(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                focusManager.clearFocus()
-                onSaveClick()
-            }) {
+            FloatingActionButton(
+                onClick = {
+                    focusManager.clearFocus()
+                    onSaveClick()
+                },
+                // Updated FAB color based on whether the required title is filled
+                containerColor = if (title.isNotBlank()) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                }
+            ) {
                 Icon(
                     Icons.Filled.Save,
                     contentDescription = stringResource(id = R.string.save_goal_content_description),
@@ -193,31 +186,30 @@ private fun AddEditGoalScaffold(
                     .padding(AppStyleDefaults.SpacingLarge),
                 title = title,
                 onTitleChange = onTitleChange,
+                titleError = titleError,
                 description = description,
                 onDescriptionChange = onDescriptionChange,
+                descriptionError = descriptionError,
                 stages = stages,
                 onAddStageClick = onAddStageClick,
-                onEditStageClick = onEditStageClick,
-                onAddRepsClick = onAddRepsClick
+                onEditStageClick = onEditStageClick
             )
         }
     }
 }
 
-/**
- * The main, stateless content of the screen containing the input form and stages list.
- */
 @Composable
 private fun AddEditGoalContent(
     modifier: Modifier = Modifier,
     title: String,
     onTitleChange: (String) -> Unit,
+    titleError: String?,
     description: String,
     onDescriptionChange: (String) -> Unit,
+    descriptionError: String?,
     stages: List<GoalStage>,
     onAddStageClick: () -> Unit,
-    onEditStageClick: (GoalStage) -> Unit,
-    onAddRepsClick: (GoalStage) -> Unit
+    onEditStageClick: (GoalStage) -> Unit
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -226,40 +218,77 @@ private fun AddEditGoalContent(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
+        // Goal Title
         OutlinedTextField(
             value = title,
             onValueChange = onTitleChange,
             label = { Text(stringResource(id = R.string.add_edit_goal_title_label)) },
+            placeholder = { Text(stringResource(id = R.string.add_edit_goal_title_placeholder)) },
             modifier = Modifier.fillMaxWidth(),
+            isError = titleError != null,
+            // Updated to show error text from ViewModel
+            supportingText = {
+                if (titleError != null) {
+                    Text(titleError, color = MaterialTheme.colorScheme.error)
+                } else {
+                    Text(
+                        text = "${title.length}/$GOAL_TITLE_CHARACTER_LIMIT",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
             singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
+            keyboardOptions = KeyboardOptions(
+                imeAction = ImeAction.Next
+            )
         )
+        Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingLarge))
 
-        Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingMedium))
-
+        // Goal Description
         OutlinedTextField(
             value = description,
             onValueChange = onDescriptionChange,
             label = { Text(stringResource(id = R.string.add_edit_goal_description_label)) },
+            placeholder = { Text(stringResource(id = R.string.add_edit_goal_description_placeholder)) },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(GoalInputDefaults.DESCRIPTION_FIELD_HEIGHT)
+                .height(150.dp),
+            isError = descriptionError != null,
+            // Updated to show error text from ViewModel
+            supportingText = {
+                if (descriptionError != null) {
+                    Text(descriptionError, color = MaterialTheme.colorScheme.error)
+                } else {
+                    Text(
+                        text = "${description.length}/$GOAL_DESCRIPTION_CHARACTER_LIMIT",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            maxLines = 5,
+            keyboardOptions = KeyboardOptions(
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = { focusManager.clearFocus() }
+            )
         )
 
-        Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingExtraLarge))
+        Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingLarge))
 
+        // Goal Stages Section
         GoalStagesList(
             stages = stages,
             onAddStageClick = onAddStageClick,
-            onEditStageClick = onEditStageClick,
-            onAddRepsClick = onAddRepsClick
+            onEditStageClick = onEditStageClick
         )
     }
 }
 
+// ... Rest of the file (TopBar, GoalStagesList, EditGoalStageItem, etc.) remains as is ...
+
 /**
- * A stateless TopAppBar for the Add/Edit Goal screen.
+ * Top App Bar for Add/Edit Goal screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -270,7 +299,15 @@ private fun AddEditGoalTopBar(
     onDeleteClick: () -> Unit
 ) {
     TopAppBar(
-        title = { Text(stringResource(id = if (isNewGoal) R.string.add_edit_goal_create_title else R.string.add_edit_goal_edit_title)) },
+        title = {
+            Text(
+                if (isNewGoal) {
+                    stringResource(id = R.string.add_edit_goal_new_goal_title)
+                } else {
+                    stringResource(id = R.string.add_edit_goal_edit_goal_title)
+                }
+            )
+        },
         navigationIcon = {
             IconButton(onClick = onNavigateUp) {
                 Icon(
@@ -305,8 +342,7 @@ private fun AddEditGoalTopBar(
 private fun GoalStagesList(
     stages: List<GoalStage>,
     onAddStageClick: () -> Unit,
-    onEditStageClick: (GoalStage) -> Unit,
-    onAddRepsClick: (GoalStage) -> Unit
+    onEditStageClick: (GoalStage) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -344,59 +380,60 @@ private fun GoalStagesList(
             )
         }
     } else {
-        Column {
+        Column(verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)) {
             stages.forEach { goalStage ->
-                GoalStageItem(
-                    goalStage = goalStage,
-                    onEditClick = { onEditStageClick(goalStage) },
-                    onAddRepsClick = { onAddRepsClick(goalStage) }
+                EditGoalStageItem(
+                    stage = goalStage,
+                    onClick = { onEditStageClick(goalStage) }
                 )
             }
         }
     }
 }
 
-/**
- * A stateless dialog for adding reps to a goal stage.
- */
 @Composable
-private fun AddRepsDialog(
-    stageUnit: String,
-    onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit
+private fun EditGoalStageItem(
+    stage: GoalStage,
+    onClick: () -> Unit
 ) {
-    var reps by remember { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.add_edit_goal_add_reps_dialog_title)) },
-        text = {
-            OutlinedTextField(
-                value = reps,
-                onValueChange = { reps = it },
-                label = { Text(stageUnit.replaceFirstChar { it.uppercase() }) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true
+    val stageProgress = if (stage.targetCount > 0) {
+        (stage.currentCount.toDouble() / stage.targetCount.toDouble()).coerceIn(0.0, 1.0)
+    } else {
+        0.0
+    }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        shape = MaterialTheme.shapes.small
+    ) {
+        Column(
+            modifier = Modifier.padding(AppStyleDefaults.SpacingMedium)
+        ) {
+            Text(
+                text = stage.name.ifBlank { "Untitled Stage" },
+                style = MaterialTheme.typography.bodyLarge
             )
-        },
-        confirmButton = {
-            Button(
-                onClick = { reps.toIntOrNull()?.let { onConfirm(it) } },
-                enabled = reps.toIntOrNull() != null
-            ) {
-                Text(stringResource(id = R.string.common_add))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(id = R.string.common_cancel))
+
+            if (stage.targetCount > 0) {
+                Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingSmall))
+                AppLinearProgressIndicator(
+                    progress = { stageProgress.toFloat() },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "${stage.currentCount} / ${stage.targetCount} reps",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
-    )
+    }
 }
 
-/**
- * A stateless dialog for confirming goal deletion.
- */
 @Composable
 private fun DeleteGoalConfirmationDialog(
     onDismiss: () -> Unit,
@@ -418,107 +455,3 @@ private fun DeleteGoalConfirmationDialog(
         }
     )
 }
-
-
-//region Previews
-
-@Preview(showBackground = true)
-@Composable
-private fun AddEditGoalContent_Preview() {
-    BreakVaultTheme {
-        AddEditGoalContent(
-            modifier = Modifier.padding(AppStyleDefaults.SpacingLarge),
-            title = "Master the Planche",
-            onTitleChange = {},
-            description = "Hold a full planche for 30 seconds.",
-            onDescriptionChange = {},
-            stages = listOf(
-                GoalStage("1", "1", "Tuck Planche", 30, 60, "seconds"),
-                GoalStage("2", "1", "Straddle Planche", 5, 30, "seconds")
-            ),
-            onAddStageClick = {},
-            onEditStageClick = {},
-            onAddRepsClick = {}
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun AddEditGoalTopBar_NewGoalPreview() {
-    BreakVaultTheme {
-        AddEditGoalTopBar(
-            isNewGoal = true,
-            onNavigateUp = {},
-            onArchiveClick = {},
-            onDeleteClick = {}
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun AddEditGoalTopBar_EditGoalPreview() {
-    BreakVaultTheme {
-        AddEditGoalTopBar(
-            isNewGoal = false,
-            onNavigateUp = {},
-            onArchiveClick = {},
-            onDeleteClick = {}
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun GoalStagesList_WithStagesPreview() {
-    BreakVaultTheme {
-        GoalStagesList(
-            stages = listOf(
-                GoalStage("1", "1", "First Stage", 10, 20, "reps"),
-                GoalStage("2", "1", "Second Stage", 5, 10, "sets")
-            ),
-            onAddStageClick = {},
-            onEditStageClick = {},
-            onAddRepsClick = {}
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun GoalStagesList_NoStagesPreview() {
-    BreakVaultTheme {
-        GoalStagesList(
-            stages = emptyList(),
-            onAddStageClick = {},
-            onEditStageClick = {},
-            onAddRepsClick = {}
-        )
-    }
-}
-
-@Preview
-@Composable
-private fun AddRepsDialogPreview() {
-    BreakVaultTheme {
-        AddRepsDialog(
-            stageUnit = "seconds",
-            onDismiss = {},
-            onConfirm = {}
-        )
-    }
-}
-
-@Preview
-@Composable
-private fun DeleteGoalConfirmationDialogPreview() {
-    BreakVaultTheme {
-        DeleteGoalConfirmationDialog(
-            onDismiss = {},
-            onConfirmDelete = {}
-        )
-    }
-}
-
-//endregion

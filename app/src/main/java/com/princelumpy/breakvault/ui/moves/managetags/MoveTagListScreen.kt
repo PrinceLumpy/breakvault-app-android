@@ -231,14 +231,15 @@ fun TagListItem(
                 IconButton(onClick = { onEditClick(moveTag) }) {
                     Icon(
                         Icons.Filled.Edit,
-                        contentDescription = stringResource(id = R.string.tag_list_edit_tag_description)
+                        contentDescription = stringResource(id = R.string.tag_list_edit_tag_description),
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
                 IconButton(onClick = { onDeleteClick(moveTag) }) {
                     Icon(
                         Icons.Filled.Delete,
                         contentDescription = stringResource(id = R.string.tag_list_delete_tag_description),
-                        tint = MaterialTheme.colorScheme.error
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

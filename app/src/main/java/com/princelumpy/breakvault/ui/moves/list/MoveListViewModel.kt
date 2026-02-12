@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 // Private state to hold only the user's direct interactions
 private data class UserInteractions(
@@ -25,8 +24,6 @@ data class MoveListUiState(
     val moveList: List<MoveWithTags> = emptyList(),
     val allTags: List<MoveTag> = emptyList(),
     val selectedTagNames: Set<String> = emptySet(),
-    val moveToDelete: MoveWithTags? = null,
-    val userMessage: String? = null,
     val isLoading: Boolean = true
 )
 
@@ -38,17 +35,11 @@ class MoveListViewModel @Inject constructor(
     // Consolidate user-driven state
     private val _userInteractions = MutableStateFlow(UserInteractions())
 
-    // State for transient UI events (dialogs, snack bars)
-    private val _moveToDelete = MutableStateFlow<MoveWithTags?>(null)
-    private val _userMessage = MutableStateFlow<String?>(null)
-
     val uiState: StateFlow<MoveListUiState> = combine(
         moveRepository.getAllMovesWithTags(),
         moveRepository.getAllTags(),
-        _userInteractions,
-        _moveToDelete,
-        _userMessage
-    ) { allMoves, allTags, interactions, moveToDelete, userMessage ->
+        _userInteractions
+    ) { allMoves, allTags, interactions ->
 
         val filteredMoves = if (interactions.selectedTagNames.isEmpty()) {
             allMoves
@@ -62,9 +53,7 @@ class MoveListViewModel @Inject constructor(
             moveList = filteredMoves,
             allTags = allTags,
             selectedTagNames = interactions.selectedTagNames,
-            moveToDelete = moveToDelete,
-            userMessage = userMessage,
-            isLoading = false // Assuming loading is done once the first items arrive
+            isLoading = false
         )
     }.stateIn(
         scope = viewModelScope,
@@ -72,7 +61,6 @@ class MoveListViewModel @Inject constructor(
         initialValue = MoveListUiState()
     )
 
-    // User actions now update the single interactions state
     fun toggleTagFilter(tagName: String) {
         _userInteractions.update { current ->
             val newSelectedTags = if (tagName in current.selectedTagNames) {
@@ -86,27 +74,5 @@ class MoveListViewModel @Inject constructor(
 
     fun clearFilters() {
         _userInteractions.update { it.copy(selectedTagNames = emptySet()) }
-    }
-
-    // These methods manage transient state and can remain as they are
-    fun onDeleteMoveClick(moveWithTags: MoveWithTags) {
-        _moveToDelete.value = moveWithTags
-    }
-
-    fun onConfirmMoveDelete() {
-        val move = _moveToDelete.value ?: return
-        viewModelScope.launch {
-            moveRepository.deleteMove(move.move)
-            _moveToDelete.value = null
-            _userMessage.value = "Move deleted"
-        }
-    }
-
-    fun onCancelMoveDelete() {
-        _moveToDelete.value = null
-    }
-
-    fun clearMessage() {
-        _userMessage.value = null
     }
 }

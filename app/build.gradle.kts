@@ -1,21 +1,22 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.googleKsp)
     alias(libs.plugins.androidxRoom)
-    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.kotlin.compose)
 }
 
 android {
-    namespace = "com.princelumpy.breakvault" // Updated namespace
-    compileSdk = 36 // Keeping compileSdk high is generally fine
+    namespace = "com.princelumpy.breakvault"
+    compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.princelumpy.breakvault" // CRITICAL: Updated applicationId
-        minSdk = 24
-        targetSdk = 36 // Updated to a more common stable API for production
+        applicationId = "com.princelumpy.breakvault"
+        minSdk = 26
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -24,8 +25,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true // CRITICAL: Enabled minification for release
-            // isShrinkResources = true // Recommended: Add this to shrink resources
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -33,64 +33,70 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
+
     kotlin {
         compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
-            freeCompilerArgs.add("-XXLanguage:+PropertyParamAnnotationDefaultTargetMode")
+            jvmTarget.set(JvmTarget.JVM_17)
+            freeCompilerArgs.add("-java-parameters")
         }
     }
+
+    room {
+        schemaDirectory("$projectDir/schemas")
+    }
+
     buildFeatures {
-        compose = true
         buildConfig = true
+        compose = true
     }
 }
 
-room {
-    schemaDirectory("$projectDir/schemas")
-}
+
 
 dependencies {
-
+// Core & Lifecycle
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.material.icons.extended)
-    implementation(libs.androidx.navigation.compose) // Corrected from .compose.ui
-
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    implementation(libs.androidx.compose.foundation.layout)
-    implementation(libs.androidx.material3)
-    implementation(libs.androidx.compose.foundation)
-    ksp(libs.androidx.room.compiler)
-
     implementation(libs.androidx.lifecycle.viewmodelKtx)
 
-    implementation(libs.kotlinx.serialization.json) // Added Kotlinx Serialization JSON library
+    // Compose
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.foundation.layout)
+    implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.navigation.compose)
 
+    // Hilt
     implementation(libs.hilt.android)
+    implementation(libs.androidx.ui.graphics)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
 
-    // Test Implementations
+    // Room
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
+    // Serialization
+    implementation(libs.kotlinx.serialization.json)
+
+    // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.androidx.core.testing)
-
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
-
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
 }

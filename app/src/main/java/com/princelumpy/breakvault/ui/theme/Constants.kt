@@ -8,8 +8,3 @@ object AppStyleDefaults {
     val SpacingExtraLarge = 24.dp
     val LazyListPadding = PaddingValues(horizontal = SpacingLarge, vertical = SpacingMedium)
 }
-
-object GoalInputDefaults {
-    const val MAX_TITLE_LENGTH = 100
-    val DESCRIPTION_FIELD_HEIGHT = 120.dp
-}

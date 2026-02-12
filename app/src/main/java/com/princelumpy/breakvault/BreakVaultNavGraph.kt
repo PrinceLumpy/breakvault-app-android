@@ -91,7 +91,8 @@ fun BreakVaultNavGraph(
         }
         composable(BreakVaultDestinations.SAVED_COMBOS_ROUTE) {
             SavedComboListScreen(
-                onNavigateToAddEditCombo = { navActions.navigateToAddEditCombo(it) }
+                onNavigateToAddEditCombo = { navActions.navigateToAddEditCombo(it) },
+                onNavigateToComboGenerator = { navActions.navigateToComboGenerator() }
             )
         }
         composable(
@@ -112,7 +113,9 @@ fun BreakVaultNavGraph(
         composable(BreakVaultDestinations.GOALS_ROUTE) {
             GoalsScreen(
                 onNavigateToAddEditGoal = { navActions.navigateToAddEditGoal(it) },
-                onNavigateToArchivedGoals = { navActions.navigateToArchivedGoals() }
+                onNavigateToAddEditStage = { goalId, stageId ->
+                    navActions.navigateToAddEditGoalStage(goalId, stageId)
+                }
             )
         }
         composable(
@@ -149,7 +152,7 @@ fun BreakVaultNavGraph(
             val stageId =
                 backStackEntry.arguments?.getString(BreakVaultDestinationsArgs.STAGE_ID_ARG)
             AddEditGoalStageScreen(
-                onNavigateUp = { navActions.navigateUp() },
+                onNavigateUp = { navActions.navigateFromStageToParentGoal(goalId) },
                 goalId = goalId,
                 stageId = stageId
             )

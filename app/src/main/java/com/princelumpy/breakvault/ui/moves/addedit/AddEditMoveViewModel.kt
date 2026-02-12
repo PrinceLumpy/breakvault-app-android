@@ -17,6 +17,10 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 
+// Constants for character limits
+private const val MOVE_NAME_CHARACTER_LIMIT = 100
+private const val MOVE_TAG_CHARACTER_LIMIT = 30
+
 // State for the user's direct text inputs.
 data class UserInputs(
     val moveName: String = "",
@@ -24,9 +28,12 @@ data class UserInputs(
     val selectedTags: Set<String> = emptySet()
 )
 
-// State for transient UI events like dialogs or snack bars.
-data class DialogState(
-    val snackbarMessage: String? = null
+// State for transient UI events like dialogs and errors.
+data class UiDialogsAndMessages(
+    val snackbarMessage: String? = null,
+    val moveNameError: String? = null,
+    val newTagError: String? = null,
+    val showDeleteDialog: Boolean = false
 )
 
 // The final, combined state for the UI to consume.
@@ -34,7 +41,7 @@ data class AddEditMoveUiState(
     val moveId: String? = null,
     val allTags: List<MoveTag> = emptyList(),
     val userInputs: UserInputs = UserInputs(),
-    val dialogState: DialogState = DialogState(),
+    val dialogsAndMessages: UiDialogsAndMessages = UiDialogsAndMessages(),
     val isNewMove: Boolean = true
 )
 
@@ -45,21 +52,21 @@ class AddEditMoveViewModel @Inject constructor(
 
     // Separate state flows for each concern.
     private val _userInputs = MutableStateFlow(UserInputs())
-    private val _dialogState = MutableStateFlow(DialogState())
+    private val _dialogsAndMessages = MutableStateFlow(UiDialogsAndMessages())
     private val _metadata =
         MutableStateFlow<Pair<String?, Boolean>>(null to true) // Pair<moveId, isNewMove>
 
     val uiState: StateFlow<AddEditMoveUiState> = combine(
         moveRepository.getAllTags(),
         _userInputs,
-        _dialogState,
+        _dialogsAndMessages,
         _metadata
-    ) { allTags, userInputs, dialogState, metadata ->
+    ) { allTags, userInputs, dialogsAndMessages, metadata ->
         AddEditMoveUiState(
             moveId = metadata.first,
             allTags = allTags,
             userInputs = userInputs,
-            dialogState = dialogState,
+            dialogsAndMessages = dialogsAndMessages,
             isNewMove = metadata.second
         )
     }.stateIn(
@@ -84,20 +91,34 @@ class AddEditMoveViewModel @Inject constructor(
                 )
                 _metadata.value = moveId to false
             } else {
-                _dialogState.update { it.copy(snackbarMessage = "Could not find move with ID $moveId") }
+                _dialogsAndMessages.update {
+                    it.copy(snackbarMessage = "Could not find move with ID $moveId")
+                }
             }
         }
     }
 
+    // LAYER 2: State Sanitization
     fun onMoveNameChange(newName: String) {
-        if (newName.length <= 100) {
+        if (newName.length <= MOVE_NAME_CHARACTER_LIMIT) {
             _userInputs.update { it.copy(moveName = newName) }
+
+            // Clear error on valid input
+            if (_dialogsAndMessages.value.moveNameError != null) {
+                _dialogsAndMessages.update { it.copy(moveNameError = null) }
+            }
         }
     }
 
+    // LAYER 2: State Sanitization
     fun onNewTagNameChange(newName: String) {
-        if (newName.length <= 30) {
+        if (newName.length <= MOVE_TAG_CHARACTER_LIMIT) {
             _userInputs.update { it.copy(newTagName = newName) }
+
+            // Clear error on valid input
+            if (_dialogsAndMessages.value.newTagError != null) {
+                _dialogsAndMessages.update { it.copy(newTagError = null) }
+            }
         }
     }
 
@@ -112,35 +133,70 @@ class AddEditMoveViewModel @Inject constructor(
         }
     }
 
+    // LAYER 3: Action Guard
     fun addTag() {
         val newTagName = uiState.value.userInputs.newTagName.trim()
-        if (newTagName.isNotBlank()) {
-            // Use the most recent list of tags from the UI state to check for existence.
-            val allTagNames = uiState.value.allTags.map { it.name }
-            if (!allTagNames.any { it.equals(newTagName, ignoreCase = true) }) {
-                viewModelScope.launch {
-                    val newTagId = UUID.randomUUID().toString()
-                    moveRepository.insertMoveTag(MoveTag(id = newTagId, name = newTagName))
-                    // After inserting, update user inputs to clear the field and select the new tag.
-                    _userInputs.update {
-                        it.copy(
-                            newTagName = "",
-                            selectedTags = it.selectedTags + newTagId
-                        )
-                    }
+        val allTagNames = uiState.value.allTags.map { it.name }
+
+        // Defensive guards against all business rules
+        when {
+            newTagName.isBlank() -> {
+                _dialogsAndMessages.update {
+                    it.copy(newTagError = "Tag name cannot be empty.")
                 }
-            } else {
-                _dialogState.update { it.copy(snackbarMessage = "Tag '$newTagName' already exists.") }
+                return
+            }
+
+            newTagName.length > MOVE_TAG_CHARACTER_LIMIT -> {
+                _dialogsAndMessages.update {
+                    it.copy(newTagError = "Tag cannot exceed $MOVE_TAG_CHARACTER_LIMIT characters.")
+                }
+                return
+            }
+
+            allTagNames.any { it.equals(newTagName, ignoreCase = true) } -> {
+                _dialogsAndMessages.update {
+                    it.copy(newTagError = "Tag '$newTagName' already exists.")
+                }
+                return
+            }
+        }
+
+        // If all checks pass, proceed with insertion
+        viewModelScope.launch {
+            val newTagId = UUID.randomUUID().toString()
+            moveRepository.insertMoveTag(MoveTag(id = newTagId, name = newTagName))
+
+            // Clear the field and select the new tag
+            _userInputs.update {
+                it.copy(
+                    newTagName = "",
+                    selectedTags = it.selectedTags + newTagId
+                )
             }
         }
     }
 
+    // LAYER 3: Action Guard
     fun saveMove(onSuccess: () -> Unit) {
         val currentUiState = uiState.value
         val inputs = currentUiState.userInputs
-        if (inputs.moveName.isBlank()) {
-            _dialogState.update { it.copy(snackbarMessage = "Move name cannot be blank.") }
-            return
+
+        // Defensive guards against all business rules
+        when {
+            inputs.moveName.isBlank() -> {
+                _dialogsAndMessages.update {
+                    it.copy(moveNameError = "Move name cannot be empty.")
+                }
+                return
+            }
+
+            inputs.moveName.length > MOVE_NAME_CHARACTER_LIMIT -> {
+                _dialogsAndMessages.update {
+                    it.copy(moveNameError = "Move name cannot exceed $MOVE_NAME_CHARACTER_LIMIT characters.")
+                }
+                return
+            }
         }
 
         viewModelScope.launch {
@@ -159,7 +215,27 @@ class AddEditMoveViewModel @Inject constructor(
         }
     }
 
+    fun onDeleteMoveClick() {
+        _dialogsAndMessages.update { it.copy(showDeleteDialog = true) }
+    }
+
+    fun onConfirmMoveDelete(onSuccess: () -> Unit) {
+        val moveId = uiState.value.moveId ?: return
+
+        viewModelScope.launch {
+            val moveWithTags = moveRepository.getMoveWithTags(moveId)
+            moveWithTags?.let {
+                moveRepository.deleteMove(it.move)
+                onSuccess()
+            }
+        }
+    }
+
+    fun onCancelMoveDelete() {
+        _dialogsAndMessages.update { it.copy(showDeleteDialog = false) }
+    }
+
     fun onSnackbarMessageShown() {
-        _dialogState.update { it.copy(snackbarMessage = null) }
+        _dialogsAndMessages.update { it.copy(snackbarMessage = null) }
     }
 }

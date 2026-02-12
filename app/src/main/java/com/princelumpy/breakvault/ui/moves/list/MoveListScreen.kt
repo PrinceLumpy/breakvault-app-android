@@ -16,11 +16,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -48,22 +46,13 @@ fun MoveListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    uiState.userMessage?.let { message ->
-        LaunchedEffect(message) {
-            viewModel.clearMessage()
-        }
-    }
-
     MoveListContent(
         uiState = uiState,
         snackbarHostState = snackbarHostState,
         onNavigateToAddEditMove = onNavigateToAddEditMove,
         onNavigateToComboGenerator = onNavigateToComboGenerator,
         onToggleTagFilter = viewModel::toggleTagFilter,
-        onClearFilters = viewModel::clearFilters,
-        onDeleteMoveClick = viewModel::onDeleteMoveClick,
-        onConfirmMoveDelete = viewModel::onConfirmMoveDelete,
-        onCancelMoveDelete = viewModel::onCancelMoveDelete
+        onClearFilters = viewModel::clearFilters
     )
 }
 
@@ -76,10 +65,7 @@ fun MoveListContent(
     onNavigateToAddEditMove: (String?) -> Unit,
     onNavigateToComboGenerator: () -> Unit,
     onToggleTagFilter: (String) -> Unit,
-    onClearFilters: () -> Unit,
-    onDeleteMoveClick: (MoveWithTags) -> Unit,
-    onConfirmMoveDelete: () -> Unit,
-    onCancelMoveDelete: () -> Unit
+    onClearFilters: () -> Unit
 ) {
     Scaffold(
         floatingActionButton = {
@@ -119,19 +105,10 @@ fun MoveListContent(
                 MovesList(
                     moves = uiState.moveList,
                     onEditClick = onNavigateToAddEditMove,
-                    onDeleteClick = onDeleteMoveClick,
                     modifier = Modifier.weight(1f)
                 )
             }
         }
-    }
-
-    uiState.moveToDelete?.let { moveToDelete ->
-        DeleteMoveDialog(
-            moveName = moveToDelete.move.name,
-            onConfirm = onConfirmMoveDelete,
-            onDismiss = onCancelMoveDelete
-        )
     }
 }
 
@@ -214,7 +191,6 @@ fun EmptyMovesState(onAddMove: () -> Unit) {
 fun MovesList(
     moves: List<MoveWithTags>,
     onEditClick: (String) -> Unit,
-    onDeleteClick: (MoveWithTags) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -225,8 +201,7 @@ fun MovesList(
         items(moves, key = { it.move.id }) { moveWithTags ->
             MoveCard(
                 moveWithTags = moveWithTags,
-                onEditClick = { onEditClick(moveWithTags.move.id) },
-                onDeleteClick = { onDeleteClick(moveWithTags) }
+                onEditClick = { onEditClick(moveWithTags.move.id) }
             )
         }
     }
@@ -235,12 +210,12 @@ fun MovesList(
 @Composable
 fun MoveCard(
     moveWithTags: MoveWithTags,
-    onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onEditClick: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = AppStyleDefaults.SpacingSmall)
+        elevation = CardDefaults.cardElevation(defaultElevation = AppStyleDefaults.SpacingSmall),
+        onClick = onEditClick
     ) {
         Row(
             modifier = Modifier
@@ -252,9 +227,10 @@ fun MoveCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             MoveCardContent(moveWithTags = moveWithTags, modifier = Modifier.weight(1f))
-            MoveCardActions(
-                onEditClick = onEditClick,
-                onDeleteClick = onDeleteClick
+            Icon(
+                imageVector = Icons.Filled.Edit,
+                contentDescription = stringResource(id = R.string.move_card_edit_button),
+                tint = MaterialTheme.colorScheme.primary
             )
         }
     }
@@ -273,66 +249,6 @@ fun MoveCardContent(moveWithTags: MoveWithTags, modifier: Modifier = Modifier) {
             )
         }
     }
-}
-
-@Composable
-fun MoveCardActions(
-    onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.End,
-        modifier = Modifier.padding(start = AppStyleDefaults.SpacingMedium)
-    ) {
-        IconButton(onClick = onEditClick) {
-            Icon(
-                imageVector = Icons.Filled.Edit,
-                contentDescription = stringResource(id = R.string.move_card_edit_button),
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
-        IconButton(onClick = onDeleteClick) {
-            Icon(
-                imageVector = Icons.Filled.Delete,
-                contentDescription = stringResource(id = R.string.move_card_delete_move_description),
-                tint = MaterialTheme.colorScheme.error
-            )
-        }
-    }
-}
-
-@Composable
-fun DeleteMoveDialog(
-    moveName: String,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(id = R.string.common_confirm_deletion_title)) },
-        text = {
-            Text(
-                stringResource(
-                    id = R.string.move_list_delete_confirmation_message,
-                    moveName
-                )
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = onConfirm,
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-            ) {
-                Text(stringResource(id = R.string.common_delete))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(id = R.string.common_cancel))
-            }
-        }
-    )
 }
 
 // PREVIEWS
@@ -381,8 +297,7 @@ fun PreviewMoveCard() {
                     MoveTag(id = "t2", name = "Setup")
                 )
             ),
-            onEditClick = {},
-            onDeleteClick = {}
+            onEditClick = {}
         )
     }
 }
@@ -396,20 +311,7 @@ fun PreviewMoveCardNoTags() {
                 move = Move(id = "1", name = "Cross"),
                 moveTags = emptyList()
             ),
-            onEditClick = {},
-            onDeleteClick = {}
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewDeleteMoveDialog() {
-    BreakVaultTheme {
-        DeleteMoveDialog(
-            moveName = "Jab",
-            onConfirm = {},
-            onDismiss = {}
+            onEditClick = {}
         )
     }
 }

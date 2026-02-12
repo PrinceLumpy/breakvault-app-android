@@ -21,9 +21,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -36,6 +39,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -52,6 +56,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.MoveTag
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
+
+// Constants for character limits (LAYER 1)
+private const val MOVE_NAME_CHARACTER_LIMIT = 100
+private const val MOVE_TAG_CHARACTER_LIMIT = 30
 
 /**
  * The main, stateful screen composable that holds the ViewModel and state.
@@ -70,8 +78,8 @@ fun AddEditMoveScreen(
         moveViewModel.loadMove(moveId)
     }
 
-    LaunchedEffect(uiState.dialogState.snackbarMessage) {
-        uiState.dialogState.snackbarMessage?.let {
+    LaunchedEffect(uiState.dialogsAndMessages.snackbarMessage) {
+        uiState.dialogsAndMessages.snackbarMessage?.let {
             snackbarHostState.showSnackbar(it)
             moveViewModel.onSnackbarMessageShown()
         }
@@ -90,7 +98,15 @@ fun AddEditMoveScreen(
                 focusManager.clearFocus()
                 onNavigateUp()
             }
-        }
+        },
+        onDeleteMoveClick = { moveViewModel.onDeleteMoveClick() },
+        onConfirmMoveDelete = {
+            moveViewModel.onConfirmMoveDelete {
+                focusManager.clearFocus()
+                onNavigateUp()
+            }
+        },
+        onCancelMoveDelete = { moveViewModel.onCancelMoveDelete() }
     )
 }
 
@@ -107,7 +123,10 @@ private fun AddEditMoveScaffold(
     onTagSelected: (String) -> Unit,
     onNewTagNameChange: (String) -> Unit,
     onAddTag: () -> Unit,
-    onSaveMove: () -> Unit
+    onSaveMove: () -> Unit,
+    onDeleteMoveClick: () -> Unit,
+    onConfirmMoveDelete: () -> Unit,
+    onCancelMoveDelete: () -> Unit
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -116,11 +135,18 @@ private fun AddEditMoveScaffold(
         topBar = {
             AddEditMoveTopBar(
                 isNewMove = uiState.isNewMove,
-                onNavigateUp = onNavigateUp
+                onNavigateUp = onNavigateUp,
+                onDeleteClick = onDeleteMoveClick
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onSaveMove) {
+            FloatingActionButton(
+                onClick = onSaveMove,
+                containerColor = if (uiState.userInputs.moveName.isNotBlank())
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.surfaceVariant
+            ) {
                 Icon(
                     Icons.Filled.Save,
                     contentDescription = stringResource(id = R.string.add_edit_move_save_move_fab_description)
@@ -136,12 +162,21 @@ private fun AddEditMoveScaffold(
                     indication = null
                 ) { focusManager.clearFocus() },
             userInputs = uiState.userInputs,
+            dialogsAndMessages = uiState.dialogsAndMessages,
             allTags = uiState.allTags,
             onMoveNameChange = onMoveNameChange,
             onTagSelected = onTagSelected,
             onNewTagNameChange = onNewTagNameChange,
             onAddTag = onAddTag,
             onSaveMove = onSaveMove
+        )
+    }
+
+    if (uiState.dialogsAndMessages.showDeleteDialog) {
+        DeleteMoveDialog(
+            moveName = uiState.userInputs.moveName,
+            onConfirm = onConfirmMoveDelete,
+            onDismiss = onCancelMoveDelete
         )
     }
 }
@@ -153,7 +188,8 @@ private fun AddEditMoveScaffold(
 @Composable
 private fun AddEditMoveTopBar(
     isNewMove: Boolean,
-    onNavigateUp: () -> Unit
+    onNavigateUp: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
     TopAppBar(
         title = {
@@ -169,6 +205,16 @@ private fun AddEditMoveTopBar(
                     contentDescription = stringResource(id = R.string.common_back_button_description)
                 )
             }
+        },
+        actions = {
+            if (!isNewMove) {
+                IconButton(onClick = onDeleteClick) {
+                    Icon(
+                        imageVector = Icons.Filled.Delete,
+                        contentDescription = stringResource(id = R.string.move_card_delete_move_description),
+                    )
+                }
+            }
         }
     )
 }
@@ -180,6 +226,7 @@ private fun AddEditMoveTopBar(
 private fun AddEditMoveContent(
     modifier: Modifier = Modifier,
     userInputs: UserInputs,
+    dialogsAndMessages: UiDialogsAndMessages,
     allTags: List<MoveTag>,
     onMoveNameChange: (String) -> Unit,
     onTagSelected: (String) -> Unit,
@@ -195,12 +242,23 @@ private fun AddEditMoveContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
     ) {
+        // LAYER 1: Input Capping with Supporting Text Error Display
         OutlinedTextField(
             value = userInputs.moveName,
-            onValueChange = onMoveNameChange,
+            onValueChange = { newText ->
+                if (newText.length <= MOVE_NAME_CHARACTER_LIMIT) {
+                    onMoveNameChange(newText)
+                }
+            },
             label = { Text(stringResource(id = R.string.add_edit_move_move_name_label)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
+            isError = dialogsAndMessages.moveNameError != null,
+            supportingText = {
+                dialogsAndMessages.moveNameError?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error)
+                }
+            },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { onSaveMove() })
         )
@@ -215,6 +273,7 @@ private fun AddEditMoveContent(
 
         AddNewTagSection(
             newTagName = userInputs.newTagName,
+            newTagError = dialogsAndMessages.newTagError,
             onNewTagNameChange = onNewTagNameChange,
             onAddTag = onAddTag
         )
@@ -275,6 +334,7 @@ private fun MoveTagsSection(
 @Composable
 private fun AddNewTagSection(
     newTagName: String,
+    newTagError: String?,
     onNewTagNameChange: (String) -> Unit,
     onAddTag: () -> Unit
 ) {
@@ -287,12 +347,23 @@ private fun AddNewTagSection(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
     ) {
+        // LAYER 1: Input Capping with Supporting Text Error Display
         OutlinedTextField(
             value = newTagName,
-            onValueChange = onNewTagNameChange,
+            onValueChange = { newText ->
+                if (newText.length <= MOVE_TAG_CHARACTER_LIMIT) {
+                    onNewTagNameChange(newText)
+                }
+            },
             label = { Text(stringResource(id = R.string.add_edit_move_new_tag_name_label)) },
             modifier = Modifier.weight(1f),
             singleLine = true,
+            isError = newTagError != null,
+            supportingText = {
+                newTagError?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error)
+                }
+            },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { onAddTag() })
         )
@@ -300,6 +371,42 @@ private fun AddNewTagSection(
             Text(stringResource(id = R.string.common_add))
         }
     }
+}
+
+/**
+ * Dialog for confirming move deletion.
+ */
+@Composable
+private fun DeleteMoveDialog(
+    moveName: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(id = R.string.common_confirm_deletion_title)) },
+        text = {
+            Text(
+                stringResource(
+                    id = R.string.move_list_delete_confirmation_message,
+                    moveName
+                )
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text(stringResource(id = R.string.common_delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(id = R.string.common_cancel))
+            }
+        }
+    )
 }
 
 
@@ -319,6 +426,36 @@ private fun AddEditMoveContentPreview() {
                 moveName = "Windmill",
                 selectedTags = setOf("2")
             ),
+            dialogsAndMessages = UiDialogsAndMessages(),
+            allTags = dummyTags,
+            onMoveNameChange = {},
+            onTagSelected = {},
+            onNewTagNameChange = {},
+            onAddTag = {},
+            onSaveMove = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Add/Edit Content with Errors")
+@Composable
+private fun AddEditMoveContentWithErrorsPreview() {
+    val dummyTags = listOf(
+        MoveTag(id = "1", name = "Freezes"),
+        MoveTag(id = "2", name = "Power"),
+        MoveTag(id = "3", name = "Footwork")
+    )
+    BreakVaultTheme {
+        AddEditMoveContent(
+            userInputs = UserInputs(
+                moveName = "",
+                newTagName = "Power",
+                selectedTags = setOf("2")
+            ),
+            dialogsAndMessages = UiDialogsAndMessages(
+                moveNameError = "Move name cannot be empty.",
+                newTagError = "Tag 'Power' already exists."
+            ),
             allTags = dummyTags,
             onMoveNameChange = {},
             onTagSelected = {},
@@ -333,7 +470,7 @@ private fun AddEditMoveContentPreview() {
 @Composable
 private fun AddEditMoveTopBar_AddPreview() {
     BreakVaultTheme {
-        AddEditMoveTopBar(isNewMove = true, onNavigateUp = {})
+        AddEditMoveTopBar(isNewMove = true, onNavigateUp = {}, onDeleteClick = {})
     }
 }
 
@@ -341,7 +478,19 @@ private fun AddEditMoveTopBar_AddPreview() {
 @Composable
 private fun AddEditMoveTopBar_EditPreview() {
     BreakVaultTheme {
-        AddEditMoveTopBar(isNewMove = false, onNavigateUp = {})
+        AddEditMoveTopBar(isNewMove = false, onNavigateUp = {}, onDeleteClick = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun DeleteMoveDialogPreview() {
+    BreakVaultTheme {
+        DeleteMoveDialog(
+            moveName = "Windmill",
+            onConfirm = {},
+            onDismiss = {}
+        )
     }
 }
 
@@ -369,7 +518,25 @@ private fun MoveTagsSection_NoTags_Preview() {
 @Composable
 private fun AddNewTagSectionPreview() {
     BreakVaultTheme {
-        AddNewTagSection(newTagName = "New Style", onNewTagNameChange = {}, onAddTag = {})
+        AddNewTagSection(
+            newTagName = "New Style",
+            newTagError = null,
+            onNewTagNameChange = {},
+            onAddTag = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun AddNewTagSectionWithErrorPreview() {
+    BreakVaultTheme {
+        AddNewTagSection(
+            newTagName = "Power",
+            newTagError = "Tag 'Power' already exists.",
+            onNewTagNameChange = {},
+            onAddTag = {}
+        )
     }
 }
 

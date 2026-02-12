@@ -1,6 +1,7 @@
 package com.princelumpy.breakvault.ui.combogenerator
 
 import AppStyleDefaults
+import com.princelumpy.breakvault.data.local.entity.Move
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -15,16 +16,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
+import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -55,13 +59,11 @@ fun ComboGeneratorScreen(
         onModeChange = comboGeneratorViewModel::onModeChange,
         onTagsChange = comboGeneratorViewModel::onTagsChange,
         onLengthChange = comboGeneratorViewModel::onLengthChange,
-        onDropdownExpand = comboGeneratorViewModel::onDropdownExpand,
         onAllowRepeatsChange = comboGeneratorViewModel::onAllowRepeatsChange,
         onAddTagToSequence = comboGeneratorViewModel::onAddTagToSequence,
         onRemoveLastTagFromSequence = comboGeneratorViewModel::onRemoveLastTagFromSequence,
         onGenerateCombo = comboGeneratorViewModel::generateCombo,
         onSaveCombo = comboGeneratorViewModel::saveCombo,
-        onDismissLengthWarning = comboGeneratorViewModel::onDismissLengthWarning
     )
 }
 
@@ -74,14 +76,12 @@ fun ComboGeneratorContent(
     onNavigateUp: () -> Unit,
     onModeChange: (GenerationMode) -> Unit,
     onTagsChange: (Set<MoveTag>) -> Unit,
-    onLengthChange: (Int?) -> Unit,
-    onDropdownExpand: (Boolean) -> Unit,
+    onLengthChange: (String) -> Unit,
     onAllowRepeatsChange: (Boolean) -> Unit,
     onAddTagToSequence: (MoveTag) -> Unit,
     onRemoveLastTagFromSequence: () -> Unit,
     onGenerateCombo: () -> Unit,
     onSaveCombo: () -> Unit,
-    onDismissLengthWarning: () -> Unit
 ) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -134,10 +134,10 @@ fun ComboGeneratorContent(
                         selectedMoveTags = uiState.settings.selectedTags,
                         onTagsChange = onTagsChange,
                         selectedLength = uiState.settings.selectedLength,
-                        onLengthChange = onLengthChange,
-                        lengthDropdownExpanded = uiState.dialogAndMessages.lengthDropdownExpanded,
-                        onDropdownExpand = onDropdownExpand,
-                        lengthOptions = listOf(null) + (3..8).toList(),
+                        lengthError = uiState.dialogAndMessages.lengthError,
+                        onLengthChange = { textValue ->
+                            onLengthChange(textValue)
+                        },
                         allowRepeats = uiState.settings.allowRepeats,
                         onAllowRepeatsChange = onAllowRepeatsChange
                     )
@@ -171,13 +171,6 @@ fun ComboGeneratorContent(
             GeneratedComboCard(comboText = uiState.generatedCombo.text)
         }
     }
-
-    if (uiState.dialogAndMessages.showLengthWarningDialog) {
-        LengthWarningDialog(
-            message = uiState.dialogAndMessages.warningDialogMessage,
-            onDismiss = onDismissLengthWarning
-        )
-    }
 }
 
 @Composable
@@ -185,7 +178,7 @@ fun ModeTabRow(
     currentMode: GenerationMode,
     onModeChange: (GenerationMode) -> Unit
 ) {
-    TabRow(selectedTabIndex = currentMode.ordinal) {
+    SecondaryTabRow(selectedTabIndex = currentMode.ordinal) {
         GenerationMode.entries.forEach { mode ->
             Tab(
                 selected = currentMode == mode,
@@ -215,23 +208,6 @@ fun GeneratedComboCard(comboText: String) {
     }
 }
 
-@Composable
-fun LengthWarningDialog(
-    message: String,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(id = R.string.combo_generator_length_warning_dialog_title)) },
-        text = { Text(message) },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(id = R.string.common_ok))
-            }
-        }
-    )
-}
-
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun RandomModeUI(
@@ -239,10 +215,8 @@ fun RandomModeUI(
     selectedMoveTags: Set<MoveTag>,
     onTagsChange: (Set<MoveTag>) -> Unit,
     selectedLength: Int?,
-    onLengthChange: (Int?) -> Unit,
-    lengthDropdownExpanded: Boolean,
-    onDropdownExpand: (Boolean) -> Unit,
-    lengthOptions: List<Int?>,
+    lengthError: String?,
+    onLengthChange: (String) -> Unit,
     allowRepeats: Boolean,
     onAllowRepeatsChange: (Boolean) -> Unit
 ) {
@@ -274,10 +248,8 @@ fun RandomModeUI(
             allowRepeats = allowRepeats,
             onAllowRepeatsChange = onAllowRepeatsChange,
             selectedLength = selectedLength,
-            onLengthChange = onLengthChange,
-            lengthDropdownExpanded = lengthDropdownExpanded,
-            onDropdownExpand = onDropdownExpand,
-            lengthOptions = lengthOptions
+            lengthError = lengthError,
+            onLengthChange = onLengthChange
         )
     }
 }
@@ -324,10 +296,8 @@ fun RandomModeControls(
     allowRepeats: Boolean,
     onAllowRepeatsChange: (Boolean) -> Unit,
     selectedLength: Int?,
-    onLengthChange: (Int?) -> Unit,
-    lengthDropdownExpanded: Boolean,
-    onDropdownExpand: (Boolean) -> Unit,
-    lengthOptions: List<Int?>
+    lengthError: String?,
+    onLengthChange: (String) -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -336,7 +306,7 @@ fun RandomModeControls(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
+            horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
         ) {
             Text(
                 text = stringResource(id = R.string.combo_generator_allow_repeats_label),
@@ -348,60 +318,43 @@ fun RandomModeControls(
             )
         }
 
-        LengthDropdown(
+        LengthInput(
             selectedLength = selectedLength,
+            lengthError = lengthError,
             onLengthChange = onLengthChange,
-            lengthDropdownExpanded = lengthDropdownExpanded,
-            onDropdownExpand = onDropdownExpand,
-            lengthOptions = lengthOptions
         )
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LengthDropdown(
+fun LengthInput(
     selectedLength: Int?,
-    onLengthChange: (Int?) -> Unit,
-    lengthDropdownExpanded: Boolean,
-    onDropdownExpand: (Boolean) -> Unit,
-    lengthOptions: List<Int?>
+    lengthError: String?,
+    onLengthChange: (String) -> Unit
 ) {
-    ExposedDropdownMenuBox(
-        expanded = lengthDropdownExpanded,
-        onExpandedChange = onDropdownExpand,
-        modifier = Modifier.width(AppStyleDefaults.SpacingExtraLarge * 4)
-    ) {
-        OutlinedTextField(
-            value = selectedLength?.toString()
-                ?: stringResource(id = R.string.combo_generator_random_length_option),
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(stringResource(id = R.string.combo_generator_combo_length_label)) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = lengthDropdownExpanded) },
-            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
-        )
-        ExposedDropdownMenu(
-            expanded = lengthDropdownExpanded,
-            onDismissRequest = { onDropdownExpand(false) }
-        ) {
-            lengthOptions.forEach { option ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            option?.toString()
-                                ?: stringResource(id = R.string.combo_generator_random_length_option)
-                        )
-                    },
-                    onClick = {
-                        onLengthChange(option)
-                        onDropdownExpand(false)
-                    }
+    OutlinedTextField(
+        value = selectedLength?.toString() ?: "",
+        onValueChange = { newText ->
+            if (newText.all { it.isDigit() } && newText.length <= 2) {
+                onLengthChange(newText)
+            }
+        },
+        label = { Text(stringResource(id = R.string.combo_generator_combo_length_label)) },
+        placeholder = { Text(stringResource(id = R.string.combo_generator_combo_length_option)) },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        singleLine = true,
+        isError = lengthError != null,
+        supportingText = {
+            lengthError?.let {
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.error
                 )
             }
-        }
-    }
+        },
+        modifier = Modifier.width(AppStyleDefaults.SpacingExtraLarge * 8)
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -464,7 +417,7 @@ fun TagSelectionDropdown(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
         )
         ExposedDropdownMenu(
             expanded = expanded,
@@ -573,10 +526,8 @@ fun PreviewRandomModeControls() {
             allowRepeats = true,
             onAllowRepeatsChange = {},
             selectedLength = 5,
-            onLengthChange = {},
-            lengthDropdownExpanded = false,
-            onDropdownExpand = {},
-            lengthOptions = listOf(null, 3, 4, 5)
+            lengthError = null,
+            onLengthChange = {}
         )
     }
 }
@@ -591,6 +542,86 @@ fun PreviewCurrentSequenceCard() {
                 MoveTag("2", "Cross"),
                 MoveTag("3", "Hook")
             )
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Combo Generator Screen (Random)")
+@Composable
+fun PreviewComboGeneratorContent_RandomMode() {
+    MaterialTheme {
+        ComboGeneratorContent(
+            uiState = ComboGeneratorUiState(
+                settings = GenerationSettings(
+                    currentMode = GenerationMode.Random,
+                    selectedTags = setOf(MoveTag("1", "Jab")),
+                    selectedLength = 4
+                ),
+                allTags = listOf(
+                    MoveTag("1", "Jab"),
+                    MoveTag("2", "Cross"),
+                    MoveTag("3", "Hook")
+                ),
+                generatedCombo = GeneratedComboState(
+                    moves = listOf(
+                        Move(id = "1", name = "Jab"),
+                        Move(id = "2", name = "Cross"),
+                        Move(id = "1", name = "Jab"),
+                        Move(id = "3", name = "Hook")
+                    ),
+                    text = "Jab -> Cross -> Jab -> Hook",
+                ),
+            ),
+            snackbarHostState = SnackbarHostState(),
+            onNavigateUp = {},
+            onModeChange = {},
+            onTagsChange = {},
+            onLengthChange = {},
+            onAllowRepeatsChange = {},
+            onAddTagToSequence = {},
+            onRemoveLastTagFromSequence = {},
+            onGenerateCombo = {},
+            onSaveCombo = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Combo Generator Screen (Structured)")
+@Composable
+fun PreviewComboGeneratorContent_StructuredMode() {
+    MaterialTheme {
+        ComboGeneratorContent(
+            uiState = ComboGeneratorUiState(
+                settings = GenerationSettings(
+                    currentMode = GenerationMode.Structured,
+                    structuredMoveTagSequence = listOf( // Provide a sequence of tags for structured mode
+                        MoveTag("1", "Jab"),
+                        MoveTag("2", "Hook")
+                    )
+                ),
+                allTags = listOf(
+                    MoveTag("1", "Jab"),
+                    MoveTag("2", "Cross"),
+                    MoveTag("3", "Hook")
+                ),
+                generatedCombo = GeneratedComboState(
+                    listOf(
+                        Move(id = "1", name = "Jab"),
+                        Move(id = "2", name = "Cross")
+                    ),
+                    text = "Jab -> Cross"
+                )
+            ),
+            snackbarHostState = SnackbarHostState(),
+            onNavigateUp = {},
+            onModeChange = {},
+            onTagsChange = {},
+            onLengthChange = {},
+            onAllowRepeatsChange = {},
+            onAddTagToSequence = {},
+            onRemoveLastTagFromSequence = {},
+            onGenerateCombo = {},
+            onSaveCombo = {},
         )
     }
 }

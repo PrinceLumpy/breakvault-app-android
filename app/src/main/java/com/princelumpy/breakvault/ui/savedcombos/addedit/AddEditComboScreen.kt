@@ -18,6 +18,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -33,6 +35,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -51,6 +54,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.Move
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
+
+// Constants for character limits (LAYER 1)
+private const val COMBO_NAME_CHARACTER_LIMIT = 30
 
 /**
  * The main, stateful screen composable that holds the ViewModel and state.
@@ -91,7 +97,15 @@ fun AddEditComboScreen(
                 focusManager.clearFocus()
                 onNavigateUp()
             }
-        }
+        },
+        onDeleteComboClick = { addEditComboViewModel.onDeleteComboClick() },
+        onConfirmComboDelete = {
+            addEditComboViewModel.onConfirmComboDelete {
+                focusManager.clearFocus()
+                onNavigateUp()
+            }
+        },
+        onCancelComboDelete = { addEditComboViewModel.onCancelComboDelete() }
     )
 }
 
@@ -110,6 +124,9 @@ private fun AddEditComboScaffold(
     onExpandedChange: (Boolean) -> Unit,
     onAddMove: (String) -> Unit,
     onSaveCombo: () -> Unit,
+    onDeleteComboClick: () -> Unit,
+    onConfirmComboDelete: () -> Unit,
+    onCancelComboDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
@@ -121,13 +138,17 @@ private fun AddEditComboScaffold(
         topBar = {
             AddEditComboTopBar(
                 isNewCombo = uiState.isNewCombo,
-                onNavigateUp = onNavigateUp
+                onNavigateUp = onNavigateUp,
+                onDeleteClick = onDeleteComboClick
             )
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onSaveCombo,
-                containerColor = if (userInputs.comboName.isNotBlank() && userInputs.selectedMoves.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                containerColor = if (userInputs.comboName.isNotBlank() && userInputs.selectedMoves.isNotEmpty())
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.surfaceVariant
             ) {
                 Icon(
                     Icons.Filled.Save,
@@ -154,6 +175,14 @@ private fun AddEditComboScaffold(
             onAddMove = onAddMove
         )
     }
+
+    if (uiState.dialogsAndMessages.showDeleteDialog) {
+        DeleteComboDialog(
+            comboName = userInputs.comboName,
+            onConfirm = onConfirmComboDelete,
+            onDismiss = onCancelComboDelete
+        )
+    }
 }
 
 /**
@@ -164,13 +193,15 @@ private fun AddEditComboScaffold(
 private fun AddEditComboTopBar(
     isNewCombo: Boolean,
     onNavigateUp: () -> Unit,
+    onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     TopAppBar(
         modifier = modifier,
         title = {
             Text(
-                if (isNewCombo) stringResource(R.string.create_combo_title) else stringResource(R.string.edit_combo_title)
+                if (isNewCombo) stringResource(R.string.create_combo_title)
+                else stringResource(R.string.edit_combo_title)
             )
         },
         navigationIcon = {
@@ -179,6 +210,16 @@ private fun AddEditComboTopBar(
                     Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.common_back_button_description)
                 )
+            }
+        },
+        actions = {
+            if (!isNewCombo) {
+                IconButton(onClick = onDeleteClick) {
+                    Icon(
+                        imageVector = Icons.Filled.Delete,
+                        contentDescription = "Delete combo",
+                    )
+                }
             }
         }
     )
@@ -199,6 +240,7 @@ private fun AddEditComboContent(
     modifier: Modifier = Modifier
 ) {
     val userInputs = uiState.userInputs
+    val dialogsAndMessages = uiState.dialogsAndMessages
 
     Column(
         modifier = modifier
@@ -206,26 +248,38 @@ private fun AddEditComboContent(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
     ) {
+        // LAYER 1: Input Capping with Supporting Text Error Display
         OutlinedTextField(
             value = userInputs.comboName,
-            onValueChange = onComboNameChange,
+            onValueChange = { newText ->
+                if (newText.length <= COMBO_NAME_CHARACTER_LIMIT) {
+                    onComboNameChange(newText)
+                }
+            },
             label = { Text(stringResource(R.string.combo_name_label)) },
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(focusRequester),
             singleLine = true,
+            isError = dialogsAndMessages.comboNameError != null,
+            supportingText = {
+                dialogsAndMessages.comboNameError?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error)
+                }
+            },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
         )
 
         SelectedMovesList(
             selectedMoves = userInputs.selectedMoves,
+            movesError = dialogsAndMessages.movesError,
             onRemoveMove = onRemoveMove
         )
 
         AddMoveDropdown(
             searchText = userInputs.searchText,
             allMoves = uiState.allMoves,
-            dropdownExpanded = uiState.dialogState.dropdownExpanded,
+            dropdownExpanded = dialogsAndMessages.dropdownExpanded,
             onSearchTextChange = onSearchTextChange,
             onExpandedChange = onExpandedChange,
             onAddMove = onAddMove
@@ -239,6 +293,7 @@ private fun AddEditComboContent(
 @Composable
 private fun SelectedMovesList(
     selectedMoves: List<String>,
+    movesError: String?,
     onRemoveMove: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -250,9 +305,9 @@ private fun SelectedMovesList(
 
         if (selectedMoves.isEmpty()) {
             Text(
-                text = stringResource(id = R.string.add_edit_combo_no_moves_message),
+                text = movesError ?: stringResource(id = R.string.add_edit_combo_no_moves_message),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (movesError != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = AppStyleDefaults.SpacingMedium)
             )
         } else {
@@ -341,6 +396,39 @@ private fun AddMoveDropdown(
     }
 }
 
+/**
+ * Dialog for confirming combo deletion.
+ */
+@Composable
+private fun DeleteComboDialog(
+    comboName: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    AlertDialog(
+        modifier = modifier,
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(id = R.string.common_confirm_deletion_title)) },
+        text = {
+            Text("Are you sure you want to delete the combo \"$comboName\"?")
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text(stringResource(id = R.string.common_delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(id = R.string.common_cancel))
+            }
+        }
+    )
+}
+
 //region Previews
 
 @Composable
@@ -368,9 +456,8 @@ private fun ComboMoveItem(
 
             IconButton(onClick = onRemove) {
                 Icon(
-                    imageVector = Icons.Default.Delete,
+                    imageVector = Icons.Filled.Delete,
                     contentDescription = stringResource(id = R.string.add_edit_combo_remove_move_description),
-                    tint = MaterialTheme.colorScheme.error
                 )
             }
         }
@@ -381,7 +468,7 @@ private fun ComboMoveItem(
 @Composable
 private fun AddEditComboTopBar_NewPreview() {
     BreakVaultTheme {
-        AddEditComboTopBar(isNewCombo = true, onNavigateUp = {})
+        AddEditComboTopBar(isNewCombo = true, onNavigateUp = {}, onDeleteClick = {})
     }
 }
 
@@ -389,7 +476,7 @@ private fun AddEditComboTopBar_NewPreview() {
 @Composable
 private fun AddEditComboTopBar_EditPreview() {
     BreakVaultTheme {
-        AddEditComboTopBar(isNewCombo = false, onNavigateUp = {})
+        AddEditComboTopBar(isNewCombo = false, onNavigateUp = {}, onDeleteClick = {})
     }
 }
 
@@ -399,6 +486,7 @@ private fun SelectedMovesList_WithMoves_Preview() {
     BreakVaultTheme {
         SelectedMovesList(
             selectedMoves = listOf("Windmill", "Flare", "Airflare"),
+            movesError = null,
             onRemoveMove = {}
         )
     }
@@ -408,7 +496,23 @@ private fun SelectedMovesList_WithMoves_Preview() {
 @Composable
 private fun SelectedMovesList_NoMoves_Preview() {
     BreakVaultTheme {
-        SelectedMovesList(selectedMoves = emptyList(), onRemoveMove = {})
+        SelectedMovesList(
+            selectedMoves = emptyList(),
+            movesError = null,
+            onRemoveMove = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SelectedMovesList_ErrorPreview() {
+    BreakVaultTheme {
+        SelectedMovesList(
+            selectedMoves = emptyList(),
+            movesError = "Please add at least one move to the combo.",
+            onRemoveMove = {}
+        )
     }
 }
 
@@ -432,6 +536,18 @@ private fun AddMoveDropdownPreview() {
 private fun ComboMoveItemPreview() {
     BreakVaultTheme {
         ComboMoveItem(moveName = "Windmill", onRemove = {})
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun DeleteComboDialogPreview() {
+    BreakVaultTheme {
+        DeleteComboDialog(
+            comboName = "My Combo",
+            onConfirm = {},
+            onDismiss = {}
+        )
     }
 }
 

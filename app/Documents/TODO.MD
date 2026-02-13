@@ -3,6 +3,8 @@
 * When switching tabs from bottom navbar, the TopNavBar and BottomNavBar show way earlier than the
   actual page, it's very clunky.
 * Make FAB float above the keyboard.
+* navigating back using system nav button on the side navigation panel will exit the app, it should
+  go to move list
 
 * MoveList when adding something the save fab should always be above the keyboard, not hidden behind
   it

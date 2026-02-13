@@ -29,6 +29,7 @@ import com.princelumpy.breakvault.ui.timer.TimerScreen
 fun BreakVaultNavGraph(
     modifier: Modifier = Modifier,
     navController: NavHostController,
+    onOpenDrawer: () -> Unit = {},
     startDestination: String = BreakVaultDestinations.MOVE_LIST_ROUTE,
     navActions: BreakVaultNavigationActions = remember(navController) {
         BreakVaultNavigationActions(navController)
@@ -45,7 +46,8 @@ fun BreakVaultNavGraph(
             MoveListScreen(
                 onNavigateToAddEditMove = { navActions.navigateToAddEditMove(it) },
                 onNavigateToComboGenerator = { navActions.navigateToComboGenerator() },
-                onNavigateToTagList = { navActions.navigateToTagList() }
+                onNavigateToMoveTagList = { navActions.navigateToMoveTagList() },
+                onOpenDrawer = onOpenDrawer
             )
         }
         composable(BreakVaultDestinations.TAG_LIST_ROUTE) {
@@ -92,7 +94,8 @@ fun BreakVaultNavGraph(
         composable(BreakVaultDestinations.SAVED_COMBOS_ROUTE) {
             SavedComboListScreen(
                 onNavigateToAddEditCombo = { navActions.navigateToAddEditCombo(it) },
-                onNavigateToComboGenerator = { navActions.navigateToComboGenerator() }
+                onNavigateToComboGenerator = { navActions.navigateToComboGenerator() },
+                onOpenDrawer = onOpenDrawer
             )
         }
         composable(
@@ -115,7 +118,8 @@ fun BreakVaultNavGraph(
                 onNavigateToAddEditGoal = { navActions.navigateToAddEditGoal(it) },
                 onNavigateToAddEditStage = { goalId, stageId ->
                     navActions.navigateToAddEditGoalStage(goalId, stageId)
-                }
+                },
+                onOpenDrawer = onOpenDrawer
             )
         }
         composable(
@@ -162,12 +166,12 @@ fun BreakVaultNavGraph(
                 onNavigateUp = { navActions.navigateUp() },
             )
         }
-        composable(BreakVaultDestinations.TIMER_ROUTE) { TimerScreen() }
+        composable(BreakVaultDestinations.TIMER_ROUTE) { TimerScreen(onOpenDrawer = onOpenDrawer) }
         composable(BreakVaultDestinations.BATTLE_ROUTE) {
             BattleComboListScreen(
-                onNavigateUp = { navActions.navigateUp() },
                 onNavigateToAddEditBattleCombo = { navActions.navigateToAddEditBattleCombo(it) },
-                onNavigateToBattleTagList = { navActions.navigateToBattleTagList() }
+                onNavigateToBattleTagList = { navActions.navigateToBattleTagList() },
+                onOpenDrawer = onOpenDrawer
             )
         }
         composable(

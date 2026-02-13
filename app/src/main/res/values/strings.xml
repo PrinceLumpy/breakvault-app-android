@@ -13,7 +13,8 @@
     <string name="screen_label_goals">Goals</string>
     <string name="screen_label_timer">Timer</string>
 
-    <!-- Drawer Items -->
+    <!-- Side Navigation Drawer -->
+    <string name="drawer_content_description">Navigation Drawer</string>"
     <string name="drawer_item_practice_tags">Manage Move Tags</string>
     <string name="drawer_item_battle_tags">Manage Battle Tags</string>
 
@@ -42,6 +43,7 @@
     <string name="battle_tag_list_delete_icon_desc">Delete Tag</string>
 
     <!-- MoveListScreen -->
+    <string name="move_list_screen_title">Move List</string>
     <string name="move_list_add_move_button">Add Move</string>
     <string name="move_list_generate_combo_button">Generate Combo</string>
     <string name="move_list_no_moves_message">No moves yet!</string>
@@ -148,6 +150,10 @@
     <string name="add_edit_battle_combo_new_tag_label">New Tag Name</string>
     <string name="add_edit_battle_combo_import_dialog_title">Select Practice Combo</string>
 
+    <!-- Timer Screen -->
+    <string name="timer_screen_title">Timer</string>
+
+
     <!-- GoalsScreen -->
     <string name="goals_screen_title">Goals</string>
     <string name="goals_screen_add_goal_description">Add Goal</string>
@@ -240,4 +246,5 @@
     <string name="add_edit_goal_edit_goal_title">Edit Goal</string>
     <string name="add_edit_goal_stage_current_label">Current Count</string>
 
+    <string name="battle_combos_screen_title">Battle Combos</string>
 </resources>

@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -19,6 +20,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
@@ -33,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -136,25 +139,9 @@ fun MainAppScreen() {
         }
     ) {
         Scaffold(
-            topBar = {
-                if (showBottomBar) {
-                    CenterAlignedTopAppBar(
-                        title = { Text(stringResource(id = R.string.app_name)) },
-                        navigationIcon = {
-                            IconButton(onClick = {
-                                if (drawerState.isClosed) {
-                                    scope.launch { drawerState.open() }
-                                }
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Default.Menu,
-                                    contentDescription = "Menu"
-                                )
-                            }
-                        }
-                    )
-                }
-            },
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
                 if (showBottomBar) {
                     NavigationBar {
@@ -182,10 +169,8 @@ fun MainAppScreen() {
         ) { innerPadding ->
             BreakVaultNavGraph(
                 navController = navController,
-                modifier = Modifier.padding(
-                    top = innerPadding.calculateTopPadding() / (3) * 2,
-                    bottom = innerPadding.calculateBottomPadding()
-                )
+                onOpenDrawer = { scope.launch { drawerState.open() } },
+                modifier = Modifier.padding(innerPadding)
             )
         }
     }

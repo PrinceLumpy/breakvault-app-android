@@ -28,8 +28,7 @@ data class BattleComboListUiState(
     val allTags: List<BattleTag> = emptyList(),
     val selectedTagNames: Set<String> = emptySet(),
     val sortOption: BattleSortOption = BattleSortOption.EnergyLowToHigh,
-    val showResetConfirmDialog: Boolean = false,
-    val isLoading: Boolean = true
+    val showResetConfirmDialog: Boolean = false
 )
 
 // Private state to hold only the user's direct interactions
@@ -77,8 +76,7 @@ class BattleComboListViewModel @Inject constructor(
             filteredAndSortedCombos = sortedCombos,
             selectedTagNames = interactions.selectedTagNames,
             sortOption = interactions.sortOption,
-            showResetConfirmDialog = showReset,
-            isLoading = false
+            showResetConfirmDialog = showReset
         )
     }.stateIn(
         scope = viewModelScope,

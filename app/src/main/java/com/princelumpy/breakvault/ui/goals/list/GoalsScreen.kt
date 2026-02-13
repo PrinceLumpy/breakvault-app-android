@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -45,12 +46,12 @@ import com.princelumpy.breakvault.data.local.entity.GoalStage
 import com.princelumpy.breakvault.data.local.relation.GoalWithStages
 import com.princelumpy.breakvault.ui.common.AppLinearProgressIndicator
 
-// STATEFUL COMPOSABLE
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GoalsScreen(
     onNavigateToAddEditGoal: (String?) -> Unit,
     onNavigateToAddEditStage: (String, String?) -> Unit,
+    onOpenDrawer: () -> Unit,
     goalsViewModel: GoalsViewModel = hiltViewModel()
 ) {
     val uiState by goalsViewModel.uiState.collectAsStateWithLifecycle()
@@ -59,19 +60,20 @@ fun GoalsScreen(
         uiState = uiState,
         onNavigateToAddEditGoal = onNavigateToAddEditGoal,
         onNavigateToAddEditStage = onNavigateToAddEditStage,
+        onOpenDrawer = onOpenDrawer,
         onAddRepsClicked = goalsViewModel::onAddRepsClicked,
         onAddRepsDismissed = goalsViewModel::onAddRepsDismissed,
         onAddRepsConfirmed = goalsViewModel::addRepsToStage
     )
 }
 
-// STATELESS COMPOSABLE
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GoalsContent(
     uiState: GoalsScreenUiState,
     onNavigateToAddEditGoal: (String?) -> Unit,
     onNavigateToAddEditStage: (String, String?) -> Unit,
+    onOpenDrawer: () -> Unit,
     onAddRepsClicked: (GoalStage) -> Unit,
     onAddRepsDismissed: () -> Unit,
     onAddRepsConfirmed: (GoalStage, Int) -> Unit
@@ -89,9 +91,22 @@ fun GoalsContent(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = { Text("Goals") }
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        stringResource(id = R.string.goals_screen_title),
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = { onOpenDrawer() }) {
+                        Icon(
+                            imageVector = Icons.Filled.Menu,
+                            contentDescription = stringResource(id = R.string.drawer_content_description)
+                        )
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -502,7 +517,8 @@ fun PreviewGoalsScreen() {
             onNavigateToAddEditStage = { _, _ -> },
             onAddRepsClicked = {},
             onAddRepsDismissed = {},
-            onAddRepsConfirmed = { _, _ -> }
+            onAddRepsConfirmed = { _, _ -> },
+            onOpenDrawer = {}
         )
     }
 }

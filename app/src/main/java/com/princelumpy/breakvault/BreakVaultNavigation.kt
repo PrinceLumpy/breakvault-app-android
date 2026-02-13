@@ -95,7 +95,7 @@ class BreakVaultNavigationActions(private val navController: NavHostController) 
         }
     }
 
-    fun navigateToTagList() {
+    fun navigateToMoveTagList() {
         navController.navigate(Screen.TagList.route)
     }
 

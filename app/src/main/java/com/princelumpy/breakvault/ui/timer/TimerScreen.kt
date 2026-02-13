@@ -13,13 +13,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -32,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -40,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 import kotlinx.coroutines.delay
 import androidx.core.content.edit
+import com.princelumpy.breakvault.R
 
 private const val PREFS_NAME = "timer_prefs"
 private const val KEY_LAST_DURATION = "last_duration"
@@ -53,8 +61,11 @@ private const val RES_ID_FINISH = 0 // e.g., R.raw.finish_beep
 /**
  * The main, stateful screen composable that holds the timer logic and state.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TimerScreen() {
+fun TimerScreen(
+    onOpenDrawer: () -> Unit
+) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     val focusManager = LocalFocusManager.current
@@ -138,42 +149,59 @@ fun TimerScreen() {
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        if (isRunning) {
-            TimerRunning(
-                timeLeft = timeLeft,
-                isPreTimer = isPreTimer,
-                onStopClick = {
-                    isRunning = false
-                    isPreTimer = false // Ensure pre-timer stops as well
-                    timeLeft = 0
-                }
-            )
-        } else {
-            TimerSetup(
-                durationInput = durationInput,
-                onDurationChange = {
-                    if (it.length <= 4 && it.all { char -> char.isDigit() }) {
-                        durationInput = it
-                        it.toLongOrNull()?.let { time -> saveDuration(time) }
-                    }
-                },
-                onStartClick = {
-                    val duration = durationInput.toLongOrNull() ?: 30L
-                    if (duration > 0) {
-                        timeLeft = 3 // Start with 3s pre-timer visually
-                        isPreTimer = true
-                        isRunning = true
-                        focusManager.clearFocus()
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text(stringResource(id = R.string.timer_screen_title)) },
+                navigationIcon = {
+                    IconButton(onClick = { onOpenDrawer() }) {
+                        Icon(
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = stringResource(id = R.string.drawer_content_description)
+                        )
                     }
                 }
             )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (isRunning) {
+                TimerRunning(
+                    timeLeft = timeLeft,
+                    isPreTimer = isPreTimer,
+                    onStopClick = {
+                        isRunning = false
+                        isPreTimer = false // Ensure pre-timer stops as well
+                        timeLeft = 0
+                    }
+                )
+            } else {
+                TimerSetup(
+                    durationInput = durationInput,
+                    onDurationChange = {
+                        if (it.length <= 4 && it.all { char -> char.isDigit() }) {
+                            durationInput = it
+                            it.toLongOrNull()?.let { time -> saveDuration(time) }
+                        }
+                    },
+                    onStartClick = {
+                        val duration = durationInput.toLongOrNull() ?: 30L
+                        if (duration > 0) {
+                            timeLeft = 3 // Start with 3s pre-timer visually
+                            isPreTimer = true
+                            isRunning = true
+                            focusManager.clearFocus()
+                        }
+                    }
+                )
+            }
         }
     }
 }

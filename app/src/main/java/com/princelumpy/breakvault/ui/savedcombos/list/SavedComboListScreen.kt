@@ -14,9 +14,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -29,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -41,13 +44,11 @@ import com.princelumpy.breakvault.data.local.entity.SavedCombo
 import com.princelumpy.breakvault.ui.moves.list.GenerateComboButton
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 
-/**
- * The main, stateful screen composable that holds the ViewModel and state.
- */
 @Composable
 fun SavedComboListScreen(
     onNavigateToAddEditCombo: (String?) -> Unit,
     onNavigateToComboGenerator: () -> Unit,
+    onOpenDrawer: () -> Unit,
     savedComboListViewModel: SavedComboListViewModel = hiltViewModel()
 ) {
     val uiState by savedComboListViewModel.uiState.collectAsStateWithLifecycle()
@@ -56,26 +57,40 @@ fun SavedComboListScreen(
         savedCombos = uiState.savedCombos,
         onNavigateToAddEditCombo = onNavigateToAddEditCombo,
         onNavigateToComboGenerator = onNavigateToComboGenerator,
+        onOpenDrawer = onOpenDrawer,
         onEditClick = { onNavigateToAddEditCombo(it.id) }
     )
 }
 
-/**
- * A stateless scaffold that handles the overall layout for the Saved Combo List screen.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SavedComboListScaffold(
     savedCombos: List<SavedCombo>,
     onNavigateToAddEditCombo: (String?) -> Unit,
     onNavigateToComboGenerator: () -> Unit,
+    onOpenDrawer: () -> Unit,
     onEditClick: (SavedCombo) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         modifier = modifier,
         topBar = {
-            TopAppBar(title = { Text(stringResource(id = R.string.saved_combos_screen_title)) })
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        stringResource(id = R.string.saved_combos_screen_title)
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = { onOpenDrawer() }) {
+                        Icon(
+                            imageVector = Icons.Filled.Menu,
+                            contentDescription = stringResource(id = R.string.drawer_content_description)
+                        )
+                    }
+                }
+            )
         },
         floatingActionButton = {
             if (savedCombos.isNotEmpty()) {
@@ -87,26 +102,31 @@ private fun SavedComboListScaffold(
                 }
             }
         }
-    ) { paddingValues ->
-        GenerateComboButton(onClick = onNavigateToComboGenerator)
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            GenerateComboButton(onClick = onNavigateToComboGenerator)
 
-        Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingLarge))
+            Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingLarge))
 
-        if (savedCombos.isEmpty()) {
-            EmptyState(
-                onNavigateToAddEditCombo = { onNavigateToAddEditCombo(null) },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            )
-        } else {
-            ComboList(
-                savedCombos = savedCombos,
-                onEditClick = onEditClick,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            )
+            if (savedCombos.isEmpty()) {
+                EmptyState(
+                    onNavigateToAddEditCombo = { onNavigateToAddEditCombo(null) },
+                    modifier = Modifier
+                        .weight(1f)
+                )
+            } else {
+                ComboList(
+                    savedCombos = savedCombos,
+                    onEditClick = onEditClick,
+                    modifier = Modifier
+                        .fillMaxSize()
+                )
+            }
         }
     }
 }
@@ -245,7 +265,8 @@ private fun SavedComboListScaffold_WithCombos_Preview() {
             savedCombos = previewCombos,
             onNavigateToAddEditCombo = {},
             onNavigateToComboGenerator = {},
-            onEditClick = {}
+            onEditClick = {},
+            onOpenDrawer = {}
         )
     }
 }
@@ -258,7 +279,8 @@ private fun SavedComboListScaffold_Empty_Preview() {
             savedCombos = emptyList(),
             onNavigateToAddEditCombo = {},
             onNavigateToComboGenerator = {},
-            onEditClick = {}
+            onEditClick = {},
+            onOpenDrawer = {}
         )
     }
 }

@@ -14,13 +14,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -34,40 +35,67 @@ import com.princelumpy.breakvault.data.local.entity.MoveTag
 import com.princelumpy.breakvault.data.local.relation.MoveWithTags
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 
-// STATEFUL COMPOSABLE
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MoveListScreen(
+    onNavigateToMoveTagList: () -> Unit = {},
     onNavigateToAddEditMove: (String?) -> Unit = {},
     onNavigateToComboGenerator: () -> Unit = {},
-    onNavigateToTagList: () -> Unit = {},
+    onOpenDrawer: () -> Unit = {},
     viewModel: MoveListViewModel = hiltViewModel(),
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     MoveListContent(
         uiState = uiState,
-        snackbarHostState = snackbarHostState,
+        onNavigateToMoveTagList = onNavigateToMoveTagList,
         onNavigateToAddEditMove = onNavigateToAddEditMove,
         onNavigateToComboGenerator = onNavigateToComboGenerator,
+        onOpenDrawer = onOpenDrawer,
         onToggleTagFilter = viewModel::toggleTagFilter,
         onClearFilters = viewModel::clearFilters
     )
 }
 
-// STATELESS COMPOSABLE
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MoveListContent(
     uiState: MoveListUiState,
-    snackbarHostState: SnackbarHostState,
+    onNavigateToMoveTagList: () -> Unit,
     onNavigateToAddEditMove: (String?) -> Unit,
     onNavigateToComboGenerator: () -> Unit,
+    onOpenDrawer: () -> Unit,
     onToggleTagFilter: (String) -> Unit,
     onClearFilters: () -> Unit
 ) {
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = stringResource(id = R.string.move_list_screen_title),
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = { onOpenDrawer() }) {
+                        Icon(
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = stringResource(id = R.string.drawer_content_description)
+                        )
+                    }
+                },
+                actions = {
+                    // Manage Tags Button
+                    IconButton(onClick = onNavigateToMoveTagList) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.Label,
+                            contentDescription = "Manage Battle Tags"
+                        )
+                    }
+                }
+            )
+        },
         floatingActionButton = {
             if (uiState.moveList.isNotEmpty()) {
                 FloatingActionButton(onClick = { onNavigateToAddEditMove(null) }) {

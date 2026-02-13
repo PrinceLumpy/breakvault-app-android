@@ -156,7 +156,7 @@ fun BreakVaultNavGraph(
             val stageId =
                 backStackEntry.arguments?.getString(BreakVaultDestinationsArgs.STAGE_ID_ARG)
             AddEditGoalStageScreen(
-                onNavigateUp = { navActions.navigateFromStageToParentGoal(goalId) },
+                onNavigateUp = { navActions.navigateFromNewStageToParentGoal(goalId) },
                 goalId = goalId,
                 stageId = stageId
             )

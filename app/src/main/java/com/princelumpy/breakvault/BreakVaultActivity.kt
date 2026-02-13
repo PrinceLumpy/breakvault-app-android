@@ -111,7 +111,7 @@ fun MainAppScreen() {
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
-                        navActions.navigateTo(Screen.BattleTagList)
+                        navActions.navigateToBattleTagList()
                     }
                 )
 
@@ -120,7 +120,7 @@ fun MainAppScreen() {
                     selected = false,
                     onClick = {
                         scope.launch { drawerState.close() }
-                        navActions.navigateTo(Screen.ArchivedGoals)
+                        navActions.navigateToArchivedGoals()
                     }
                 )
 

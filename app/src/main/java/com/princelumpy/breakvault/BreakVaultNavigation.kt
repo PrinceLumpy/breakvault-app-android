@@ -151,13 +151,11 @@ class BreakVaultNavigationActions(private val navController: NavHostController) 
         navController.navigate(route)
     }
 
-    fun navigateFromStageToParentGoal(goalId: String) {
+    fun navigateFromNewStageToParentGoal(goalId: String) {
         val route = "${Screen.AddEditGoal.route}?${BreakVaultDestinationsArgs.GOAL_ID_ARG}=$goalId"
         navController.navigate(route) {
-            // Pop up to the AddEditGoal route to remove the "Add Stage" screen
-            // and the previous "Add Goal" entry from the backstack.
-            popUpTo(BreakVaultDestinations.ADD_EDIT_GOAL_ROUTE) {
-                inclusive = true
+            popUpTo(BreakVaultDestinations.GOALS_ROUTE) {
+                inclusive = false
             }
             launchSingleTop = true
         }

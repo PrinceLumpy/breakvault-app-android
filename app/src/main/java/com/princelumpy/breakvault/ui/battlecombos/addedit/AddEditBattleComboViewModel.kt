@@ -45,7 +45,8 @@ data class AddEditBattleComboUiState(
     val userInputs: UserInputs = UserInputs(),
     val allBattleTags: List<BattleTag> = emptyList(),
     val allPracticeCombos: List<SavedCombo> = emptyList(),
-    val dialogsAndMessages: UiDialogsAndMessages = UiDialogsAndMessages()
+    val dialogsAndMessages: UiDialogsAndMessages = UiDialogsAndMessages(),
+    val isLoading: Boolean = true
 )
 
 @HiltViewModel
@@ -59,17 +60,22 @@ class AddEditBattleComboViewModel @Inject constructor(
     // Group all transient UI states into a single flow
     private val _dialogsAndMessages = MutableStateFlow(UiDialogsAndMessages())
 
+    private val _isInitialLoadDone = MutableStateFlow(false)
+
+
     val uiState: StateFlow<AddEditBattleComboUiState> = combine(
         _userInputs,
         battleRepository.getAllTags(),
         savedComboRepository.getSavedCombos(),
-        _dialogsAndMessages
-    ) { userInputs, tags, practiceCombos, dialogsAndMessages ->
+        _dialogsAndMessages,
+        _isInitialLoadDone
+    ) { userInputs, tags, practiceCombos, dialogsAndMessages, isInitialLoadDone ->
         AddEditBattleComboUiState(
             userInputs = userInputs,
             allBattleTags = tags,
             allPracticeCombos = practiceCombos,
-            dialogsAndMessages = dialogsAndMessages
+            dialogsAndMessages = dialogsAndMessages,
+            isLoading = !isInitialLoadDone
         )
     }.stateIn(
         scope = viewModelScope,
@@ -80,6 +86,7 @@ class AddEditBattleComboViewModel @Inject constructor(
     fun loadCombo(comboId: String?) {
         if (comboId == null) {
             _userInputs.value = UserInputs()
+            _isInitialLoadDone.value = true
             return
         }
 
@@ -98,6 +105,7 @@ class AddEditBattleComboViewModel @Inject constructor(
             } else {
                 _dialogsAndMessages.update { it.copy(snackbarMessage = "Could not find combo.") }
             }
+            _isInitialLoadDone.value = true
         }
     }
 

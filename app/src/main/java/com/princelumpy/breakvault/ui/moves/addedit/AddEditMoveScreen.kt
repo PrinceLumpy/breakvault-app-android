@@ -5,6 +5,7 @@ import AppStyleDefaults
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -154,22 +156,33 @@ private fun AddEditMoveScaffold(
             }
         }
     ) { paddingValues ->
-        AddEditMoveContent(
-            modifier = Modifier
-                .padding(paddingValues)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) { focusManager.clearFocus() },
-            userInputs = uiState.userInputs,
-            dialogsAndMessages = uiState.dialogsAndMessages,
-            allTags = uiState.allTags,
-            onMoveNameChange = onMoveNameChange,
-            onTagSelected = onTagSelected,
-            onNewTagNameChange = onNewTagNameChange,
-            onAddTag = onAddTag,
-            onSaveMove = onSaveMove
-        )
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            AddEditMoveContent(
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { focusManager.clearFocus() },
+                userInputs = uiState.userInputs,
+                dialogsAndMessages = uiState.dialogsAndMessages,
+                allTags = uiState.allTags,
+                onMoveNameChange = onMoveNameChange,
+                onTagSelected = onTagSelected,
+                onNewTagNameChange = onNewTagNameChange,
+                onAddTag = onAddTag,
+                onSaveMove = onSaveMove
+            )
+        }
     }
 
     if (uiState.dialogsAndMessages.showDeleteDialog) {

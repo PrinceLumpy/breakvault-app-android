@@ -2,6 +2,7 @@ package com.princelumpy.breakvault.ui.savedcombos.list
 
 import AppStyleDefaults
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,6 +20,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -55,6 +57,7 @@ fun SavedComboListScreen(
 
     SavedComboListScaffold(
         savedCombos = uiState.savedCombos,
+        isLoading = uiState.isLoading,
         onNavigateToAddEditCombo = onNavigateToAddEditCombo,
         onNavigateToComboGenerator = onNavigateToComboGenerator,
         onOpenDrawer = onOpenDrawer,
@@ -66,6 +69,7 @@ fun SavedComboListScreen(
 @Composable
 private fun SavedComboListScaffold(
     savedCombos: List<SavedCombo>,
+    isLoading: Boolean,
     onNavigateToAddEditCombo: (String?) -> Unit,
     onNavigateToComboGenerator: () -> Unit,
     onOpenDrawer: () -> Unit,
@@ -103,29 +107,40 @@ private fun SavedComboListScaffold(
             }
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            GenerateComboButton(onClick = onNavigateToComboGenerator)
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                GenerateComboButton(onClick = onNavigateToComboGenerator)
 
-            Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingLarge))
+                Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingLarge))
 
-            if (savedCombos.isEmpty()) {
-                EmptyState(
-                    onNavigateToAddEditCombo = { onNavigateToAddEditCombo(null) },
-                    modifier = Modifier
-                        .weight(1f)
-                )
-            } else {
-                ComboList(
-                    savedCombos = savedCombos,
-                    onEditClick = onEditClick,
-                    modifier = Modifier
-                        .fillMaxSize()
-                )
+                if (savedCombos.isEmpty()) {
+                    EmptyState(
+                        onNavigateToAddEditCombo = { onNavigateToAddEditCombo(null) },
+                        modifier = Modifier
+                            .weight(1f)
+                    )
+                } else {
+                    ComboList(
+                        savedCombos = savedCombos,
+                        onEditClick = onEditClick,
+                        modifier = Modifier
+                            .fillMaxSize()
+                    )
+                }
             }
         }
     }
@@ -263,6 +278,7 @@ private fun SavedComboListScaffold_WithCombos_Preview() {
     BreakVaultTheme {
         SavedComboListScaffold(
             savedCombos = previewCombos,
+            isLoading = false,
             onNavigateToAddEditCombo = {},
             onNavigateToComboGenerator = {},
             onEditClick = {},
@@ -277,6 +293,7 @@ private fun SavedComboListScaffold_Empty_Preview() {
     BreakVaultTheme {
         SavedComboListScaffold(
             savedCombos = emptyList(),
+            isLoading = false,
             onNavigateToAddEditCombo = {},
             onNavigateToComboGenerator = {},
             onEditClick = {},

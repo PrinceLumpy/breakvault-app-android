@@ -40,7 +40,8 @@ data class AddEditComboUiState(
     val allMoves: List<Move> = emptyList(),
     val userInputs: UserInputs = UserInputs(),
     val dialogsAndMessages: UiDialogsAndMessages = UiDialogsAndMessages(),
-    val isNewCombo: Boolean = true
+    val isNewCombo: Boolean = true,
+    val isLoading: Boolean = true
 )
 
 @HiltViewModel
@@ -53,19 +54,22 @@ class AddEditComboViewModel @Inject constructor(
     private val _dialogsAndMessages = MutableStateFlow(UiDialogsAndMessages())
     private val _metadata =
         MutableStateFlow<Pair<String?, Boolean>>(null to true) // Pair<comboId, isNewCombo>
+    private val _isInitialLoadDone = MutableStateFlow(false)
 
     val uiState: StateFlow<AddEditComboUiState> = combine(
         savedComboRepository.getAllMoves(),
         _userInputs,
         _dialogsAndMessages,
-        _metadata
-    ) { allMoves, userInputs, dialogsAndMessages, metadata ->
+        _metadata,
+        _isInitialLoadDone
+    ) { allMoves, userInputs, dialogsAndMessages, metadata, isInitialLoadDone ->
         AddEditComboUiState(
             comboId = metadata.first,
             isNewCombo = metadata.second,
             allMoves = allMoves,
             userInputs = userInputs,
-            dialogsAndMessages = dialogsAndMessages
+            dialogsAndMessages = dialogsAndMessages,
+            isLoading = !isInitialLoadDone
         )
     }.stateIn(
         scope = viewModelScope,
@@ -78,6 +82,7 @@ class AddEditComboViewModel @Inject constructor(
             // New combo: Reset state to defaults.
             _metadata.value = null to true
             _userInputs.value = UserInputs()
+            _isInitialLoadDone.value = true
             return
         }
 
@@ -91,6 +96,7 @@ class AddEditComboViewModel @Inject constructor(
                 )
                 _metadata.value = comboId to false
             }
+            _isInitialLoadDone.value = true
         }
     }
 

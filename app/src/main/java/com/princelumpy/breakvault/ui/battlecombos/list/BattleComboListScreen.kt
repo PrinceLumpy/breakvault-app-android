@@ -2,6 +2,7 @@ package com.princelumpy.breakvault.ui.battlecombos.list
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
@@ -30,6 +32,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -184,93 +187,104 @@ fun BattleComboListContent(
             }
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            if (uiState.allTags.isNotEmpty()) {
-                TagFilterRow(
-                    tags = uiState.allTags,
-                    selectedTagNames = uiState.selectedTagNames,
-                    onTagSelected = onTagSelected
-                )
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
             }
-
-            if (uiState.filteredAndSortedCombos.isEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    if (uiState.allCombos.isEmpty()) {
-                        Text(
-                            text = "You have no battle combos.",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "Add battle-ready combos to track them during sessions.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { onNavigateToAddEditBattleCombo(null) }) {
-                            Icon(Icons.Filled.Add, contentDescription = null)
-                            Spacer(modifier = Modifier.padding(4.dp))
-                            Text("Add Battle Combo")
-                        }
-                    } else {
-                        Text(
-                            text = "No combos match your filter.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                if (uiState.allTags.isNotEmpty()) {
+                    TagFilterRow(
+                        tags = uiState.allTags,
+                        selectedTagNames = uiState.selectedTagNames,
+                        onTagSelected = onTagSelected
+                    )
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 80.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(
-                        uiState.filteredAndSortedCombos,
-                        key = { it.battleCombo.id }
-                    ) { comboWithTags ->
-                        BattleComboItem(
-                            comboWithTags = comboWithTags,
-                            onClick = { onToggleUsed(comboWithTags.battleCombo) },
-                            onEditClick = {
-                                onNavigateToAddEditBattleCombo(comboWithTags.battleCombo.id)
+
+                if (uiState.filteredAndSortedCombos.isEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        if (uiState.allCombos.isEmpty()) {
+                            Text(
+                                text = "You have no battle combos.",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "Add battle-ready combos to track them during sessions.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = { onNavigateToAddEditBattleCombo(null) }) {
+                                Icon(Icons.Filled.Add, contentDescription = null)
+                                Spacer(modifier = Modifier.padding(4.dp))
+                                Text("Add Battle Combo")
                             }
-                        )
+                        } else {
+                            Text(
+                                text = "No combos match your filter.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 80.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(
+                            uiState.filteredAndSortedCombos,
+                            key = { it.battleCombo.id }
+                        ) { comboWithTags ->
+                            BattleComboItem(
+                                comboWithTags = comboWithTags,
+                                onClick = { onToggleUsed(comboWithTags.battleCombo) },
+                                onEditClick = {
+                                    onNavigateToAddEditBattleCombo(comboWithTags.battleCombo.id)
+                                }
+                            )
+                        }
                     }
                 }
             }
         }
-    }
 
-    if (uiState.showResetConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = onCancelReset,
-            title = { Text("Clean Slate?") },
-            text = { Text("This will set all combos to unused. \nAre you ready?") },
-            confirmButton = {
-                TextButton(onClick = onConfirmReset) {
-                    Text("Clean Slate")
+        if (uiState.showResetConfirmDialog) {
+            AlertDialog(
+                onDismissRequest = onCancelReset,
+                title = { Text("Clean Slate?") },
+                text = { Text("This will set all combos to unused. \nAre you ready?") },
+                confirmButton = {
+                    TextButton(onClick = onConfirmReset) {
+                        Text("Clean Slate")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = onCancelReset) {
+                        Text("Cancel")
+                    }
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = onCancelReset) {
-                    Text("Cancel")
-                }
-            }
-        )
+            )
+        }
     }
 }
 
@@ -294,7 +308,6 @@ fun TagFilterRow(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BattleComboItem(
     comboWithTags: BattleComboWithTags,
@@ -320,10 +333,7 @@ fun BattleComboItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onEditClick
-            ),
+            .clickable(onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -370,12 +380,132 @@ fun BattleComboItem(
                     text = statusIcon,
                     style = MaterialTheme.typography.headlineSmall
                 )
+
+                // Edit Button
+                IconButton(onClick = onEditClick) {
+                    Icon(
+                        Icons.Filled.Edit,
+                        contentDescription = "Edit",
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
+                }
             }
         }
     }
 }
 
 // PREVIEWS
+@Preview(showBackground = true)
+@Composable
+fun PreviewBattleComboListScreen() {
+    BattleComboListContent(
+        uiState = BattleComboListUiState(
+            allCombos = listOf(
+                BattleComboWithTags(
+                    battleCombo = BattleCombo(
+                        id = "1",
+                        description = "Jab -> Cross -> Hook",
+                        energy = EnergyLevel.MEDIUM,
+                        status = TrainingStatus.READY,
+                        isUsed = false
+                    ),
+                    tags = listOf(BattleTag(name = "Power"), BattleTag(name = "Speed"))
+                ),
+                BattleComboWithTags(
+                    battleCombo = BattleCombo(
+                        id = "2",
+                        description = "Uppercut -> Body Shot",
+                        energy = EnergyLevel.HIGH,
+                        status = TrainingStatus.TRAINING,
+                        isUsed = true
+                    ),
+                    tags = emptyList()
+                )
+            ),
+            filteredAndSortedCombos = listOf(
+                BattleComboWithTags(
+                    battleCombo = BattleCombo(
+                        id = "1",
+                        description = "Jab -> Cross -> Hook",
+                        energy = EnergyLevel.MEDIUM,
+                        status = TrainingStatus.READY,
+                        isUsed = false
+                    ),
+                    tags = listOf(BattleTag(name = "Power"), BattleTag(name = "Speed"))
+                ),
+                BattleComboWithTags(
+                    battleCombo = BattleCombo(
+                        id = "2",
+                        description = "Uppercut -> Body Shot",
+                        energy = EnergyLevel.HIGH,
+                        status = TrainingStatus.TRAINING,
+                        isUsed = true
+                    ),
+                    tags = emptyList()
+                )
+            ),
+            allTags = listOf(
+                BattleTag(name = "Power"),
+                BattleTag(name = "Speed"),
+                BattleTag(name = "Defense")
+            ),
+            selectedTagNames = setOf("Power"),
+            showResetConfirmDialog = false
+        ),
+        onSortOptionChange = {},
+        onTagSelected = {},
+        onShowResetDialog = {},
+        onConfirmReset = {},
+        onCancelReset = {},
+        onToggleUsed = {},
+        onNavigateToAddEditBattleCombo = {},
+        onNavigateToBattleTagList = {},
+        onOpenDrawer = {}
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewBattleComboListScreenEmpty() {
+    BattleComboListContent(
+        uiState = BattleComboListUiState(
+            allCombos = emptyList(),
+            filteredAndSortedCombos = emptyList(),
+            allTags = emptyList(),
+            selectedTagNames = emptySet(),
+            showResetConfirmDialog = false
+        ),
+        onSortOptionChange = {},
+        onTagSelected = {},
+        onShowResetDialog = {},
+        onConfirmReset = {},
+        onCancelReset = {},
+        onToggleUsed = {},
+        onNavigateToAddEditBattleCombo = {},
+        onNavigateToBattleTagList = {},
+        onOpenDrawer = {}
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewBattleComboListScreenResetDialog() {
+    BattleComboListContent(
+        uiState = BattleComboListUiState(
+            showResetConfirmDialog = true
+        ),
+        onSortOptionChange = {},
+        onTagSelected = {},
+        onShowResetDialog = {},
+        onConfirmReset = {},
+        onCancelReset = {},
+        onToggleUsed = {},
+        onNavigateToAddEditBattleCombo = {},
+        onNavigateToBattleTagList = {},
+        onOpenDrawer = {}
+    )
+}
+
 @Preview(showBackground = true)
 @Composable
 fun PreviewBattleComboItem() {

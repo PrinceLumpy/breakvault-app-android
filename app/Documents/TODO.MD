@@ -1,7 +1,8 @@
-* Battle Combos List screen add Tip: Hold to Edit
 * Implement loading bar for all pages
+* Be able to reorder goal stages in parent goal screen
 * When switching tabs from bottom navbar, the TopNavBar and BottomNavBar show way earlier than the
   actual page, it's very clunky.
+* Indicate that you are leaving page without saving?
 * Make FAB float above the keyboard.
 * navigating back using system nav button on the side navigation panel will exit the app, it should
   go to move list

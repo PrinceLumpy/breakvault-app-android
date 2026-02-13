@@ -3,6 +3,7 @@ package com.princelumpy.breakvault.ui.battlecombos.addedit
 import AppStyleDefaults
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -168,43 +169,54 @@ fun AddEditBattleComboContent(
             }
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(AppStyleDefaults.SpacingLarge)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
-        ) {
-            DescriptionField(
-                description = userInputs.description,
-                descriptionError = dialogsAndMessages.descriptionError,
-                onDescriptionChange = onDescriptionChange
-            )
-
-            if (userInputs.isNewCombo) {
-                ImportButton(onClick = { onShowImportDialog(true) })
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
             }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(AppStyleDefaults.SpacingLarge)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
+            ) {
+                DescriptionField(
+                    description = userInputs.description,
+                    descriptionError = dialogsAndMessages.descriptionError,
+                    onDescriptionChange = onDescriptionChange
+                )
 
-            EnergySection(
-                selectedEnergy = userInputs.selectedEnergy,
-                onEnergyChange = onEnergyChange
-            )
+                if (userInputs.isNewCombo) {
+                    ImportButton(onClick = { onShowImportDialog(true) })
+                }
 
-            ReadinessSection(
-                selectedStatus = userInputs.selectedStatus,
-                onStatusChange = onStatusChange
-            )
+                EnergySection(
+                    selectedEnergy = userInputs.selectedEnergy,
+                    onEnergyChange = onEnergyChange
+                )
 
-            TagsSection(
-                allBattleTags = uiState.allBattleTags,
-                selectedTags = userInputs.selectedTags,
-                newTagName = userInputs.newTagName,
-                newTagError = dialogsAndMessages.newTagError,
-                onTagSelected = onTagSelected,
-                onNewTagNameChange = onNewTagNameChange,
-                onAddBattleTag = onAddBattleTag
-            )
+                ReadinessSection(
+                    selectedStatus = userInputs.selectedStatus,
+                    onStatusChange = onStatusChange
+                )
+
+                TagsSection(
+                    allBattleTags = uiState.allBattleTags,
+                    selectedTags = userInputs.selectedTags,
+                    newTagName = userInputs.newTagName,
+                    newTagError = dialogsAndMessages.newTagError,
+                    onTagSelected = onTagSelected,
+                    onNewTagNameChange = onNewTagNameChange,
+                    onAddBattleTag = onAddBattleTag
+                )
+            }
         }
     }
 

@@ -42,7 +42,8 @@ data class AddEditMoveUiState(
     val allTags: List<MoveTag> = emptyList(),
     val userInputs: UserInputs = UserInputs(),
     val dialogsAndMessages: UiDialogsAndMessages = UiDialogsAndMessages(),
-    val isNewMove: Boolean = true
+    val isNewMove: Boolean = true,
+    val isLoading: Boolean = true
 )
 
 @HiltViewModel
@@ -55,19 +56,23 @@ class AddEditMoveViewModel @Inject constructor(
     private val _dialogsAndMessages = MutableStateFlow(UiDialogsAndMessages())
     private val _metadata =
         MutableStateFlow<Pair<String?, Boolean>>(null to true) // Pair<moveId, isNewMove>
+    private val _isInitialLoadDone = MutableStateFlow(false)
+
 
     val uiState: StateFlow<AddEditMoveUiState> = combine(
         moveRepository.getAllTags(),
         _userInputs,
         _dialogsAndMessages,
-        _metadata
-    ) { allTags, userInputs, dialogsAndMessages, metadata ->
+        _metadata,
+        _isInitialLoadDone
+    ) { allTags, userInputs, dialogsAndMessages, metadata, isInitialLoadDone ->
         AddEditMoveUiState(
             moveId = metadata.first,
             allTags = allTags,
             userInputs = userInputs,
             dialogsAndMessages = dialogsAndMessages,
-            isNewMove = metadata.second
+            isNewMove = metadata.second,
+            isLoading = !isInitialLoadDone
         )
     }.stateIn(
         scope = viewModelScope,
@@ -79,6 +84,7 @@ class AddEditMoveViewModel @Inject constructor(
         if (moveId == null) {
             _metadata.value = null to true
             _userInputs.value = UserInputs()
+            _isInitialLoadDone.value = true
             return
         }
 
@@ -95,6 +101,7 @@ class AddEditMoveViewModel @Inject constructor(
                     it.copy(snackbarMessage = "Could not find move with ID $moveId")
                 }
             }
+            _isInitialLoadDone.value = true
         }
     }
 

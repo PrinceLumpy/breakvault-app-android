@@ -15,7 +15,8 @@ import javax.inject.Inject
  * The UI state for the Saved Combos screen.
  */
 data class SavedCombosUiState(
-    val savedCombos: List<SavedCombo> = emptyList()
+    val savedCombos: List<SavedCombo> = emptyList(),
+    val isLoading: Boolean = true
 )
 
 @HiltViewModel
@@ -25,7 +26,12 @@ class SavedComboListViewModel @Inject constructor(
 
     /** The single source of truth for the UI's state. */
     val uiState: StateFlow<SavedCombosUiState> = savedComboRepository.getSavedCombos()
-        .map { combos -> SavedCombosUiState(savedCombos = combos) }
+        .map { combos ->
+            SavedCombosUiState(
+                savedCombos = combos,
+                isLoading = false
+            )
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),

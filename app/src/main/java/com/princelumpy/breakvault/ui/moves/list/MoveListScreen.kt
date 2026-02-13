@@ -2,6 +2,7 @@ package com.princelumpy.breakvault.ui.moves.list
 
 import AppStyleDefaults
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -107,34 +108,45 @@ fun MoveListContent(
             }
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            GenerateComboButton(onClick = onNavigateToComboGenerator)
-
-            Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingLarge))
-
-            if (uiState.allTags.isNotEmpty()) {
-                TagFilterRow(
-                    tags = uiState.allTags,
-                    selectedTagNames = uiState.selectedTagNames,
-                    onToggleTag = onToggleTagFilter,
-                    onClearFilters = onClearFilters
-                )
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
             }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                GenerateComboButton(onClick = onNavigateToComboGenerator)
 
-            Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingSmall))
+                Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingLarge))
 
-            if (uiState.moveList.isEmpty()) {
-                EmptyMovesState(onAddMove = { onNavigateToAddEditMove(null) })
-            } else {
-                MovesList(
-                    moves = uiState.moveList,
-                    onEditClick = onNavigateToAddEditMove,
-                    modifier = Modifier.weight(1f)
-                )
+                if (uiState.allTags.isNotEmpty()) {
+                    TagFilterRow(
+                        tags = uiState.allTags,
+                        selectedTagNames = uiState.selectedTagNames,
+                        onToggleTag = onToggleTagFilter,
+                        onClearFilters = onClearFilters
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingSmall))
+
+                if (uiState.moveList.isEmpty()) {
+                    EmptyMovesState(onAddMove = { onNavigateToAddEditMove(null) })
+                } else {
+                    MovesList(
+                        moves = uiState.moveList,
+                        onEditClick = onNavigateToAddEditMove,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }

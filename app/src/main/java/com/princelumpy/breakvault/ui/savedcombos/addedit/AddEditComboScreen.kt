@@ -4,6 +4,7 @@ import AppStyleDefaults
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +23,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -157,23 +159,34 @@ private fun AddEditComboScaffold(
             }
         }
     ) { paddingValues ->
-        AddEditComboContent(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = { focusManager.clearFocus() }
-                ),
-            uiState = uiState,
-            focusRequester = focusRequester,
-            onComboNameChange = onComboNameChange,
-            onRemoveMove = onRemoveMove,
-            onSearchTextChange = onSearchTextChange,
-            onExpandedChange = onExpandedChange,
-            onAddMove = onAddMove
-        )
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            AddEditComboContent(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { focusManager.clearFocus() }
+                    ),
+                uiState = uiState,
+                focusRequester = focusRequester,
+                onComboNameChange = onComboNameChange,
+                onRemoveMove = onRemoveMove,
+                onSearchTextChange = onSearchTextChange,
+                onExpandedChange = onExpandedChange,
+                onAddMove = onAddMove
+            )
+        }
     }
 
     if (uiState.dialogsAndMessages.showDeleteDialog) {

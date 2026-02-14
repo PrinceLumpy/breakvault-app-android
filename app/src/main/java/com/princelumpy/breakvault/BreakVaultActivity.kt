@@ -143,8 +143,10 @@ fun MainAppScreen(outerNavController: NavHostController) {
                     label = { Text(stringResource(id = R.string.drawer_item_practice_tags)) },
                     selected = false,
                     onClick = {
-                        scope.launch { drawerState.close() }
-                        outerNavActions.navigateTo(Screen.TagList)
+                        scope.launch {
+                            drawerState.close()
+                            outerNavActions.navigateTo(Screen.TagList)
+                        }
                     }
                 )
 
@@ -152,8 +154,10 @@ fun MainAppScreen(outerNavController: NavHostController) {
                     label = { Text(stringResource(id = R.string.drawer_item_battle_tags)) },
                     selected = false,
                     onClick = {
-                        scope.launch { drawerState.close() }
-                        outerNavActions.navigateToBattleTagList()
+                        scope.launch {
+                            drawerState.close()
+                            outerNavActions.navigateToBattleTagList()
+                        }
                     }
                 )
 
@@ -161,8 +165,10 @@ fun MainAppScreen(outerNavController: NavHostController) {
                     label = { Text(stringResource(id = R.string.drawer_item_archived_goals)) },
                     selected = false,
                     onClick = {
-                        scope.launch { drawerState.close() }
-                        outerNavActions.navigateToArchivedGoals()
+                        scope.launch {
+                            drawerState.close()
+                            outerNavActions.navigateToArchivedGoals()
+                        }
                     }
                 )
 
@@ -173,8 +179,10 @@ fun MainAppScreen(outerNavController: NavHostController) {
                     icon = { Icon(Icons.Default.Settings, contentDescription = null) },
                     selected = false,
                     onClick = {
-                        scope.launch { drawerState.close() }
-                        outerNavActions.navigateTo(Screen.Settings)
+                        scope.launch {
+                            drawerState.close()
+                            outerNavActions.navigateTo(Screen.Settings)
+                        }
                     }
                 )
             }

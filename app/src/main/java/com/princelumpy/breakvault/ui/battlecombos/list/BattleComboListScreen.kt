@@ -65,6 +65,7 @@ import com.princelumpy.breakvault.data.local.entity.BattleTag
 import com.princelumpy.breakvault.data.local.entity.EnergyLevel
 import com.princelumpy.breakvault.data.local.entity.TrainingStatus
 import com.princelumpy.breakvault.ui.common.FlexibleItemList
+import com.princelumpy.breakvault.ui.common.TagFilterRow
 
 @Composable
 fun BattleComboListScreen(
@@ -206,7 +207,8 @@ fun BattleComboListContent(
                     TagFilterRow(
                         tags = uiState.allTags,
                         selectedTagNames = uiState.selectedTagNames,
-                        onTagSelected = onTagSelected
+                        onTagSelected = onTagSelected,
+                        getTagName = { it.name }
                     )
                 }
 
@@ -278,26 +280,6 @@ fun BattleComboListContent(
                         Text("Cancel")
                     }
                 }
-            )
-        }
-    }
-}
-
-@Composable
-fun TagFilterRow(
-    tags: List<BattleTag>,
-    selectedTagNames: Set<String>,
-    onTagSelected: (String) -> Unit
-) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(tags) { tag ->
-            FilterChip(
-                selected = selectedTagNames.contains(tag.name),
-                onClick = { onTagSelected(tag.name) },
-                label = { Text(tag.name) }
             )
         }
     }
@@ -552,6 +534,7 @@ fun PreviewTagFilterRow() {
             BattleTag(name = "Defense")
         ),
         selectedTagNames = setOf("Power"),
-        onTagSelected = {}
+        onTagSelected = {},
+        getTagName = { it.name }
     )
 }

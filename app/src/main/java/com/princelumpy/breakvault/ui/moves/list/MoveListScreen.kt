@@ -36,6 +36,7 @@ import com.princelumpy.breakvault.data.local.entity.Move
 import com.princelumpy.breakvault.data.local.entity.MoveTag
 import com.princelumpy.breakvault.data.local.relation.MoveWithTags
 import com.princelumpy.breakvault.ui.common.FlexibleItemList
+import com.princelumpy.breakvault.ui.common.TagFilterRow
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -136,7 +137,8 @@ fun MoveListContent(
                     TagFilterRow(
                         tags = uiState.allTags,
                         selectedTagNames = uiState.selectedTagNames,
-                        onToggleTag = onToggleTagFilter,
+                        onTagSelected = onToggleTagFilter,
+                        getTagName = { it.name },
                         onClearFilters = onClearFilters
                     )
                 }
@@ -166,41 +168,6 @@ fun GenerateComboButton(onClick: () -> Unit) {
             .padding(horizontal = AppStyleDefaults.SpacingLarge)
     ) {
         Text(stringResource(id = R.string.move_list_generate_combo_button))
-    }
-}
-
-@Composable
-fun TagFilterRow(
-    tags: List<MoveTag>,
-    selectedTagNames: Set<String>,
-    onToggleTag: (String) -> Unit,
-    onClearFilters: () -> Unit
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        LazyRow(
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(horizontal = AppStyleDefaults.SpacingLarge),
-            horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)
-        ) {
-            items(tags) { tag ->
-                FilterChip(
-                    selected = selectedTagNames.contains(tag.name),
-                    onClick = { onToggleTag(tag.name) },
-                    label = { Text(tag.name) }
-                )
-            }
-        }
-        if (selectedTagNames.isNotEmpty()) {
-            IconButton(onClick = onClearFilters) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = stringResource(id = R.string.move_list_clear_filters_button)
-                )
-            }
-        }
     }
 }
 
@@ -314,8 +281,9 @@ fun PreviewTagFilterRow() {
                 MoveTag(id = "3", name = "Defense")
             ),
             selectedTagNames = setOf("Punch"),
-            onToggleTag = {},
-            onClearFilters = {}
+            onClearFilters = {},
+            onTagSelected = {},
+            getTagName = { it.name }
         )
     }
 }

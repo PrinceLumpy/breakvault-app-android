@@ -17,10 +17,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
@@ -391,6 +393,55 @@ fun <T> FlexibleItemList(
             key = { getItemKey(it) }
         ) { item ->
             itemContent(item)
+        }
+    }
+}
+
+/**
+ * A shared tag filter row component for filtering lists by tags.
+ * Used in Move and BattleCombo list screens.
+ *
+ * @param T The type of tag (MoveTag or BattleTag)
+ * @param tags List of all available tags
+ * @param selectedTagNames Set of selected tag names
+ * @param onTagSelected Callback when a tag is selected/deselected
+ * @param getTagName Function to extract the name from a tag
+ * @param onClearFilters Optional callback to clear all filters (shows clear button if provided)
+ * @param modifier Optional modifier for the row
+ */
+@Composable
+fun <T> TagFilterRow(
+    tags: List<T>,
+    selectedTagNames: Set<String>,
+    onTagSelected: (String) -> Unit,
+    getTagName: (T) -> String,
+    onClearFilters: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.fillMaxWidth()
+    ) {
+        LazyRow(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(horizontal = AppStyleDefaults.SpacingLarge),
+            horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)
+        ) {
+            items(tags) { tag ->
+                FilterChip(
+                    selected = selectedTagNames.contains(getTagName(tag)),
+                    onClick = { onTagSelected(getTagName(tag)) },
+                    label = { Text(getTagName(tag)) }
+                )
+            }
+        }
+        if (onClearFilters != null && selectedTagNames.isNotEmpty()) {
+            IconButton(onClick = onClearFilters) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = stringResource(id = R.string.common_clear_filters)
+                )
+            }
         }
     }
 }

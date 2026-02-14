@@ -212,6 +212,7 @@
     <string name="common_delete">Delete</string>
     <string name="common_back_button_description">Back</string>
     <string name="common_ok">OK</string>
+    <string name="common_clear_filters">Clear Filters</string>
     <string name="screen_label_battle">Battle</string>
     <string name="archived_goals_title">Archived Goals
 </string>

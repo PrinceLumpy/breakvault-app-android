@@ -67,6 +67,9 @@ class AddEditGoalViewModel @Inject constructor(
     private val _dialogState = MutableStateFlow(DialogState())
     private val _uiState = MutableStateFlow(UiState())
 
+    // Track pending stage reordering (only saved when user clicks save FAB)
+    private var pendingStageOrder: List<GoalStage>? = null
+
     val uiState: StateFlow<AddEditGoalUiState> = combine(
         goalId.flatMapLatest { id ->
             if (id == null) {
@@ -93,7 +96,7 @@ class AddEditGoalViewModel @Inject constructor(
 
         AddEditGoalUiState(
             goalId = goalWithStages?.goal?.id,
-            stages = goalWithStages?.stages ?: emptyList(),
+            stages = goalWithStages?.stages?.sortedBy { it.orderIndex } ?: emptyList(),
             userInputs = userInputs,
             dialogState = dialogState,
             isNewGoal = goalWithStages == null,
@@ -160,6 +163,12 @@ class AddEditGoalViewModel @Inject constructor(
                     description = currentInputs.description
                 )
                 goalRepository.insertGoal(newGoal)
+
+                // Save pending stage order if exists
+                pendingStageOrder?.let { stages ->
+                    savePendingStageOrder(stages)
+                }
+
                 onSuccess(newGoal.id)
             } else {
                 // Update existing goal
@@ -170,10 +179,24 @@ class AddEditGoalViewModel @Inject constructor(
                         lastUpdated = System.currentTimeMillis()
                     )
                     goalRepository.updateGoal(updatedGoal)
+
+                    // Save pending stage order if exists
+                    pendingStageOrder?.let { stages ->
+                        savePendingStageOrder(stages)
+                    }
+
                     onSuccess(currentGoalId)
                 }
             }
         }
+    }
+
+    private suspend fun savePendingStageOrder(stages: List<GoalStage>) {
+        val updatedStages = stages.mapIndexed { index, stage ->
+            stage.copy(orderIndex = index, lastUpdated = System.currentTimeMillis())
+        }
+        goalRepository.updateGoalStages(updatedStages)
+        pendingStageOrder = null
     }
 
     fun archiveGoal(onSuccess: () -> Unit) {
@@ -224,12 +247,7 @@ class AddEditGoalViewModel @Inject constructor(
     }
 
     fun onStagesReordered(reorderedStages: List<GoalStage>) {
-        viewModelScope.launch {
-            // Update orderIndex for all stages based on their new positions
-            val updatedStages = reorderedStages.mapIndexed { index, stage ->
-                stage.copy(orderIndex = index, lastUpdated = System.currentTimeMillis())
-            }
-            goalRepository.updateGoalStages(updatedStages)
-        }
+        // Store the pending order; will be saved when user clicks save FAB
+        pendingStageOrder = reorderedStages
     }
 }

@@ -51,7 +51,7 @@ interface GoalDao {
     @Delete
     suspend fun deleteGoal(goal: Goal)
 
-    @Query("SELECT * FROM goal_stages WHERE goalId = :goalId ORDER BY orderIndex ASC, CreatedAt ASC")
+    @Query("SELECT * FROM goal_stages WHERE goalId = :goalId ORDER BY orderIndex ASC, createdAt ASC")
     fun getStagesForGoal(goalId: String): Flow<List<GoalStage>>
 
     @Query("SELECT * FROM goal_stages WHERE id = :stageId")

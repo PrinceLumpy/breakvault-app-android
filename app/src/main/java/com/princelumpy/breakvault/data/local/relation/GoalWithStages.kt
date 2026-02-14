@@ -9,7 +9,7 @@ data class GoalWithStages(
     @Embedded val goal: Goal,
     @Relation(
         parentColumn = "id",
-        entityColumn = "goalId",
+        entityColumn = "goalId"
     )
     val stages: List<GoalStage>
 )

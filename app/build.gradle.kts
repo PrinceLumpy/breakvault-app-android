@@ -57,7 +57,7 @@ android {
 
 
 dependencies {
-// Core & Lifecycle
+    // Core & Lifecycle
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodelKtx)
@@ -88,6 +88,9 @@ dependencies {
 
     // Serialization
     implementation(libs.kotlinx.serialization.json)
+    
+    // Reorderable
+    implementation(libs.sh.reorderable)
 
     // Testing
     testImplementation(libs.junit)

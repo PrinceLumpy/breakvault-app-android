@@ -45,7 +45,11 @@ class ArchivedGoalsViewModel @Inject constructor(
         _dialogState
     ) { archivedGoals, dialogState ->
         ArchivedGoalsUiState(
-            archivedGoals = archivedGoals,
+            archivedGoals = archivedGoals.map { goalWithStages ->
+                goalWithStages.copy(
+                    stages = goalWithStages.stages.sortedBy { it.orderIndex }
+                )
+            },
             dialogState = dialogState
         )
     }.stateIn(

@@ -2,8 +2,6 @@ package com.princelumpy.breakvault.ui.goals.addedit
 
 import AppStyleDefaults
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +13,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -48,19 +49,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInParent
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.unit.IntSize
-import kotlinx.coroutines.launch
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
+import sh.calvin.reorderable.ReorderableLazyListState
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -365,13 +363,13 @@ private fun GoalStagesList(
     onEditStageClick: (GoalStage) -> Unit,
     onStagesReordered: (List<GoalStage>) -> Unit
 ) {
-    val stagesList = remember(stages) { stages.toMutableStateList() }
+    var stagesList by remember { mutableStateOf(stages) }
+    var isDragging by remember { mutableStateOf(false) }
 
-    // Update the local list when stages prop changes
+    // Update the local list when stages prop changes (but not while dragging)
     LaunchedEffect(stages) {
-        if (stagesList != stages) {
-            stagesList.clear()
-            stagesList.addAll(stages)
+        if (!isDragging) {
+            stagesList = stages
         }
     }
     Row(
@@ -410,26 +408,54 @@ private fun GoalStagesList(
             )
         }
     } else {
-        var draggedIndex by remember { mutableStateOf<Int?>(null) }
-        var dragOffset by remember { mutableStateOf(0f) }
+        val haptic = LocalHapticFeedback.current
+        val lazyListState = rememberLazyListState()
 
-        Column(verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)) {
-            stagesList.forEachIndexed { index, goalStage ->
-                EditGoalStageItem(
-                    stage = goalStage,
-                    onClick = { onEditStageClick(goalStage) },
-                    onReorder = { fromIndex, toIndex ->
-                        if (fromIndex != toIndex) {
-                            val item = stagesList.removeAt(fromIndex)
-                            stagesList.add(toIndex, item)
+        val reorderableLazyListState = rememberReorderableLazyListState(lazyListState) { from, to ->
+            stagesList = stagesList.toMutableList().apply {
+                add(to.index, removeAt(from.index))
+            }
+        }
+
+        // Update pending order in ViewModel when dragging ends
+        LaunchedEffect(isDragging) {
+            if (!isDragging && stagesList.map { it.id } != stages.map { it.id }) {
+                onStagesReordered(stagesList)
+            }
+        }
+
+        LazyColumn(
+            state = lazyListState,
+            verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(300.dp) // Give it a fixed height since it's in a scrollable parent
+        ) {
+            items(stagesList, key = { it.id }) { goalStage ->
+                ReorderableItem(reorderableLazyListState, key = goalStage.id) { isItemDragging ->
+                    LaunchedEffect(isItemDragging) {
+                        if (isItemDragging) {
+                            isDragging = true
+                        } else if (isDragging) {
+                            // Small delay to ensure all items have stopped dragging
+                            kotlinx.coroutines.delay(50)
+                            isDragging = false
                         }
-                    },
-                    onReorderFinished = {
-                        onStagesReordered(stagesList.toList())
-                    },
-                    index = index,
-                    listSize = stagesList.size
-                )
+                    }
+
+                    val dragHandleModifier = Modifier.draggableHandle(
+                        onDragStarted = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                    )
+
+                    EditGoalStageItem(
+                        stage = goalStage,
+                        onClick = { onEditStageClick(goalStage) },
+                        isDragging = isItemDragging,
+                        dragHandleModifier = dragHandleModifier
+                    )
+                }
             }
         }
     }
@@ -439,10 +465,8 @@ private fun GoalStagesList(
 private fun EditGoalStageItem(
     stage: GoalStage,
     onClick: () -> Unit,
-    onReorder: (fromIndex: Int, toIndex: Int) -> Unit,
-    onReorderFinished: () -> Unit,
-    index: Int,
-    listSize: Int
+    isDragging: Boolean,
+    dragHandleModifier: Modifier
 ) {
     val stageProgress = if (stage.targetCount > 0) {
         (stage.currentCount.toDouble() / stage.targetCount.toDouble()).coerceIn(0.0, 1.0)
@@ -450,27 +474,15 @@ private fun EditGoalStageItem(
         0.0
     }
 
-    var itemHeight by remember { mutableStateOf(0f) }
-    var isDragging by remember { mutableStateOf(false) }
-    var currentIndex by remember(index) { mutableStateOf(index) }
-    var accumulatedDragY by remember { mutableStateOf(0f) }
-
-    LaunchedEffect(index) {
-        currentIndex = index
-    }
-
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .onGloballyPositioned { layoutCoordinates ->
-                itemHeight = layoutCoordinates.size.height.toFloat()
-            },
+        modifier = Modifier.fillMaxWidth(),
         color = if (isDragging) {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
         } else {
             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         },
-        shape = MaterialTheme.shapes.small
+        shape = MaterialTheme.shapes.small,
+        tonalElevation = if (isDragging) 4.dp else 0.dp
     ) {
         Row(
             modifier = Modifier
@@ -479,53 +491,17 @@ private fun EditGoalStageItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Drag handle icon with drag gesture
-            Icon(
-                imageVector = Icons.Default.DragHandle,
-                contentDescription = "Drag to reorder",
-                modifier = Modifier
-                    .size(24.dp)
-                    .padding(end = AppStyleDefaults.SpacingSmall)
-                    .pointerInput(stage.id) {
-                        detectDragGesturesAfterLongPress(
-                            onDragStart = {
-                                isDragging = true
-                                accumulatedDragY = 0f
-                            },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                accumulatedDragY += dragAmount.y
-
-                                // Check if we've dragged enough to swap with adjacent item
-                                if (itemHeight > 0) {
-                                    // Need to drag at least half the item height to swap
-                                    val threshold = itemHeight / 2f
-
-                                    if (accumulatedDragY > threshold && currentIndex < listSize - 1) {
-                                        // Dragging down - swap with next item
-                                        onReorder(currentIndex, currentIndex + 1)
-                                        currentIndex++
-                                        accumulatedDragY = 0f // Reset accumulator after swap
-                                    } else if (accumulatedDragY < -threshold && currentIndex > 0) {
-                                        // Dragging up - swap with previous item
-                                        onReorder(currentIndex, currentIndex - 1)
-                                        currentIndex--
-                                        accumulatedDragY = 0f // Reset accumulator after swap
-                                    }
-                                }
-                            },
-                            onDragEnd = {
-                                isDragging = false
-                                accumulatedDragY = 0f
-                                onReorderFinished()
-                            },
-                            onDragCancel = {
-                                isDragging = false
-                                accumulatedDragY = 0f
-                            }
-                        )
-                    },
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            IconButton(
+                onClick = {},
+                modifier = dragHandleModifier
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DragHandle,
+                    contentDescription = "Drag to reorder",
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
 
             // Stage content
             Column(

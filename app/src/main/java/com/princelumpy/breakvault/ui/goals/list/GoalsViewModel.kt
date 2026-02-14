@@ -42,7 +42,11 @@ class GoalsViewModel @Inject constructor(
         _dialogState
     ) { goals, dialogState ->
         GoalsScreenUiState(
-            goals = goals,
+            goals = goals.map { goalWithStages ->
+                goalWithStages.copy(
+                    stages = goalWithStages.stages.sortedBy { it.orderIndex }
+                )
+            },
             dialogState = dialogState,
             isLoading = false
         )

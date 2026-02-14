@@ -42,23 +42,23 @@ class BattleRepository @Inject constructor(
     /**
      * Inserts a new battle combo and links its tags. This is a main-safe suspend function.
      * @param battleCombo The new combo to insert.
-     * @param tags The list of tag names to associate with the combo.
+     * @param tags The list of tags to associate with the combo.
      */
-    suspend fun insertBattleComboWithTags(battleCombo: BattleCombo, tags: List<String>) {
+    suspend fun insertBattleComboWithTags(battleCombo: BattleCombo, tags: List<BattleTag>) {
         withContext(Dispatchers.IO) {
             val comboToInsert = battleCombo.copy(id = UUID.randomUUID().toString())
-            battleDao.updateBattleComboWithTags(comboToInsert, tags)
+            battleDao.updateBattleComboWithTags(comboToInsert, tags.map { it.id })
         }
     }
 
     /**
      * Updates an existing battle combo and its tags. This is a main-safe suspend function.
      * @param battleCombo The combo with updated information.
-     * @param tags The new list of tag names for the combo.
+     * @param tags The new list of tags for the combo.
      */
-    suspend fun updateBattleComboWithTags(battleCombo: BattleCombo, tags: List<String>) {
+    suspend fun updateBattleComboWithTags(battleCombo: BattleCombo, tags: List<BattleTag>) {
         withContext(Dispatchers.IO) {
-            battleDao.updateBattleComboWithTags(battleCombo, tags)
+            battleDao.updateBattleComboWithTags(battleCombo, tags.map { it.id })
         }
     }
 

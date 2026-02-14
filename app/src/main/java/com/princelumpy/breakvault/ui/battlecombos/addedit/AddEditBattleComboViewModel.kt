@@ -99,7 +99,7 @@ class AddEditBattleComboViewModel @Inject constructor(
                     selectedEnergy = comboWithTags.battleCombo.energy,
                     selectedStatus = comboWithTags.battleCombo.status,
                     isUsed = comboWithTags.battleCombo.isUsed,
-                    selectedTags = comboWithTags.tags.map { it.name }.toSet(),
+                    selectedTags = comboWithTags.tags.map { it.id }.toSet(),
                     isNewCombo = false
                 )
             } else {
@@ -129,12 +129,12 @@ class AddEditBattleComboViewModel @Inject constructor(
         _userInputs.update { it.copy(selectedStatus = newStatus) }
     }
 
-    fun onTagSelected(tagName: String) {
+    fun onTagSelected(tagId: String) {
         _userInputs.update { state ->
-            val newTags = if (tagName in state.selectedTags) {
-                state.selectedTags - tagName
+            val newTags = if (tagId in state.selectedTags) {
+                state.selectedTags - tagId
             } else {
-                state.selectedTags + tagName
+                state.selectedTags + tagId
             }
             state.copy(selectedTags = newTags)
         }
@@ -183,11 +183,12 @@ class AddEditBattleComboViewModel @Inject constructor(
 
         // If all checks pass, proceed with insertion
         viewModelScope.launch {
-            battleRepository.insertBattleTag(BattleTag(name = newTagName))
+            val newTag = BattleTag(name = newTagName)
+            battleRepository.insertBattleTag(newTag)
             _userInputs.update {
                 it.copy(
                     newTagName = "",
-                    selectedTags = it.selectedTags + newTagName
+                    selectedTags = it.selectedTags + newTag.id
                 )
             }
         }
@@ -232,15 +233,19 @@ class AddEditBattleComboViewModel @Inject constructor(
                 isUsed = currentInputs.isUsed
             )
 
+            // Convert selected tag IDs to BattleTag objects
+            val selectedTagObjects = uiState.value.allBattleTags
+                .filter { it.id in currentInputs.selectedTags }
+
             if (currentInputs.isNewCombo) {
                 battleRepository.insertBattleComboWithTags(
                     battleCombo,
-                    currentInputs.selectedTags.toList()
+                    selectedTagObjects
                 )
             } else {
                 battleRepository.updateBattleComboWithTags(
                     battleCombo,
-                    currentInputs.selectedTags.toList()
+                    selectedTagObjects
                 )
             }
             onSuccess()

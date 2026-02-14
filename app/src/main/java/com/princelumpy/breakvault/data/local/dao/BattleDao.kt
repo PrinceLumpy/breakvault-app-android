@@ -60,18 +60,15 @@ interface BattleDao {
 
     /**
      * Atomically updates a battle combo and its associated tags.
-     * It first updates the combo, then removes all existing tag links,
-     * and finally creates new links based on the provided tag names.
+     * It first inserts/updates the combo (using REPLACE strategy), then removes all existing tag links,
+     * and finally creates new links based on the provided tag IDs.
      */
     @Transaction
-    suspend fun updateBattleComboWithTags(battleCombo: BattleCombo, tags: List<String>) {
-        updateBattleCombo(battleCombo)
+    suspend fun updateBattleComboWithTags(battleCombo: BattleCombo, tagIds: List<String>) {
+        insertBattleCombo(battleCombo)
         unlinkBattleComboFromAllTags(battleCombo.id)
-        tags.forEach { tagName ->
-            val tag = getBattleTagByName(tagName)
-            if (tag != null) {
-                link(BattleComboTagCrossRef(battleCombo.id, tag.id))
-            }
+        tagIds.forEach { tagId ->
+            link(BattleComboTagCrossRef(battleCombo.id, tagId))
         }
     }
 

@@ -430,7 +430,7 @@ private fun TagsSection(
         isLoading = false,
         emptyMessage = stringResource(id = R.string.add_edit_battle_combo_no_tags_message),
         onTagSelected = onTagSelected,
-        getTagId = { it.name },
+        getTagId = { it.id },
         getTagName = { it.name }
     )
 
@@ -446,13 +446,19 @@ private fun TagsSection(
             onTagNameChange = onNewTagNameChange,
             onConfirm = {
                 onAddBattleTag()
-                // Note: Dialog will close when tag is successfully added via ViewModel
             },
             onDismiss = {
                 showAddTagDialog = false
                 onNewTagNameChange("") // Clear input on dismiss
             }
         )
+    }
+
+    // Close dialog when tag is successfully added (error cleared and input cleared)
+    LaunchedEffect(newTagError, newTagName) {
+        if (showAddTagDialog && newTagError == null && newTagName.isEmpty()) {
+            showAddTagDialog = false
+        }
     }
 }
 

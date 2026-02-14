@@ -25,7 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.common.Constants.BATTLE_TAG_CHARACTER_LIMIT
@@ -39,8 +39,6 @@ fun BattleTagListScreen(
     battleTagListViewModel: BattleTagListViewModel = hiltViewModel()
 ) {
     val uiState by battleTagListViewModel.uiState.collectAsStateWithLifecycle()
-    val userInputs = uiState.userInputs
-    val dialogState = uiState.dialogState
 
     BattleTagListContent(
         uiState = uiState,

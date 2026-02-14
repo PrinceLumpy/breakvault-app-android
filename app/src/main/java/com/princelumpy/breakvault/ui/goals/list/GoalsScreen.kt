@@ -470,7 +470,7 @@ fun calculateGoalProgress(stages: List<GoalStage>): Double {
 }
 
 // PREVIEWS
-@Preview(showBackground = true, name = "Full Goals Screen")
+@Preview(showBackground = true, name = "Full GoalList Screen")
 @Composable
 fun PreviewGoalsScreen() {
     MaterialTheme {
@@ -659,7 +659,7 @@ fun PreviewGoalStageItemNoTarget() {
     }
 }
 
-@Preview(showBackground = true, name = "Empty Goals State")
+@Preview(showBackground = true, name = "Empty GoalList State")
 @Composable
 fun PreviewEmptyGoalsState() {
     MaterialTheme {

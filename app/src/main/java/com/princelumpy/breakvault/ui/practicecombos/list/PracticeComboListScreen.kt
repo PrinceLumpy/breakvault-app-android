@@ -1,4 +1,4 @@
-package com.princelumpy.breakvault.ui.savedcombos.list
+package com.princelumpy.breakvault.ui.practicecombos.list
 
 import AppStyleDefaults
 import androidx.compose.foundation.layout.Arrangement
@@ -27,12 +27,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -41,22 +39,22 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
-import com.princelumpy.breakvault.data.local.entity.SavedCombo
+import com.princelumpy.breakvault.data.local.entity.PracticeCombo
 import com.princelumpy.breakvault.ui.common.FlexibleItemList
 import com.princelumpy.breakvault.ui.moves.list.GenerateComboButton
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 
 @Composable
-fun SavedComboListScreen(
+fun PracticeComboListScreen(
     onNavigateToAddEditCombo: (String?) -> Unit,
     onNavigateToComboGenerator: () -> Unit,
     onOpenDrawer: () -> Unit,
-    savedComboListViewModel: SavedComboListViewModel = hiltViewModel()
+    practiceComboListViewModel: PracticeComboListViewModel = hiltViewModel()
 ) {
-    val uiState by savedComboListViewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by practiceComboListViewModel.uiState.collectAsStateWithLifecycle()
 
-    SavedComboListScaffold(
-        savedCombos = uiState.savedCombos,
+    PracticeComboListScaffold(
+        practiceCombos = uiState.practiceCombos,
         isLoading = uiState.isLoading,
         onNavigateToAddEditCombo = onNavigateToAddEditCombo,
         onNavigateToComboGenerator = onNavigateToComboGenerator,
@@ -67,13 +65,13 @@ fun SavedComboListScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SavedComboListScaffold(
-    savedCombos: List<SavedCombo>,
+private fun PracticeComboListScaffold(
+    practiceCombos: List<PracticeCombo>,
     isLoading: Boolean,
     onNavigateToAddEditCombo: (String?) -> Unit,
     onNavigateToComboGenerator: () -> Unit,
     onOpenDrawer: () -> Unit,
-    onEditClick: (SavedCombo) -> Unit,
+    onEditClick: (PracticeCombo) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -83,7 +81,7 @@ private fun SavedComboListScaffold(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        stringResource(id = R.string.saved_combos_screen_title)
+                        stringResource(id = R.string.practice_combos_screen_title)
                     )
                 },
                 navigationIcon = {
@@ -97,7 +95,7 @@ private fun SavedComboListScaffold(
             )
         },
         floatingActionButton = {
-            if (savedCombos.isNotEmpty()) {
+            if (practiceCombos.isNotEmpty()) {
                 FloatingActionButton(
                     onClick = { onNavigateToAddEditCombo(null) },
                     modifier = Modifier.imePadding(),
@@ -129,7 +127,7 @@ private fun SavedComboListScaffold(
 
                 Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingLarge))
 
-                if (savedCombos.isEmpty()) {
+                if (practiceCombos.isEmpty()) {
                     EmptyState(
                         onNavigateToAddEditCombo = { onNavigateToAddEditCombo(null) },
                         modifier = Modifier
@@ -137,7 +135,7 @@ private fun SavedComboListScaffold(
                     )
                 } else {
                     ComboList(
-                        savedCombos = savedCombos,
+                        practiceCombos = practiceCombos,
                         onEditClick = onEditClick,
                         modifier = Modifier
                             .fillMaxSize()
@@ -149,22 +147,22 @@ private fun SavedComboListScaffold(
 }
 
 /**
- * A stateless list of saved combos.
+ * A stateless list of practice combos.
  */
 @Composable
 private fun ComboList(
-    savedCombos: List<SavedCombo>,
-    onEditClick: (SavedCombo) -> Unit,
+    practiceCombos: List<PracticeCombo>,
+    onEditClick: (PracticeCombo) -> Unit,
     modifier: Modifier = Modifier
 ) {
     FlexibleItemList(
-        items = savedCombos,
+        items = practiceCombos,
         getItemKey = { it.id },
         modifier = modifier
-    ) { savedCombo ->
-        SavedComboItem(
-            savedCombo = savedCombo,
-            onEditClick = { onEditClick(savedCombo) }
+    ) { practiceCombo ->
+        PracticeComboItem(
+            practiceCombo = practiceCombo,
+            onEditClick = { onEditClick(practiceCombo) }
         )
     }
 }
@@ -183,12 +181,12 @@ private fun EmptyState(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = stringResource(id = R.string.saved_combos_no_combos_message),
+            text = stringResource(id = R.string.practice_combos_no_combos_message),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
-            text = stringResource(id = R.string.saved_combos_empty_state_subtitle),
+            text = stringResource(id = R.string.practice_combos_empty_state_subtitle),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -204,11 +202,11 @@ private fun EmptyState(
 }
 
 /**
- * A stateless item for a single saved combo in the list.
+ * A stateless item for a single practice combo in the list.
  */
 @Composable
-fun SavedComboItem(
-    savedCombo: SavedCombo,
+fun PracticeComboItem(
+    practiceCombo: PracticeCombo,
     onEditClick: () -> Unit
 ) {
     Card(
@@ -227,13 +225,13 @@ fun SavedComboItem(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = savedCombo.name,
+                    text = practiceCombo.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingSmall))
                 Text(
-                    text = savedCombo.moves.joinToString(separator = " -> "),
+                    text = practiceCombo.moves.joinToString(separator = " -> "),
                     style = MaterialTheme.typography.bodyMedium,
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -258,14 +256,14 @@ fun SavedComboItem(
 
 @Preview(showBackground = true)
 @Composable
-private fun SavedComboListScaffold_WithCombos_Preview() {
+private fun PracticeComboListScaffold_WithCombos_Preview() {
     val previewCombos = listOf(
-        SavedCombo(
+        PracticeCombo(
             id = "1",
             name = "Windmill Freeze",
             moves = listOf("Windmill", "Baby Freeze")
         ),
-        SavedCombo(
+        PracticeCombo(
             id = "2",
             name = "Flare Swipe",
             moves = listOf("Flare", "Swipe", "Elbow Freeze")
@@ -273,8 +271,8 @@ private fun SavedComboListScaffold_WithCombos_Preview() {
     )
 
     BreakVaultTheme {
-        SavedComboListScaffold(
-            savedCombos = previewCombos,
+        PracticeComboListScaffold(
+            practiceCombos = previewCombos,
             isLoading = false,
             onNavigateToAddEditCombo = {},
             onNavigateToComboGenerator = {},
@@ -286,10 +284,10 @@ private fun SavedComboListScaffold_WithCombos_Preview() {
 
 @Preview(showBackground = true)
 @Composable
-private fun SavedComboListScaffold_Empty_Preview() {
+private fun PracticeComboListScaffold_Empty_Preview() {
     BreakVaultTheme {
-        SavedComboListScaffold(
-            savedCombos = emptyList(),
+        PracticeComboListScaffold(
+            practiceCombos = emptyList(),
             isLoading = false,
             onNavigateToAddEditCombo = {},
             onNavigateToComboGenerator = {},
@@ -301,15 +299,15 @@ private fun SavedComboListScaffold_Empty_Preview() {
 
 @Preview(showBackground = true)
 @Composable
-private fun SavedComboItemPreview() {
+private fun PracticeComboItemPreview() {
     BreakVaultTheme {
-        val sampleCombo = SavedCombo(
+        val sampleCombo = PracticeCombo(
             id = "preview1",
             name = "Awesome Combo",
             moves = listOf("Jab", "Cross", "Hook")
         )
-        SavedComboItem(
-            savedCombo = sampleCombo,
+        PracticeComboItem(
+            practiceCombo = sampleCombo,
             onEditClick = {}
         )
     }

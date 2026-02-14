@@ -1,10 +1,10 @@
-package com.princelumpy.breakvault.ui.savedcombos.addedit
+package com.princelumpy.breakvault.ui.practicecombos.addedit
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.princelumpy.breakvault.data.local.entity.Move
-import com.princelumpy.breakvault.data.local.entity.SavedCombo
-import com.princelumpy.breakvault.data.repository.SavedComboRepository
+import com.princelumpy.breakvault.data.local.entity.PracticeCombo
+import com.princelumpy.breakvault.data.repository.PracticeComboRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -45,8 +45,8 @@ data class AddEditComboUiState(
 )
 
 @HiltViewModel
-class AddEditComboViewModel @Inject constructor(
-    private val savedComboRepository: SavedComboRepository
+class AddEditPracticeComboViewModel @Inject constructor(
+    private val practiceComboRepository: PracticeComboRepository
 ) : ViewModel() {
 
     // Separate state flows for each concern.
@@ -57,7 +57,7 @@ class AddEditComboViewModel @Inject constructor(
     private val _isInitialLoadDone = MutableStateFlow(false)
 
     val uiState: StateFlow<AddEditComboUiState> = combine(
-        savedComboRepository.getAllMoves(),
+        practiceComboRepository.getAllMoves(),
         _userInputs,
         _dialogsAndMessages,
         _metadata,
@@ -88,7 +88,7 @@ class AddEditComboViewModel @Inject constructor(
 
         // Existing combo: Load from repository.
         viewModelScope.launch {
-            val comboToEdit = savedComboRepository.getSavedComboById(comboId)
+            val comboToEdit = practiceComboRepository.getPracticeComboById(comboId)
             if (comboToEdit != null) {
                 _userInputs.value = UserInputs(
                     comboName = comboToEdit.name,
@@ -177,8 +177,8 @@ class AddEditComboViewModel @Inject constructor(
 
         viewModelScope.launch {
             if (currentUiState.isNewCombo) {
-                savedComboRepository.insertSavedCombo(
-                    SavedCombo(
+                practiceComboRepository.insertPracticeCombo(
+                    PracticeCombo(
                         name = inputs.comboName,
                         moves = inputs.selectedMoves
                     )
@@ -187,7 +187,7 @@ class AddEditComboViewModel @Inject constructor(
                     it.copy(snackbarMessage = "Combo \"${inputs.comboName}\" created successfully!")
                 }
             } else {
-                savedComboRepository.updateSavedCombo(
+                practiceComboRepository.updatePracticeCombo(
                     currentUiState.comboId!!,
                     inputs.comboName,
                     inputs.selectedMoves
@@ -212,7 +212,7 @@ class AddEditComboViewModel @Inject constructor(
         val comboId = uiState.value.comboId ?: return
 
         viewModelScope.launch {
-            savedComboRepository.deleteSavedCombo(comboId)
+            practiceComboRepository.deletePracticeCombo(comboId)
             onSuccess()
         }
     }

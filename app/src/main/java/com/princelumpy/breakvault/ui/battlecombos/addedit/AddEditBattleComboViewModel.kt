@@ -7,10 +7,10 @@ import com.princelumpy.breakvault.common.Constants.BATTLE_TAG_CHARACTER_LIMIT
 import com.princelumpy.breakvault.data.local.entity.BattleCombo
 import com.princelumpy.breakvault.data.local.entity.BattleTag
 import com.princelumpy.breakvault.data.local.entity.EnergyLevel
-import com.princelumpy.breakvault.data.local.entity.SavedCombo
+import com.princelumpy.breakvault.data.local.entity.PracticeCombo
 import com.princelumpy.breakvault.data.local.entity.TrainingStatus
 import com.princelumpy.breakvault.data.repository.BattleRepository
-import com.princelumpy.breakvault.data.repository.SavedComboRepository
+import com.princelumpy.breakvault.data.repository.PracticeComboRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -44,7 +44,7 @@ data class UiDialogsAndMessages(
 data class AddEditBattleComboUiState(
     val userInputs: UserInputs = UserInputs(),
     val allBattleTags: List<BattleTag> = emptyList(),
-    val allPracticeCombos: List<SavedCombo> = emptyList(),
+    val allPracticeCombos: List<PracticeCombo> = emptyList(),
     val dialogsAndMessages: UiDialogsAndMessages = UiDialogsAndMessages(),
     val isLoading: Boolean = true
 )
@@ -52,7 +52,7 @@ data class AddEditBattleComboUiState(
 @HiltViewModel
 class AddEditBattleComboViewModel @Inject constructor(
     private val battleRepository: BattleRepository,
-    private val savedComboRepository: SavedComboRepository
+    private val practiceComboRepository: PracticeComboRepository
 ) : ViewModel() {
 
     private val _userInputs = MutableStateFlow(UserInputs())
@@ -66,7 +66,7 @@ class AddEditBattleComboViewModel @Inject constructor(
     val uiState: StateFlow<AddEditBattleComboUiState> = combine(
         _userInputs,
         battleRepository.getAllTags(),
-        savedComboRepository.getSavedCombos(),
+        practiceComboRepository.getPracticeCombos(),
         _dialogsAndMessages,
         _isInitialLoadDone
     ) { userInputs, tags, practiceCombos, dialogsAndMessages, isInitialLoadDone ->
@@ -194,7 +194,7 @@ class AddEditBattleComboViewModel @Inject constructor(
         }
     }
 
-    fun onImportCombo(combo: SavedCombo) {
+    fun onImportCombo(combo: PracticeCombo) {
         _userInputs.update { it.copy(description = combo.moves.joinToString(" -> ")) }
         showImportDialog(false)
     }

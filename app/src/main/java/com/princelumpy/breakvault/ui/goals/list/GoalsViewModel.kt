@@ -21,7 +21,7 @@ data class DialogState(
 )
 
 /**
- * UI State for the Goals screen.
+ * UI State for the GoalList screen.
  */
 data class GoalsScreenUiState(
     val goals: List<GoalWithStages> = emptyList(),

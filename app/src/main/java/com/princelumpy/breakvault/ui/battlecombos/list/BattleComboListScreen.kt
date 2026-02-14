@@ -132,7 +132,7 @@ fun BattleComboListContent(
                     IconButton(onClick = onNavigateToBattleTagList) {
                         Icon(
                             Icons.AutoMirrored.Filled.Label,
-                            contentDescription = "Manage Battle Tags"
+                            contentDescription = "Manage BattleComboList Tags"
                         )
                     }
                     // Sort Button
@@ -159,7 +159,7 @@ fun BattleComboListContent(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Status: Battle Ready") },
+                                text = { Text("Status: BattleComboList Ready") },
                                 onClick = {
                                     onSortOptionChange(BattleSortOption.StatusFireFirst)
                                     showSortMenu = false
@@ -186,7 +186,7 @@ fun BattleComboListContent(
                 onClick = { onNavigateToAddEditBattleCombo(null) },
                 modifier = Modifier.imePadding()
             ) {
-                Icon(Icons.Filled.Add, contentDescription = "Add Battle Combo")
+                Icon(Icons.Filled.Add, contentDescription = "Add BattleComboList Combo")
             }
         }
     ) { padding ->
@@ -240,7 +240,7 @@ fun BattleComboListContent(
                             Button(onClick = { onNavigateToAddEditBattleCombo(null) }) {
                                 Icon(Icons.Filled.Add, contentDescription = null)
                                 Spacer(modifier = Modifier.padding(4.dp))
-                                Text("Add Battle Combo")
+                                Text("Add BattleComboList Combo")
                             }
                         } else {
                             Text(

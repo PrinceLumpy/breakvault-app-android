@@ -3,10 +3,10 @@ package com.princelumpy.breakvault.ui.combogenerator
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.princelumpy.breakvault.data.local.dao.MoveDao
-import com.princelumpy.breakvault.data.local.dao.SavedComboDao
+import com.princelumpy.breakvault.data.local.dao.PracticeComboDao
 import com.princelumpy.breakvault.data.local.entity.Move
 import com.princelumpy.breakvault.data.local.entity.MoveTag
-import com.princelumpy.breakvault.data.local.entity.SavedCombo
+import com.princelumpy.breakvault.data.local.entity.PracticeCombo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -57,7 +57,7 @@ data class ComboGeneratorUiState(
 @HiltViewModel
 class ComboGeneratorViewModel @Inject constructor(
     private val moveDao: MoveDao,
-    private val savedComboDao: SavedComboDao
+    private val practiceComboDao: PracticeComboDao
 ) : ViewModel() {
 
     // Separate state flows for each concern.
@@ -201,11 +201,11 @@ class ComboGeneratorViewModel @Inject constructor(
             if (combo.moves.isNotEmpty()) {
                 val comboName =
                     SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-                val newCombo = SavedCombo(
+                val newCombo = PracticeCombo(
                     name = comboName,
                     moves = combo.moves.map { it.name }
                 )
-                savedComboDao.insertSavedCombo(newCombo)
+                practiceComboDao.insertPracticeCombo(newCombo)
                 showSnackbar("Combo saved successfully!")
             } else {
                 showSnackbar("No combo to save.")

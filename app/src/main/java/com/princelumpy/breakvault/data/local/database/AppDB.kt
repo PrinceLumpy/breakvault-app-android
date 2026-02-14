@@ -11,7 +11,7 @@ import com.princelumpy.breakvault.BuildConfig
 import com.princelumpy.breakvault.data.local.dao.BattleDao
 import com.princelumpy.breakvault.data.local.dao.GoalDao
 import com.princelumpy.breakvault.data.local.dao.MoveDao
-import com.princelumpy.breakvault.data.local.dao.SavedComboDao
+import com.princelumpy.breakvault.data.local.dao.PracticeComboDao
 import com.princelumpy.breakvault.data.local.entity.BattleCombo
 import com.princelumpy.breakvault.data.local.entity.BattleComboTagCrossRef
 import com.princelumpy.breakvault.data.local.entity.BattleTag
@@ -22,7 +22,7 @@ import com.princelumpy.breakvault.data.local.entity.GoalStage
 import com.princelumpy.breakvault.data.local.entity.Move
 import com.princelumpy.breakvault.data.local.entity.MoveTag
 import com.princelumpy.breakvault.data.local.entity.MoveTagCrossRef
-import com.princelumpy.breakvault.data.local.entity.SavedCombo
+import com.princelumpy.breakvault.data.local.entity.PracticeCombo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -33,7 +33,7 @@ import java.util.UUID
         Move::class,
         MoveTag::class,
         MoveTagCrossRef::class,
-        SavedCombo::class,
+        PracticeCombo::class,
         BattleCombo::class,
         BattleTag::class,
         BattleComboTagCrossRef::class,
@@ -46,13 +46,13 @@ import java.util.UUID
 @TypeConverters(Converters::class)
 abstract class AppDB : RoomDatabase() {
     abstract fun moveDao(): MoveDao
-    abstract fun savedComboDao(): SavedComboDao
+    abstract fun practiceComboDao(): PracticeComboDao
     abstract fun battleDao(): BattleDao
     abstract fun goalDao(): GoalDao
 
     suspend fun prepopulateExampleData() {
         val moveTagDao = this.moveDao()
-        val savedComboDao = this.savedComboDao()
+        val practiceComboDao = this.practiceComboDao()
         val battleDao = this.battleDao()
 
         // --- 1. Tags ---
@@ -84,19 +84,19 @@ abstract class AppDB : RoomDatabase() {
             }
             Log.i("AppDB", "Populated 4 move tags and 6 example moves.")
 
-            // --- 3. Saved Combos ---
-            val savedCombosData = listOf(
+            // --- 3. Practice Combos ---
+            val practiceCombosData = listOf(
                 Pair("Classic Footwork", listOf("6-Step", "CC")),
                 Pair("Power Finisher", listOf("Windmill", "Baby Freeze")),
                 Pair("Top to Down", listOf("Toprock Basic", "Backspin"))
             )
 
-            savedCombosData.forEach { (name, moves) ->
-                savedComboDao.insertSavedCombo(SavedCombo(name = name, moves = moves))
+            practiceCombosData.forEach { (name, moves) ->
+                practiceComboDao.insertPracticeCombo(PracticeCombo(name = name, moves = moves))
             }
-            Log.i("AppDB", "Populated 3 saved combos.")
+            Log.i("AppDB", "Populated 3 practice combos.")
 
-            // --- 4. Battle Tags ---
+            // --- 4. BattleComboList Tags ---
             val battleTagsToEnsure = listOf("Power", "Technique")
             val battleTagMap = mutableMapOf<String, String>()
             battleTagsToEnsure.forEach { name ->
@@ -105,7 +105,7 @@ abstract class AppDB : RoomDatabase() {
                 battleTagMap[name] = newTag.id
             }
 
-            // --- 5. Battle Combos ---
+            // --- 5. BattleComboList Combos ---
             val battleCombosData = listOf(
                 Pair(
                     BattleCombo(

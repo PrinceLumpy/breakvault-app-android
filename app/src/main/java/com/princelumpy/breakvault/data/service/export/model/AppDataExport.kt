@@ -8,7 +8,7 @@ import com.princelumpy.breakvault.data.local.entity.GoalStage
 import com.princelumpy.breakvault.data.local.entity.Move
 import com.princelumpy.breakvault.data.local.entity.MoveTag
 import com.princelumpy.breakvault.data.local.entity.MoveTagCrossRef
-import com.princelumpy.breakvault.data.local.entity.SavedCombo
+import com.princelumpy.breakvault.data.local.entity.PracticeCombo
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -16,7 +16,7 @@ data class AppDataExport(
     val moves: List<Move>,
     val moveTags: List<MoveTag>,
     val moveTagCrossRefs: List<MoveTagCrossRef>,
-    val savedCombos: List<SavedCombo>,
+    val practiceCombos: List<PracticeCombo>,
     val battleCombos: List<BattleCombo> = emptyList(),
     val battleTags: List<BattleTag> = emptyList(),
     val battleComboTagCrossRefs: List<BattleComboTagCrossRef> = emptyList(),

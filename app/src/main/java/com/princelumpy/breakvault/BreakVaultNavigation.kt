@@ -19,36 +19,37 @@ sealed class Screen(
     val icon: ImageVector? = null
 ) {
     data object Main : Screen("main")
-
     data object MoveList :
         Screen("move_list", R.string.screen_label_moves, Icons.AutoMirrored.Filled.List)
 
-    data object SavedCombos :
-        Screen("saved_combos", R.string.screen_label_saved_combos, Icons.Filled.Favorite)
+    data object PracticeComboList :
+        Screen("practice_combos_list", R.string.screen_label_practice_combos, Icons.Filled.Favorite)
 
-    data object Goals : Screen("goals", R.string.screen_label_goals, Icons.Filled.Flag)
+    data object GoalList : Screen("goals_list", R.string.screen_label_goals, Icons.Filled.Flag)
     data object Timer : Screen("timer", R.string.screen_label_timer, Icons.Filled.Timer)
-    data object Battle : Screen("battle_mode", R.string.screen_label_battle, Icons.Filled.FlashOn)
+    data object BattleComboList :
+        Screen("battle_combo_list", R.string.screen_label_battle, Icons.Filled.FlashOn)
+
     data object TagList : Screen("tag_list")
+    data object BattleTagList : Screen("battle_tag_list")
     data object ArchivedGoals : Screen("archived_goals")
     data object Settings : Screen("settings", R.string.screen_label_settings, Icons.Filled.Settings)
     data object ComboGenerator :
         Screen("combo_generator", R.string.screen_label_combo_generator, Icons.Filled.PlayArrow)
 
-    data object AddEditMove : Screen("create_edit_move")
-    data object AddEditCombo : Screen("create_edit_combo")
-    data object AddEditBattleCombo : Screen("add_edit_battle_combo")
-    data object BattleTagList : Screen("battle_tag_list")
-    data object AddEditGoal : Screen("edit_goal")
+    data object AddEditMove : Screen("add_edit_move")
+    data object AddEditPracticeCombo : Screen("add_edit_practice_combo")
+    data object AddEditGoal : Screen("add_edit_goal")
     data object AddEditGoalStage : Screen("add_edit_goal_stage")
+    data object AddEditBattleCombo : Screen("add_edit_battle_combo")
 }
 
 val bottomNavItems = listOf(
     Screen.MoveList,
-    Screen.SavedCombos,
-    Screen.Goals,
+    Screen.PracticeComboList,
+    Screen.GoalList,
     Screen.Timer,
-    Screen.Battle
+    Screen.BattleComboList
 )
 
 object BreakVaultDestinationsArgs {
@@ -56,25 +57,23 @@ object BreakVaultDestinationsArgs {
     const val COMBO_ID_ARG = "comboId"
     const val GOAL_ID_ARG = "goalId"
     const val STAGE_ID_ARG = "stageId"
-    const val TAG_ID_ARG = "tagId"
-    const val TAG_NAME_ARG = "tagName"
 }
 
 object BreakVaultDestinations {
     val MOVE_LIST_ROUTE = Screen.MoveList.route
-    val SAVED_COMBOS_ROUTE = Screen.SavedCombos.route
-    val GOALS_ROUTE = Screen.Goals.route
+    val PRACTICE_COMBOS_LIST_ROUTE = Screen.PracticeComboList.route
+    val GOALS_LIST_ROUTE = Screen.GoalList.route
     val TIMER_ROUTE = Screen.Timer.route
-    val BATTLE_ROUTE = Screen.Battle.route
+    val BATTLE_COMBO_LIST_ROUTE = Screen.BattleComboList.route
     val TAG_LIST_ROUTE = Screen.TagList.route
+    val BATTLE_TAG_LIST_ROUTE = Screen.BattleTagList.route
     val ARCHIVED_GOALS_ROUTE = Screen.ArchivedGoals.route
     val SETTINGS_ROUTE = Screen.Settings.route
     val COMBO_GENERATOR_ROUTE = Screen.ComboGenerator.route
-    val BATTLE_TAG_LIST_ROUTE = Screen.BattleTagList.route
     val ADD_EDIT_MOVE_ROUTE =
         "${Screen.AddEditMove.route}?${BreakVaultDestinationsArgs.MOVE_ID_ARG}={${BreakVaultDestinationsArgs.MOVE_ID_ARG}}"
-    val ADD_EDIT_COMBO_ROUTE =
-        "${Screen.AddEditCombo.route}?${BreakVaultDestinationsArgs.COMBO_ID_ARG}={${BreakVaultDestinationsArgs.COMBO_ID_ARG}}"
+    val ADD_EDIT_PRACTICE_COMBO_ROUTE =
+        "${Screen.AddEditPracticeCombo.route}?${BreakVaultDestinationsArgs.COMBO_ID_ARG}={${BreakVaultDestinationsArgs.COMBO_ID_ARG}}"
     val ADD_EDIT_GOAL_ROUTE =
         "${Screen.AddEditGoal.route}?${BreakVaultDestinationsArgs.GOAL_ID_ARG}={${BreakVaultDestinationsArgs.GOAL_ID_ARG}}"
     val ADD_EDIT_GOAL_STAGE_ROUTE =
@@ -135,20 +134,11 @@ class BreakVaultNavigationActions(private val navController: NavHostController) 
         navController.navigate(route)
     }
 
-    fun navigateToAddEditCombo(comboId: String?) {
+    fun navigateToAddEditPracticeCombo(comboId: String?) {
         val route = if (comboId != null) {
-            "${Screen.AddEditCombo.route}?${BreakVaultDestinationsArgs.COMBO_ID_ARG}=$comboId"
+            "${Screen.AddEditPracticeCombo.route}?${BreakVaultDestinationsArgs.COMBO_ID_ARG}=$comboId"
         } else {
-            Screen.AddEditCombo.route
-        }
-        navController.navigate(route)
-    }
-
-    fun navigateToAddEditBattleCombo(comboId: String?) {
-        val route = if (comboId != null) {
-            "${Screen.AddEditBattleCombo.route}?${BreakVaultDestinationsArgs.COMBO_ID_ARG}=$comboId"
-        } else {
-            Screen.AddEditBattleCombo.route
+            Screen.AddEditPracticeCombo.route
         }
         navController.navigate(route)
     }
@@ -162,21 +152,30 @@ class BreakVaultNavigationActions(private val navController: NavHostController) 
         navController.navigate(route)
     }
 
+    fun navigateToAddEditGoalStage(goalId: String, stageId: String?) {
+        var route =
+            "${Screen.AddEditGoalStage.route}?${BreakVaultDestinationsArgs.GOAL_ID_ARG}=$goalId"
+        if (stageId != null) {
+            route += "&${BreakVaultDestinationsArgs.STAGE_ID_ARG}=$stageId"
+        }
+        navController.navigate(route)
+    }
+
     fun navigateFromNewStageToParentGoal(goalId: String) {
         val route = "${Screen.AddEditGoal.route}?${BreakVaultDestinationsArgs.GOAL_ID_ARG}=$goalId"
         navController.navigate(route) {
-            popUpTo(BreakVaultDestinations.GOALS_ROUTE) {
+            popUpTo(BreakVaultDestinations.GOALS_LIST_ROUTE) {
                 inclusive = false
             }
             launchSingleTop = true
         }
     }
 
-    fun navigateToAddEditGoalStage(goalId: String, stageId: String?) {
-        var route =
-            "${Screen.AddEditGoalStage.route}?${BreakVaultDestinationsArgs.GOAL_ID_ARG}=$goalId"
-        if (stageId != null) {
-            route += "&${BreakVaultDestinationsArgs.STAGE_ID_ARG}=$stageId"
+    fun navigateToAddEditBattleCombo(comboId: String?) {
+        val route = if (comboId != null) {
+            "${Screen.AddEditBattleCombo.route}?${BreakVaultDestinationsArgs.COMBO_ID_ARG}=$comboId"
+        } else {
+            Screen.AddEditBattleCombo.route
         }
         navController.navigate(route)
     }

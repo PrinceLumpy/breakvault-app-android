@@ -1,9 +1,9 @@
 package com.princelumpy.breakvault.data.repository
 
 import com.princelumpy.breakvault.data.local.dao.MoveDao
-import com.princelumpy.breakvault.data.local.dao.SavedComboDao
+import com.princelumpy.breakvault.data.local.dao.PracticeComboDao
 import com.princelumpy.breakvault.data.local.entity.Move
-import com.princelumpy.breakvault.data.local.entity.SavedCombo
+import com.princelumpy.breakvault.data.local.entity.PracticeCombo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -12,17 +12,17 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class SavedComboRepository @Inject constructor(
-    private val savedComboDao: SavedComboDao,
+class PracticeComboRepository @Inject constructor(
+    private val practiceComboDao: PracticeComboDao,
     private val moveDao: MoveDao
 ) {
 
     /**
-     * Gets a flow of all saved combos, ordered by the last update time.
+     * Gets a flow of all practice combos, ordered by the last update time.
      * The flow automatically updates when the underlying data changes.
      */
-    fun getSavedCombos(): Flow<List<SavedCombo>> {
-        return savedComboDao.getAllSavedCombos()
+    fun getPracticeCombos(): Flow<List<PracticeCombo>> {
+        return practiceComboDao.getAllPracticeCombos()
     }
 
     /**
@@ -35,33 +35,33 @@ class SavedComboRepository @Inject constructor(
     }
 
     /**
-     * Retrieves a single saved combo by its ID. Main-safe.
+     * Retrieves a single practice combo by its ID. Main-safe.
      */
-    suspend fun getSavedComboById(comboId: String): SavedCombo? {
+    suspend fun getPracticeComboById(comboId: String): PracticeCombo? {
         return withContext(Dispatchers.IO) {
-            savedComboDao.getSavedComboById(comboId)
+            practiceComboDao.getPracticeComboById(comboId)
         }
     }
 
     /**
-     * Inserts a new saved combo. Main-safe.
+     * Inserts a new practice combo. Main-safe.
      */
-    suspend fun insertSavedCombo(combo: SavedCombo) {
+    suspend fun insertPracticeCombo(combo: PracticeCombo) {
         withContext(Dispatchers.IO) {
-            savedComboDao.insertSavedCombo(combo)
+            practiceComboDao.insertPracticeCombo(combo)
         }
     }
 
     /**
-     * Updates an existing saved combo. Main-safe.
+     * Updates an existing practice combo. Main-safe.
      */
-    suspend fun updateSavedCombo(
+    suspend fun updatePracticeCombo(
         comboId: String,
         newName: String,
         newMoves: List<String>
     ) {
         withContext(Dispatchers.IO) {
-            savedComboDao.updateSavedCombo(
+            practiceComboDao.updatePracticeCombo(
                 comboId,
                 newName,
                 newMoves,
@@ -71,13 +71,13 @@ class SavedComboRepository @Inject constructor(
     }
 
     /**
-     * Deletes a saved combo from the database by its ID. Main-safe.
+     * Deletes a practice combo from the database by its ID. Main-safe.
      *
      * @param comboId The unique ID of the combo to be deleted.
      */
-    suspend fun deleteSavedCombo(comboId: String) {
+    suspend fun deletePracticeCombo(comboId: String) {
         withContext(Dispatchers.IO) {
-            savedComboDao.deleteSavedComboById(comboId)
+            practiceComboDao.deletePracticeComboById(comboId)
         }
     }
 }

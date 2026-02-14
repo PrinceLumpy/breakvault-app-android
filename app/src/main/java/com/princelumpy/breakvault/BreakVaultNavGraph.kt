@@ -25,8 +25,8 @@ import com.princelumpy.breakvault.ui.goals.list.GoalsScreen
 import com.princelumpy.breakvault.ui.moves.addedit.AddEditMoveScreen
 import com.princelumpy.breakvault.ui.moves.list.MoveListScreen
 import com.princelumpy.breakvault.ui.moves.managetags.MoveTagListScreen
-import com.princelumpy.breakvault.ui.savedcombos.addedit.AddEditComboScreen
-import com.princelumpy.breakvault.ui.savedcombos.list.SavedComboListScreen
+import com.princelumpy.breakvault.ui.practicecombos.addedit.AddEditPracticeComboScreen
+import com.princelumpy.breakvault.ui.practicecombos.list.PracticeComboListScreen
 import com.princelumpy.breakvault.ui.settings.SettingsScreen
 import com.princelumpy.breakvault.ui.timer.TimerScreen
 
@@ -154,15 +154,15 @@ fun BottomNavGraph(
             )
         }
 
-        composable(BreakVaultDestinations.SAVED_COMBOS_ROUTE) {
-            SavedComboListScreen(
-                onNavigateToAddEditCombo = { outerNavActions.navigateToAddEditCombo(it) },
+        composable(BreakVaultDestinations.PRACTICE_COMBOS_LIST_ROUTE) {
+            PracticeComboListScreen(
+                onNavigateToAddEditCombo = { outerNavActions.navigateToAddEditPracticeCombo(it) },
                 onNavigateToComboGenerator = { outerNavActions.navigateToComboGenerator() },
                 onOpenDrawer = onOpenDrawer
             )
         }
 
-        composable(BreakVaultDestinations.GOALS_ROUTE) {
+        composable(BreakVaultDestinations.GOALS_LIST_ROUTE) {
             GoalsScreen(
                 onNavigateToAddEditGoal = { outerNavActions.navigateToAddEditGoal(it) },
                 onNavigateToAddEditStage = { goalId, stageId ->
@@ -176,7 +176,7 @@ fun BottomNavGraph(
             TimerScreen(onOpenDrawer = onOpenDrawer)
         }
 
-        composable(BreakVaultDestinations.BATTLE_ROUTE) {
+        composable(BreakVaultDestinations.BATTLE_COMBO_LIST_ROUTE) {
             BattleComboListScreen(
                 onNavigateToAddEditBattleCombo = { outerNavActions.navigateToAddEditBattleCombo(it) },
                 onNavigateToBattleTagList = { outerNavActions.navigateToBattleTagListDirect() },
@@ -220,7 +220,7 @@ fun NavGraphBuilder.overlayNavGraph(
             }
         )
     }
-    
+
     // ADD_EDIT_MOVE_ROUTE - AddEdit screen
     composable(
         route = BreakVaultDestinations.ADD_EDIT_MOVE_ROUTE,
@@ -276,9 +276,9 @@ fun NavGraphBuilder.overlayNavGraph(
         )
     }
 
-    // ADD_EDIT_COMBO_ROUTE - AddEdit screen
+    // ADD_EDIT_PRACTICE_COMBO_ROUTE - AddEdit screen
     composable(
-        route = BreakVaultDestinations.ADD_EDIT_COMBO_ROUTE,
+        route = BreakVaultDestinations.ADD_EDIT_PRACTICE_COMBO_ROUTE,
         arguments = listOf(navArgument(BreakVaultDestinationsArgs.COMBO_ID_ARG) {
             type = NavType.StringType
             nullable = true
@@ -301,7 +301,7 @@ fun NavGraphBuilder.overlayNavGraph(
             BreakVaultNavigationActions(navController)
         }
         val comboId = backStackEntry.arguments?.getString(BreakVaultDestinationsArgs.COMBO_ID_ARG)
-        AddEditComboScreen(
+        AddEditPracticeComboScreen(
             onNavigateUp = { navActions.navigateUp() },
             comboId = comboId
         )

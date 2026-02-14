@@ -3,7 +3,7 @@
 
     <!-- Screen Labels (for Navigation) -->
     <string name="screen_label_moves">Moves</string>
-    <string name="screen_label_saved_combos">Combos</string>
+    <string name="screen_label_practice_combos">Combos</string>
     <string name="screen_label_tags">Tags</string>
     <string name="screen_label_settings">Settings</string>
     <string name="screen_label_combo_generator">Generator</string>
@@ -113,14 +113,14 @@
     <string name="settings_reset_dialog_message">Are you sure you want to reset all data? This action cannot be undone.</string>
     <string name="settings_reset_dialog_confirm_button">Reset</string>
 
-    <!-- SavedComboListScreen -->
-    <string name="saved_combos_screen_title">Practice Combos</string>
-    <string name="saved_combos_no_combos_message">No saved combos yet.</string>
-    <string name="saved_combos_delete_combo_description">Delete Combo</string>
+    <!-- PracticeComboListScreen -->
+    <string name="practice_combos_screen_title">Practice Combos</string>
+    <string name="practice_combos_no_combos_message">No practice combos yet.</string>
+    <string name="practice_combos_delete_combo_description">Delete Combo</string>
     <string name="create_combo_fab_description">Create Combo</string>
     <string name="combo_deleted_snackbar">Combo deleted</string>
 
-    <!-- AddEditComboScreen -->
+    <!-- AddEditPracticeComboScreen -->
     <string name="create_combo_title">Create New Combo</string>
     <string name="edit_combo_title">Edit Combo</string>
     <string name="save_combo_fab_description">Save Combo</string>
@@ -226,9 +226,9 @@
     <string name="common_edit">Edit</string>
     <string name="goal_stage_item_add_reps_button">Add Reps</string>
     <string name="edit_combo_description">Edit Description</string>
-    <string name="saved_combos_delete_confirmation_message">Are you sure you want to delete?</string>
+    <string name="practice_combos_delete_confirmation_message">Are you sure you want to delete?</string>
     <string name="create_combo_button_text">Create Combo</string>
-    <string name="saved_combos_empty_state_subtitle">Create a new combo to get started!</string>
+    <string name="practice_combos_empty_state_subtitle">Create a new combo to get started!</string>
     <string name="combo_generator_add_tag_button">Add Tag to Sequence</string>
     <string name="combo_generator_remove_last_tag_button">Remove Last Tag in Sequence</string>
     <string name="combo_generator_sequence_empty_message">Sequence is Currently Empty</string>

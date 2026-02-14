@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -32,7 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -43,7 +40,7 @@ import com.princelumpy.breakvault.common.Constants.BATTLE_TAG_CHARACTER_LIMIT
 import com.princelumpy.breakvault.data.local.entity.BattleTag
 import com.princelumpy.breakvault.data.local.entity.EnergyLevel
 import com.princelumpy.breakvault.data.local.entity.TrainingStatus
-import com.princelumpy.breakvault.data.local.entity.SavedCombo
+import com.princelumpy.breakvault.data.local.entity.PracticeCombo
 import com.princelumpy.breakvault.ui.common.TagDialog
 import com.princelumpy.breakvault.ui.common.TagSelectionCard
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
@@ -104,7 +101,7 @@ fun AddEditBattleComboScreen(
 }
 
 /**
- * A stateless scaffold that handles the overall layout for the Add/Edit Battle Combo screen.
+ * A stateless scaffold that handles the overall layout for the Add/Edit BattleComboList Combo screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -120,7 +117,7 @@ private fun AddEditBattleComboScaffold(
     onTagSelected: (String) -> Unit,
     onNewTagNameChange: (String) -> Unit,
     onAddBattleTag: () -> Unit,
-    onImportCombo: (SavedCombo) -> Unit,
+    onImportCombo: (PracticeCombo) -> Unit,
     onDeleteComboClick: () -> Unit,
     onConfirmComboDelete: () -> Unit,
     onCancelComboDelete: () -> Unit
@@ -467,8 +464,8 @@ private fun TagsSection(
  */
 @Composable
 private fun ImportDialog(
-    practiceCombos: List<SavedCombo>,
-    onImportCombo: (SavedCombo) -> Unit,
+    practiceCombos: List<PracticeCombo>,
+    onImportCombo: (PracticeCombo) -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -570,7 +567,7 @@ private fun EnergyChip(
 
 //region Previews
 
-@Preview(showBackground = true, name = "Add Battle Combo - New")
+@Preview(showBackground = true, name = "Add BattleComboList Combo - New")
 @Composable
 private fun AddEditBattleComboFormContentPreview() {
     val dummyTags = listOf(
@@ -600,7 +597,7 @@ private fun AddEditBattleComboFormContentPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "Edit Battle Combo - With Data")
+@Preview(showBackground = true, name = "Edit BattleComboList Combo - With Data")
 @Composable
 private fun AddEditBattleComboFormContentEditPreview() {
     val dummyTags = listOf(
@@ -631,7 +628,7 @@ private fun AddEditBattleComboFormContentEditPreview() {
     }
 }
 
-@Preview(showBackground = true, name = "Add Battle Combo - With Errors")
+@Preview(showBackground = true, name = "Add BattleComboList Combo - With Errors")
 @Composable
 private fun AddEditBattleComboFormContentWithErrorsPreview() {
     val dummyTags = listOf(
@@ -680,8 +677,8 @@ private fun DeleteComboDialogPreview() {
 @Composable
 private fun ImportDialogPreview() {
     val dummyCombos = listOf(
-        SavedCombo(id = "1", name = "combo1", moves = listOf("Jab", "Cross", "Hook")),
-        SavedCombo(id = "2", name = "Combo 2", moves = listOf("Windmill", "Freeze", "Air Flare"))
+        PracticeCombo(id = "1", name = "combo1", moves = listOf("Jab", "Cross", "Hook")),
+        PracticeCombo(id = "2", name = "Combo 2", moves = listOf("Windmill", "Freeze", "Air Flare"))
     )
     BreakVaultTheme {
         ImportDialog(

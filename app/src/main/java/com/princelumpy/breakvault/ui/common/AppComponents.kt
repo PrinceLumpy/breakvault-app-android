@@ -69,7 +69,7 @@ fun AppLinearProgressIndicator(
 
 /**
  * A shared component for displaying and selecting tags in a scrollable card.
- * Used across Move editing, Battle Combo editing, and Combo Generator screens.
+ * Used across Move editing, BattleComboList Combo editing, and Combo Generator screens.
  *
  * @param T The type of tag (must have id and name properties)
  * @param allTags List of all available tags
@@ -162,7 +162,7 @@ fun <T> TagSelectionCard(
 
 /**
  * A shared dialog for adding or editing a tag.
- * Used in Move Tag Management, Battle Tag Management, and Add/Edit screens.
+ * Used in Move Tag Management, BattleComboList Tag Management, and Add/Edit screens.
  *
  * @param title Dialog title text
  * @param labelText Label for the input field
@@ -309,7 +309,7 @@ fun ListItemCard(
 
 /**
  * A shared generic list component for displaying items with edit and delete actions.
- * Used in tag management screens for both Move and Battle tags.
+ * Used in tag management screens for both Move and BattleComboList tags.
  *
  * @param T The type of items in the list
  * @param items List of items to display

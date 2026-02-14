@@ -1,4 +1,4 @@
-package com.princelumpy.breakvault.ui.savedcombos.addedit
+package com.princelumpy.breakvault.ui.practicecombos.addedit
 
 import AppStyleDefaults
 import androidx.compose.foundation.clickable
@@ -52,7 +52,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.Move
@@ -65,18 +65,18 @@ private const val COMBO_NAME_CHARACTER_LIMIT = 30
  * The main, stateful screen composable that holds the ViewModel and state.
  */
 @Composable
-fun AddEditComboScreen(
+fun AddEditPracticeComboScreen(
     onNavigateUp: () -> Unit,
     comboId: String?,
-    addEditComboViewModel: AddEditComboViewModel = hiltViewModel()
+    addEditPracticeComboViewModel: AddEditPracticeComboViewModel = hiltViewModel()
 ) {
-    val uiState by addEditComboViewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by addEditPracticeComboViewModel.uiState.collectAsStateWithLifecycle()
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(key1 = comboId) {
-        addEditComboViewModel.loadCombo(comboId)
+        addEditPracticeComboViewModel.loadCombo(comboId)
     }
 
     LaunchedEffect(uiState.isNewCombo) {
@@ -85,30 +85,30 @@ fun AddEditComboScreen(
         }
     }
 
-    AddEditComboScaffold(
+    AddEditPracticeComboScaffold(
         uiState = uiState,
         focusRequester = focusRequester,
         snackbarHostState = snackbarHostState,
         onNavigateUp = onNavigateUp,
-        onComboNameChange = { addEditComboViewModel.onComboNameChange(it) },
-        onRemoveMove = { addEditComboViewModel.removeMoveFromCombo(it) },
-        onSearchTextChange = { addEditComboViewModel.onSearchTextChange(it) },
-        onExpandedChange = { addEditComboViewModel.onExpandedChange(it) },
-        onAddMove = { addEditComboViewModel.addMoveToCombo(it) },
+        onComboNameChange = { addEditPracticeComboViewModel.onComboNameChange(it) },
+        onRemoveMove = { addEditPracticeComboViewModel.removeMoveFromCombo(it) },
+        onSearchTextChange = { addEditPracticeComboViewModel.onSearchTextChange(it) },
+        onExpandedChange = { addEditPracticeComboViewModel.onExpandedChange(it) },
+        onAddMove = { addEditPracticeComboViewModel.addMoveToCombo(it) },
         onSaveCombo = {
-            addEditComboViewModel.saveCombo {
+            addEditPracticeComboViewModel.saveCombo {
                 focusManager.clearFocus()
                 onNavigateUp()
             }
         },
-        onDeleteComboClick = { addEditComboViewModel.onDeleteComboClick() },
+        onDeleteComboClick = { addEditPracticeComboViewModel.onDeleteComboClick() },
         onConfirmComboDelete = {
-            addEditComboViewModel.onConfirmComboDelete {
+            addEditPracticeComboViewModel.onConfirmComboDelete {
                 focusManager.clearFocus()
                 onNavigateUp()
             }
         },
-        onCancelComboDelete = { addEditComboViewModel.onCancelComboDelete() }
+        onCancelComboDelete = { addEditPracticeComboViewModel.onCancelComboDelete() }
     )
 }
 
@@ -116,7 +116,7 @@ fun AddEditComboScreen(
  * A stateless scaffold that handles the overall layout for the Add/Edit Combo screen.
  */
 @Composable
-private fun AddEditComboScaffold(
+private fun AddEditPracticeComboScaffold(
     uiState: AddEditComboUiState,
     focusRequester: FocusRequester,
     snackbarHostState: SnackbarHostState,

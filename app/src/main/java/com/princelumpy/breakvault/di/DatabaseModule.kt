@@ -5,7 +5,7 @@ import com.princelumpy.breakvault.data.local.database.AppDB
 import com.princelumpy.breakvault.data.local.dao.BattleDao // 1. Import BattleDao
 import com.princelumpy.breakvault.data.local.dao.GoalDao
 import com.princelumpy.breakvault.data.local.dao.MoveDao
-import com.princelumpy.breakvault.data.local.dao.SavedComboDao
+import com.princelumpy.breakvault.data.local.dao.PracticeComboDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -37,8 +37,8 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideSavedComboDao(appDB: AppDB): SavedComboDao {
-        return appDB.savedComboDao()
+    fun providePracticeComboDao(appDB: AppDB): PracticeComboDao {
+        return appDB.practiceComboDao()
     }
 
     @Provides

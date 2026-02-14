@@ -93,7 +93,7 @@ fun ArchivedGoalsScreen(
 }
 
 /**
- * A stateless scaffold that handles the overall layout for the Archived Goals screen.
+ * A stateless scaffold that handles the overall layout for the Archived GoalList screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -418,7 +418,7 @@ private fun DeleteConfirmationDialog(
 
 //region Previews
 
-@Preview(showBackground = true, name = "Archived Goals Screen")
+@Preview(showBackground = true, name = "Archived GoalList Screen")
 @Composable
 private fun ArchivedGoalsScaffold_WithGoals_Preview() {
     val dummyGoals = listOf(
@@ -484,7 +484,7 @@ private fun ArchivedGoalsScaffold_WithGoals_Preview() {
     }
 }
 
-@Preview(showBackground = true, name = "Empty Archived Goals")
+@Preview(showBackground = true, name = "Empty Archived GoalList")
 @Composable
 private fun ArchivedGoalsScaffold_NoGoals_Preview() {
     BreakVaultTheme {

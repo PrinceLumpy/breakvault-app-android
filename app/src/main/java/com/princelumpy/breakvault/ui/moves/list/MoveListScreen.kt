@@ -94,7 +94,7 @@ fun MoveListContent(
                     IconButton(onClick = onNavigateToMoveTagList) {
                         Icon(
                             Icons.AutoMirrored.Filled.Label,
-                            contentDescription = "Manage Battle Tags"
+                            contentDescription = "Manage BattleComboList Tags"
                         )
                     }
                 }

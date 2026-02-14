@@ -12,7 +12,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Repository for managing Battle Combo data.
+ * Repository for managing BattleComboList Combo data.
  * Acts as a single source of truth for battle combo related data,
  * handling interactions with the local database via BattleDao.
  *

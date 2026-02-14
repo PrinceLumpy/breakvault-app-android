@@ -5,7 +5,7 @@ object Constants {
     const val MOVE_NAME_CHARACTER_LIMIT = 20
     const val MOVE_TAG_CHARACTER_LIMIT = 20
 
-    // Battle Combo
+    // BattleComboList Combo
     const val BATTLE_COMBO_DESCRIPTION_CHARACTER_LIMIT = 200
     const val BATTLE_TAG_CHARACTER_LIMIT = 20
 

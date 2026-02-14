@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -98,7 +99,10 @@ private fun SavedComboListScaffold(
         },
         floatingActionButton = {
             if (savedCombos.isNotEmpty()) {
-                FloatingActionButton(onClick = { onNavigateToAddEditCombo(null) }) {
+                FloatingActionButton(
+                    onClick = { onNavigateToAddEditCombo(null) },
+                    modifier = Modifier.imePadding(),
+                ) {
                     Icon(
                         Icons.Filled.Add,
                         contentDescription = stringResource(R.string.create_combo_fab_description)

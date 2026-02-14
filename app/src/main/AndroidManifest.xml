@@ -15,6 +15,7 @@
         <activity
             android:name=".BreakVaultActivity"
             android:exported="true"
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.ComboGenerator"
             tools:ignore="MissingClass">
             <intent-filter>

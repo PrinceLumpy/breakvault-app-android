@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -99,7 +100,10 @@ fun MoveListContent(
         },
         floatingActionButton = {
             if (uiState.moveList.isNotEmpty()) {
-                FloatingActionButton(onClick = { onNavigateToAddEditMove(null) }) {
+                FloatingActionButton(
+                    onClick = { onNavigateToAddEditMove(null) },
+                    modifier = Modifier.imePadding(),
+                ) {
                     Icon(
                         Icons.Default.Add,
                         contentDescription = stringResource(id = R.string.move_list_add_move_button)

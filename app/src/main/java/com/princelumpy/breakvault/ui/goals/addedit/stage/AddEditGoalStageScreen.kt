@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
@@ -93,7 +94,8 @@ fun AddEditGoalStageScreen(
             },
             floatingActionButton = {
                 FloatingActionButton(
-                    onClick = { addEditGoalStageViewModel.saveStage { onNavigateUp() } }
+                    onClick = { addEditGoalStageViewModel.saveStage { onNavigateUp() } },
+                    modifier = Modifier.imePadding()
                 ) {
                     Icon(
                         Icons.Filled.Save,
@@ -206,6 +208,9 @@ private fun AddEditGoalStageContent(
     modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
+    val targetCountFocusRequester = remember { FocusRequester() }
+    val unitFocusRequester = remember { FocusRequester() }
+
 
     Column(
         modifier = modifier
@@ -236,6 +241,11 @@ private fun AddEditGoalStageContent(
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences,
                 imeAction = ImeAction.Next
+            ),
+            keyboardActions = KeyboardActions(
+                onNext = {
+                    targetCountFocusRequester.requestFocus()
+                }
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -279,6 +289,11 @@ private fun AddEditGoalStageContent(
                     keyboardType = KeyboardType.Number,
                     imeAction = ImeAction.Next
                 ),
+                keyboardActions = KeyboardActions(
+                    onNext = {
+                        unitFocusRequester.requestFocus()
+                    }
+                ),
                 isError = targetError != null,
                 supportingText = {
                     targetError?.let { message ->
@@ -291,7 +306,9 @@ private fun AddEditGoalStageContent(
                     }
                 },
                 singleLine = true,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(targetCountFocusRequester)
             )
         }
 
@@ -328,7 +345,9 @@ private fun AddEditGoalStageContent(
                     onSave()
                 }
             ),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(unitFocusRequester)
         )
     }
 }

@@ -1,4 +1,3 @@
-* Implement loading bar for all pages
 * Be able to reorder goal stages in parent goal screen
 * When switching tabs from bottom navbar, the TopNavBar and BottomNavBar show way earlier than the
   actual page, it's very clunky.

@@ -12,11 +12,10 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -28,7 +27,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -102,6 +100,7 @@ fun ComboGeneratorContent(
             if (uiState.generatedCombo.moves.isNotEmpty()) {
                 ExtendedFloatingActionButton(
                     onClick = onSaveCombo,
+                    modifier = Modifier.imePadding(),
                     icon = {
                         Icon(
                             Icons.Filled.Save,
@@ -159,7 +158,7 @@ fun ComboGeneratorContent(
                 onClick = onGenerateCombo,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = when (uiState.settings.currentMode) {
-                    GenerationMode.Random -> uiState.settings.selectedTags.isNotEmpty()
+                    GenerationMode.Random -> true
                     GenerationMode.Structured -> uiState.settings.structuredMoveTagSequence.isNotEmpty()
                 }
             ) {
@@ -222,7 +221,7 @@ fun RandomModeUI(
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
+        verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
     ) {
         Text(
             stringResource(id = R.string.combo_generator_select_tags_label),
@@ -241,8 +240,6 @@ fun RandomModeUI(
                 onTagsChange = onTagsChange
             )
         }
-
-        Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingSmall))
 
         RandomModeControls(
             allowRepeats = allowRepeats,
@@ -306,7 +303,7 @@ fun RandomModeControls(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
+            horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
         ) {
             Text(
                 text = stringResource(id = R.string.combo_generator_allow_repeats_label),
@@ -318,43 +315,47 @@ fun RandomModeControls(
             )
         }
 
-        LengthInput(
-            selectedLength = selectedLength,
-            lengthError = lengthError,
-            onLengthChange = onLengthChange,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
+        ) {
+            Text(
+                text = stringResource(id = R.string.combo_generator_combo_length_label),
+                style = MaterialTheme.typography.bodyMedium
+            )
+            LengthSlider(
+                selectedLength = selectedLength,
+                onLengthChange = onLengthChange
+            )
+        }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LengthInput(
+fun LengthSlider(
     selectedLength: Int?,
-    lengthError: String?,
     onLengthChange: (String) -> Unit
 ) {
-    OutlinedTextField(
-        value = selectedLength?.toString() ?: "",
-        onValueChange = { newText ->
-            if (newText.all { it.isDigit() } && newText.length <= 2) {
-                onLengthChange(newText)
-            }
-        },
-        label = { Text(stringResource(id = R.string.combo_generator_combo_length_label)) },
-        placeholder = { Text(stringResource(id = R.string.combo_generator_combo_length_option)) },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        singleLine = true,
-        isError = lengthError != null,
-        supportingText = {
-            lengthError?.let {
-                Text(
-                    text = it,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-        },
-        modifier = Modifier.width(AppStyleDefaults.SpacingExtraLarge * 8)
-    )
+    val currentLength = selectedLength ?: 4
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)
+    ) {
+        val sliderState =
+            rememberSliderState(
+                steps = 1,
+                valueRange = 1f..5f,
+                value = currentLength.toFloat(),
+                onValueChangeFinished = { onLengthChange(sliderPosition.toInt().toString()) }
+            )
+
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Text(text = currentLength.toString())
+            Slider(state = sliderState)
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

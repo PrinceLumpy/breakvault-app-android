@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -107,7 +108,14 @@ class ComboGeneratorViewModel @Inject constructor(
 
     private suspend fun generateRandomMoves(): List<Move> {
         val settings = _settings.value
-        val availableMoves = moveDao.getMovesByTags(settings.selectedTags.map { it.id })
+
+        val tagsToUse = if (settings.selectedTags.isEmpty()) {
+            moveDao.getAllTagsAsFlow().first()
+        } else {
+            settings.selectedTags.toList()
+        }
+
+        val availableMoves = moveDao.getMovesByTags(tagsToUse.map { it.id })
 
         if (availableMoves.isEmpty()) {
             showSnackbar("No moves found for the selected tags.")

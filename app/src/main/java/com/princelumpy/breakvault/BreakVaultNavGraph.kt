@@ -1,5 +1,9 @@
 package com.princelumpy.breakvault
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -35,10 +39,177 @@ fun BreakVaultNavGraph(
         BreakVaultNavigationActions(navController)
     }
 ) {
+    // Define screen categories for different transition types
+    val addEditScreens = setOf(
+        BreakVaultDestinations.ADD_EDIT_MOVE_ROUTE,
+        BreakVaultDestinations.ADD_EDIT_COMBO_ROUTE,
+        BreakVaultDestinations.ADD_EDIT_GOAL_ROUTE,
+        BreakVaultDestinations.ADD_EDIT_GOAL_STAGE_ROUTE,
+        BreakVaultDestinations.ADD_EDIT_BATTLE_COMBO_ROUTE
+    )
+
+    val managementScreens = setOf(
+        BreakVaultDestinations.TAG_LIST_ROUTE,
+        BreakVaultDestinations.MOVES_BY_TAG_ROUTE,
+        BreakVaultDestinations.BATTLE_TAG_LIST_ROUTE,
+        BreakVaultDestinations.SETTINGS_ROUTE,
+        BreakVaultDestinations.ARCHIVED_GOALS_ROUTE
+    )
+
     NavHost(
         navController = navController,
         startDestination = startDestination,
-        modifier = modifier
+        modifier = modifier,
+        enterTransition = {
+            val targetRoute = targetState.destination.route
+            val initialRoute = initialState.destination.route
+
+            // Get indices in bottom nav bar
+            val targetIndex = bottomNavItems.indexOfFirst { it.route == targetRoute }
+            val initialIndex = bottomNavItems.indexOfFirst { it.route == initialRoute }
+
+            when {
+                // Bottom nav transitions: horizontal slide based on position
+                targetIndex != -1 && initialIndex != -1 -> {
+                    if (targetIndex > initialIndex) {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                            animationSpec = tween(300)
+                        )
+                    } else {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.End,
+                            animationSpec = tween(300)
+                        )
+                    }
+                }
+                // Add/Edit screens: slide up from bottom
+                addEditScreens.any { targetRoute?.startsWith(it.substringBefore('?')) == true } -> {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Up,
+                        animationSpec = tween(300)
+                    )
+                }
+                // Management screens: slide from right
+                managementScreens.any { targetRoute?.startsWith(it.substringBefore('?')) == true } -> {
+                    slideIntoContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                        animationSpec = tween(300)
+                    )
+                }
+                // Default: fade
+                else -> fadeIn(animationSpec = tween(150))
+            }
+        },
+        exitTransition = {
+            val targetRoute = targetState.destination.route
+            val initialRoute = initialState.destination.route
+
+            val targetIndex = bottomNavItems.indexOfFirst { it.route == targetRoute }
+            val initialIndex = bottomNavItems.indexOfFirst { it.route == initialRoute }
+
+            when {
+                // Bottom nav transitions
+                targetIndex != -1 && initialIndex != -1 -> {
+                    if (targetIndex > initialIndex) {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                            animationSpec = tween(300)
+                        )
+                    } else {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.End,
+                            animationSpec = tween(300)
+                        )
+                    }
+                }
+                // Add/Edit screens: fade out the previous screen
+                addEditScreens.any { targetRoute?.startsWith(it.substringBefore('?')) == true } -> {
+                    fadeOut(animationSpec = tween(150))
+                }
+                // Management screens: fade out the previous screen
+                managementScreens.any { targetRoute?.startsWith(it.substringBefore('?')) == true } -> {
+                    fadeOut(animationSpec = tween(150))
+                }
+                // Default: fade
+                else -> fadeOut(animationSpec = tween(150))
+            }
+        },
+        popEnterTransition = {
+            val targetRoute = targetState.destination.route
+            val initialRoute = initialState.destination.route
+
+            // Check if we're returning to a bottom nav item
+            val targetIndex = bottomNavItems.indexOfFirst { it.route == targetRoute }
+            val initialIndex = bottomNavItems.indexOfFirst { it.route == initialRoute }
+
+            when {
+                // Returning to a bottom nav item from another bottom nav item
+                targetIndex != -1 && initialIndex != -1 -> {
+                    if (targetIndex < initialIndex) {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.End,
+                            animationSpec = tween(300)
+                        )
+                    } else {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                            animationSpec = tween(300)
+                        )
+                    }
+                }
+                // Coming back from Add/Edit screens: fade in
+                addEditScreens.any { initialRoute?.startsWith(it.substringBefore('?')) == true } -> {
+                    fadeIn(animationSpec = tween(150))
+                }
+                // Coming back from management screens: fade in
+                managementScreens.any { initialRoute?.startsWith(it.substringBefore('?')) == true } -> {
+                    fadeIn(animationSpec = tween(150))
+                }
+                // Default: fade
+                else -> fadeIn(animationSpec = tween(150))
+            }
+        },
+        popExitTransition = {
+            val targetRoute = targetState.destination.route
+            val initialRoute = initialState.destination.route
+
+            val targetIndex = bottomNavItems.indexOfFirst { it.route == targetRoute }
+            val initialIndex = bottomNavItems.indexOfFirst { it.route == initialRoute }
+
+            when {
+                // Exiting from a bottom nav item to another bottom nav item
+                targetIndex != -1 && initialIndex != -1 -> {
+                    if (targetIndex < initialIndex) {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.End,
+                            animationSpec = tween(300)
+                        )
+                    } else {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                            animationSpec = tween(300)
+                        )
+                    }
+                }
+                // Add/Edit screens: slide down when dismissed
+                addEditScreens.any { initialRoute?.startsWith(it.substringBefore('?')) == true } -> {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.Down,
+                        animationSpec = tween(300)
+                    )
+                }
+                // Management screens: slide to right when going back
+                managementScreens.any { initialRoute?.startsWith(it.substringBefore('?')) == true } -> {
+                    slideOutOfContainer(
+                        towards = AnimatedContentTransitionScope.SlideDirection.End,
+                        animationSpec = tween(300)
+                    )
+                }
+                // Default: fade
+                else -> fadeOut(animationSpec = tween(150))
+            }
+        }
     ) {
         composable(
             BreakVaultDestinations.MOVE_LIST_ROUTE
@@ -170,7 +341,7 @@ fun BreakVaultNavGraph(
         composable(BreakVaultDestinations.BATTLE_ROUTE) {
             BattleComboListScreen(
                 onNavigateToAddEditBattleCombo = { navActions.navigateToAddEditBattleCombo(it) },
-                onNavigateToBattleTagList = { navActions.navigateToBattleTagList() },
+                onNavigateToBattleTagList = { navActions.navigateToBattleTagListDirect() },
                 onOpenDrawer = onOpenDrawer
             )
         }

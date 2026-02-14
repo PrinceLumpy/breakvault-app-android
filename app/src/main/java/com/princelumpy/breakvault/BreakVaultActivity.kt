@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Build
@@ -73,10 +75,15 @@ fun MainAppScreen() {
 
     val showBottomBar = currentDestination?.route in bottomNavItems.map { it.route }
 
+    val configuration = LocalConfiguration.current
+    val drawerWidth = (configuration.screenWidthDp * 0.8f).dp
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
+            ModalDrawerSheet(
+                modifier = Modifier.width(drawerWidth)
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -139,7 +146,7 @@ fun MainAppScreen() {
         }
     ) {
         Scaffold(
-            containerColor = Color.Transparent,
+            containerColor = MaterialTheme.colorScheme.background,
             contentColor = MaterialTheme.colorScheme.onBackground,
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {

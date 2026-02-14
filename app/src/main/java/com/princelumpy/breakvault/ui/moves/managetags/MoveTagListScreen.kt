@@ -501,7 +501,9 @@ private fun AddTagDialogPreview() {
             newTagName = "Flow",
             onNewTagNameChange = {},
             onDismiss = {},
-            onConfirm = {}
+            onConfirm = {},
+            isError = false,
+            errorMessage = null
         )
     }
 }
@@ -514,7 +516,9 @@ private fun EditTagDialogPreview() {
             tagNameForEdit = "Old Name",
             onTagNameChange = {},
             onDismiss = {},
-            onConfirm = {}
+            onConfirm = {},
+            isError = false,
+            errorMessage = null
         )
     }
 }

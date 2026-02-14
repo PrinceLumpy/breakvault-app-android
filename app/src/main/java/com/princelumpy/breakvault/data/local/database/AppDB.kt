@@ -40,7 +40,8 @@ import java.util.UUID
         Goal::class,
         GoalStage::class
     ],
-    version = 1
+    version = 2,
+    exportSchema = true
 )
 
 @TypeConverters(Converters::class)

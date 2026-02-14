@@ -130,8 +130,6 @@ private fun PracticeComboListScaffold(
                 if (practiceCombos.isEmpty()) {
                     EmptyState(
                         onNavigateToAddEditCombo = { onNavigateToAddEditCombo(null) },
-                        modifier = Modifier
-                            .weight(1f)
                     )
                 } else {
                     ComboList(
@@ -173,10 +171,9 @@ private fun ComboList(
 @Composable
 private fun EmptyState(
     onNavigateToAddEditCombo: () -> Unit,
-    modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier.padding(AppStyleDefaults.SpacingLarge),
+        modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

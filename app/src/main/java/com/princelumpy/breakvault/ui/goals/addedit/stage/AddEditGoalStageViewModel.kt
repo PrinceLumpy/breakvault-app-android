@@ -199,13 +199,24 @@ class AddEditGoalStageViewModel @Inject constructor(
         // --- End of Guarding Block ---
 
         viewModelScope.launch {
+            // For new stages, determine the next orderIndex
+            val orderIndex = if (currentUiState.isNewStage) {
+                val goalWithStages = goalRepository.getGoalWithStages(currentUiState.goalId)
+                    .stateIn(viewModelScope).value
+                (goalWithStages?.stages?.maxOfOrNull { it.orderIndex } ?: -1) + 1
+            } else {
+                // For existing stages, fetch and preserve the current orderIndex
+                goalRepository.getGoalStageById(currentUiState.stageId!!)?.orderIndex ?: 0
+            }
+
             val stageToSave = GoalStage(
                 id = currentUiState.stageId ?: UUID.randomUUID().toString(),
                 goalId = currentUiState.goalId,
                 name = inputs.name,
                 currentCount = current,
                 targetCount = target,
-                unit = inputs.unit
+                unit = inputs.unit,
+                orderIndex = orderIndex
             )
 
             if (currentUiState.isNewStage) {

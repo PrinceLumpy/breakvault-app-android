@@ -27,6 +27,7 @@ data class GoalStage(
     val currentCount: Int = 0,
     val targetCount: Int,
     val unit: String = "reps",
+    val orderIndex: Int = 0,
     val createdAt: Long = System.currentTimeMillis(),
     val lastUpdated: Long = System.currentTimeMillis()
 )

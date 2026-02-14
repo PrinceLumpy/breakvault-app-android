@@ -222,4 +222,14 @@ class AddEditGoalViewModel @Inject constructor(
     fun onNavigateToEditStageDone() {
         _dialogState.update { it.copy(navigateToEditStage = null) }
     }
+
+    fun onStagesReordered(reorderedStages: List<GoalStage>) {
+        viewModelScope.launch {
+            // Update orderIndex for all stages based on their new positions
+            val updatedStages = reorderedStages.mapIndexed { index, stage ->
+                stage.copy(orderIndex = index, lastUpdated = System.currentTimeMillis())
+            }
+            goalRepository.updateGoalStages(updatedStages)
+        }
+    }
 }

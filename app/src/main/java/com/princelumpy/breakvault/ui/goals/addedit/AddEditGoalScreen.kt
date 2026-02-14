@@ -2,6 +2,8 @@ package com.princelumpy.breakvault.ui.goals.addedit
 
 import AppStyleDefaults
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -21,6 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -44,10 +48,19 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.unit.IntSize
+import kotlinx.coroutines.launch
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -117,6 +130,7 @@ fun AddEditGoalScreen(
         stages = uiState.stages,
         onAddStageClick = { addEditGoalViewModel.onAddStageClicked() },
         onEditStageClick = { addEditGoalViewModel.onEditStageClicked(it) },
+        onStagesReordered = { addEditGoalViewModel.onStagesReordered(it) },
         onArchiveClick = { addEditGoalViewModel.archiveGoal { onNavigateUp() } },
         onDeleteClick = { showDeleteConfirmationDialog = true },
         onSaveClick = { addEditGoalViewModel.saveGoal { onNavigateUp() } },
@@ -139,6 +153,7 @@ private fun AddEditGoalScaffold(
     stages: List<GoalStage>,
     onAddStageClick: () -> Unit,
     onEditStageClick: (GoalStage) -> Unit,
+    onStagesReordered: (List<GoalStage>) -> Unit,
     onArchiveClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onSaveClick: () -> Unit,
@@ -194,7 +209,8 @@ private fun AddEditGoalScaffold(
                 descriptionError = descriptionError,
                 stages = stages,
                 onAddStageClick = onAddStageClick,
-                onEditStageClick = onEditStageClick
+                onEditStageClick = onEditStageClick,
+                onStagesReordered = onStagesReordered
             )
         }
     }
@@ -211,7 +227,8 @@ private fun AddEditGoalContent(
     descriptionError: String?,
     stages: List<GoalStage>,
     onAddStageClick: () -> Unit,
-    onEditStageClick: (GoalStage) -> Unit
+    onEditStageClick: (GoalStage) -> Unit,
+    onStagesReordered: (List<GoalStage>) -> Unit
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -282,7 +299,8 @@ private fun AddEditGoalContent(
         GoalStagesList(
             stages = stages,
             onAddStageClick = onAddStageClick,
-            onEditStageClick = onEditStageClick
+            onEditStageClick = onEditStageClick,
+            onStagesReordered = onStagesReordered
         )
     }
 }
@@ -338,14 +356,24 @@ private fun AddEditGoalTopBar(
 }
 
 /**
- * A stateless composable to display the list of goal stages.
+ * A stateless composable to display the list of goal stages with drag-to-reorder functionality.
  */
 @Composable
 private fun GoalStagesList(
     stages: List<GoalStage>,
     onAddStageClick: () -> Unit,
-    onEditStageClick: (GoalStage) -> Unit
+    onEditStageClick: (GoalStage) -> Unit,
+    onStagesReordered: (List<GoalStage>) -> Unit
 ) {
+    val stagesList = remember(stages) { stages.toMutableStateList() }
+
+    // Update the local list when stages prop changes
+    LaunchedEffect(stages) {
+        if (stagesList != stages) {
+            stagesList.clear()
+            stagesList.addAll(stages)
+        }
+    }
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -368,7 +396,7 @@ private fun GoalStagesList(
 
     HorizontalDivider(modifier = Modifier.padding(vertical = AppStyleDefaults.SpacingLarge))
 
-    if (stages.isEmpty()) {
+    if (stagesList.isEmpty()) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -382,11 +410,25 @@ private fun GoalStagesList(
             )
         }
     } else {
+        var draggedIndex by remember { mutableStateOf<Int?>(null) }
+        var dragOffset by remember { mutableStateOf(0f) }
+
         Column(verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)) {
-            stages.forEach { goalStage ->
+            stagesList.forEachIndexed { index, goalStage ->
                 EditGoalStageItem(
                     stage = goalStage,
-                    onClick = { onEditStageClick(goalStage) }
+                    onClick = { onEditStageClick(goalStage) },
+                    onReorder = { fromIndex, toIndex ->
+                        if (fromIndex != toIndex) {
+                            val item = stagesList.removeAt(fromIndex)
+                            stagesList.add(toIndex, item)
+                        }
+                    },
+                    onReorderFinished = {
+                        onStagesReordered(stagesList.toList())
+                    },
+                    index = index,
+                    listSize = stagesList.size
                 )
             }
         }
@@ -396,7 +438,11 @@ private fun GoalStagesList(
 @Composable
 private fun EditGoalStageItem(
     stage: GoalStage,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onReorder: (fromIndex: Int, toIndex: Int) -> Unit,
+    onReorderFinished: () -> Unit,
+    index: Int,
+    listSize: Int
 ) {
     val stageProgress = if (stage.targetCount > 0) {
         (stage.currentCount.toDouble() / stage.targetCount.toDouble()).coerceIn(0.0, 1.0)
@@ -404,33 +450,107 @@ private fun EditGoalStageItem(
         0.0
     }
 
+    var itemHeight by remember { mutableStateOf(0f) }
+    var isDragging by remember { mutableStateOf(false) }
+    var currentIndex by remember(index) { mutableStateOf(index) }
+    var accumulatedDragY by remember { mutableStateOf(0f) }
+
+    LaunchedEffect(index) {
+        currentIndex = index
+    }
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            .onGloballyPositioned { layoutCoordinates ->
+                itemHeight = layoutCoordinates.size.height.toFloat()
+            },
+        color = if (isDragging) {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        },
         shape = MaterialTheme.shapes.small
     ) {
-        Column(
-            modifier = Modifier.padding(AppStyleDefaults.SpacingMedium)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(AppStyleDefaults.SpacingMedium),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = stage.name.ifBlank { "Untitled Stage" },
-                style = MaterialTheme.typography.bodyLarge
+            // Drag handle icon with drag gesture
+            Icon(
+                imageVector = Icons.Default.DragHandle,
+                contentDescription = "Drag to reorder",
+                modifier = Modifier
+                    .size(24.dp)
+                    .padding(end = AppStyleDefaults.SpacingSmall)
+                    .pointerInput(stage.id) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = {
+                                isDragging = true
+                                accumulatedDragY = 0f
+                            },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                accumulatedDragY += dragAmount.y
+
+                                // Check if we've dragged enough to swap with adjacent item
+                                if (itemHeight > 0) {
+                                    // Need to drag at least half the item height to swap
+                                    val threshold = itemHeight / 2f
+
+                                    if (accumulatedDragY > threshold && currentIndex < listSize - 1) {
+                                        // Dragging down - swap with next item
+                                        onReorder(currentIndex, currentIndex + 1)
+                                        currentIndex++
+                                        accumulatedDragY = 0f // Reset accumulator after swap
+                                    } else if (accumulatedDragY < -threshold && currentIndex > 0) {
+                                        // Dragging up - swap with previous item
+                                        onReorder(currentIndex, currentIndex - 1)
+                                        currentIndex--
+                                        accumulatedDragY = 0f // Reset accumulator after swap
+                                    }
+                                }
+                            },
+                            onDragEnd = {
+                                isDragging = false
+                                accumulatedDragY = 0f
+                                onReorderFinished()
+                            },
+                            onDragCancel = {
+                                isDragging = false
+                                accumulatedDragY = 0f
+                            }
+                        )
+                    },
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            if (stage.targetCount > 0) {
-                Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingSmall))
-                AppLinearProgressIndicator(
-                    progress = { stageProgress.toFloat() },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(modifier = Modifier.height(4.dp))
+            // Stage content
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onClick() }
+            ) {
                 Text(
-                    text = "${stage.currentCount} / ${stage.targetCount} reps",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = stage.name.ifBlank { "Untitled Stage" },
+                    style = MaterialTheme.typography.bodyLarge
                 )
+
+                if (stage.targetCount > 0) {
+                    Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingSmall))
+                    AppLinearProgressIndicator(
+                        progress = { stageProgress.toFloat() },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "${stage.currentCount} / ${stage.targetCount} reps",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

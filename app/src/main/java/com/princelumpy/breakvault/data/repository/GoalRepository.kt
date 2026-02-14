@@ -114,6 +114,16 @@ class GoalRepository @Inject constructor(
     }
 
     /**
+     * Updates multiple goal stages in the dataBase. This is a main-safe suspend function.
+     * @param stages The list of GoalStages to be updated.
+     */
+    suspend fun updateGoalStages(stages: List<GoalStage>) {
+        withContext(Dispatchers.IO) {
+            goalDao.updateGoalStages(stages)
+        }
+    }
+
+    /**
      * Deletes a given goal stage from the database. This is a main-safe suspend function.
      * @param stage The GoalStage to be deleted.
      */

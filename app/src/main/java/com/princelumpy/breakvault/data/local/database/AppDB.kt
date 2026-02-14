@@ -6,6 +6,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.princelumpy.breakvault.BuildConfig
 import com.princelumpy.breakvault.data.local.dao.BattleDao
@@ -40,8 +41,7 @@ import java.util.UUID
         Goal::class,
         GoalStage::class
     ],
-    version = 2,
-    exportSchema = true
+    version = 3
 )
 
 @TypeConverters(Converters::class)
@@ -166,6 +166,20 @@ abstract class AppDB : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDB? = null
 
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Rename saved_combos table to practice_combos
+                db.execSQL("ALTER TABLE saved_combos RENAME TO practice_combos")
+            }
+        }
+
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Add orderIndex column to goal_stages table with default value 0
+                db.execSQL("ALTER TABLE goal_stages ADD COLUMN orderIndex INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun getDatabase(context: Context): AppDB {
             val appContext = context.applicationContext
                 ?: throw IllegalStateException("Application context cannot be null when getting database.")
@@ -176,6 +190,7 @@ abstract class AppDB : RoomDatabase() {
                     AppDB::class.java,
                     "break_vault_database"
                 )
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .fallbackToDestructiveMigration(true)
                     .addCallback(AppDbCallback(scope = CoroutineScope(Dispatchers.IO)))
                     .build()

@@ -31,11 +31,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -151,8 +156,8 @@ fun BattleTagListContent(
             isError = uiState.newTagNameError != null,
             errorMessage = uiState.newTagNameError,
             onNewTagNameChange = onNewTagNameChange,
-            onAddTag = onAddTag,
-            onAddTagDialogDismiss = onAddTagDialogDismiss
+            onConfirm = onAddTag,
+            onDismiss = onAddTagDialogDismiss
         )
     }
 
@@ -162,8 +167,8 @@ fun BattleTagListContent(
             isError = uiState.editTagNameError != null,
             errorMessage = uiState.editTagNameError,
             onTagNameForEditChange = onTagNameForEditChange,
-            onUpdateTag = onUpdateTag,
-            onEditTagDialogDismiss = onEditTagDialogDismiss
+            onConfirm = onUpdateTag,
+            onDismiss = onEditTagDialogDismiss
         )
     }
 
@@ -229,11 +234,17 @@ private fun AddTagDialog(
     isError: Boolean,
     errorMessage: String?,
     onNewTagNameChange: (String) -> Unit,
-    onAddTag: () -> Unit,
-    onAddTagDialogDismiss: () -> Unit
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
 ) {
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
     AlertDialog(
-        onDismissRequest = onAddTagDialogDismiss,
+        onDismissRequest = onDismiss,
         title = { Text(stringResource(id = R.string.battle_tag_list_add_dialog_title)) },
         text = {
             OutlinedTextField(
@@ -245,9 +256,17 @@ private fun AddTagDialog(
                 },
                 label = { Text(stringResource(id = R.string.battle_tag_list_tag_name_label)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { onAddTag() }),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        if (newTagName.isNotBlank()) {
+                            onConfirm()
+                        }
+                    }
+                ),
                 isError = isError,
                 supportingText = {
                     if (isError) {
@@ -257,19 +276,22 @@ private fun AddTagDialog(
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
-                }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
             )
         },
         confirmButton = {
             TextButton(
-                onClick = onAddTag,
+                onClick = onConfirm,
                 enabled = newTagName.isNotBlank()
             ) {
                 Text(stringResource(id = R.string.common_add))
             }
         },
         dismissButton = {
-            TextButton(onClick = onAddTagDialogDismiss) {
+            TextButton(onClick = onDismiss) {
                 Text(stringResource(id = R.string.common_cancel))
             }
         }
@@ -282,11 +304,17 @@ private fun EditTagDialog(
     isError: Boolean,
     errorMessage: String?,
     onTagNameForEditChange: (String) -> Unit,
-    onUpdateTag: () -> Unit,
-    onEditTagDialogDismiss: () -> Unit
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
 ) {
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
     AlertDialog(
-        onDismissRequest = onEditTagDialogDismiss,
+        onDismissRequest = onDismiss,
         title = { Text(stringResource(id = R.string.battle_tag_list_edit_dialog_title)) },
         text = {
             OutlinedTextField(
@@ -298,9 +326,16 @@ private fun EditTagDialog(
                 },
                 label = { Text(stringResource(id = R.string.battle_tag_list_new_tag_name_label)) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { onUpdateTag() }),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        if (tagNameForEdit.isNotBlank()) {
+                            onConfirm()
+                        }
+                    }),
                 isError = isError,
                 supportingText = {
                     if (isError) {
@@ -310,19 +345,23 @@ private fun EditTagDialog(
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
-                }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
+
             )
         },
         confirmButton = {
             TextButton(
-                onClick = onUpdateTag,
+                onClick = onConfirm,
                 enabled = tagNameForEdit.isNotBlank()
             ) {
                 Text(stringResource(id = R.string.common_save))
             }
         },
         dismissButton = {
-            TextButton(onClick = onEditTagDialogDismiss) {
+            TextButton(onClick = onDismiss) {
                 Text(stringResource(id = R.string.common_cancel))
             }
         }
@@ -501,8 +540,8 @@ private fun AddTagDialogPreview() {
             isError = false,
             errorMessage = null,
             onNewTagNameChange = {},
-            onAddTag = {},
-            onAddTagDialogDismiss = {}
+            onConfirm = {},
+            onDismiss = {}
         )
     }
 }
@@ -542,8 +581,8 @@ private fun EditTagDialogPreview() {
             isError = false,
             errorMessage = null,
             onTagNameForEditChange = {},
-            onUpdateTag = {},
-            onEditTagDialogDismiss = {}
+            onConfirm = {},
+            onDismiss = {}
         )
     }
 }

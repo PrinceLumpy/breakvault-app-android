@@ -299,7 +299,7 @@ fun RandomModeControls(
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -319,10 +319,6 @@ fun RandomModeControls(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
         ) {
-            Text(
-                text = stringResource(id = R.string.combo_generator_combo_length_label),
-                style = MaterialTheme.typography.bodyMedium
-            )
             LengthSlider(
                 selectedLength = selectedLength,
                 onLengthChange = onLengthChange
@@ -338,23 +334,30 @@ fun LengthSlider(
     onLengthChange: (String) -> Unit
 ) {
     val currentLength = selectedLength ?: 4
+    var sliderValue by remember { mutableFloatStateOf(currentLength.toFloat()) }
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        val sliderState =
-            rememberSliderState(
-                steps = 1,
-                valueRange = 1f..5f,
-                value = currentLength.toFloat(),
-                onValueChangeFinished = { onLengthChange(sliderPosition.toInt().toString()) }
-            )
-
-        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-            Text(text = currentLength.toString())
-            Slider(state = sliderState)
-        }
+        Text(
+            text = stringResource(
+                id = R.string.combo_generator_combo_length_label,
+                sliderValue.toInt()
+            ),
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Slider(
+            value = sliderValue,
+            onValueChange = {
+                sliderValue = it
+            },
+            onValueChangeFinished = {
+                onLengthChange(sliderValue.toInt().toString())
+            },
+            valueRange = 1f..5f,
+            steps = 3,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 

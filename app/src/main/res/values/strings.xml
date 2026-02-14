@@ -75,7 +75,7 @@
     <string name="combo_generator_no_tags_message">No tags available to generate a combo.</string>
     <string name="combo_generator_number_of_moves_label">Number of Moves:</string>
     <string name="combo_generator_random_length_option">Random</string>
-    <string name="combo_generator_combo_length_label">Combo Length</string>
+    <string name="combo_generator_combo_length_label">Combo Length: %1$d</string>
     <string name="combo_generator_length_warning_dialog_message">Only %1$d moves are available with the selected tags. A combo of %1$d moves has been generated.</string>
     <string name="combo_generator_no_moves_found_message">No moves found matching the selected tags. Add some moves.</string>
     <string name="combo_generator_select_at_least_one_tag_message">Please select at least one tag to generate a combo.</string>

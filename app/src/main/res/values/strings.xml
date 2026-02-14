@@ -165,10 +165,6 @@
     <string name="goals_screen_delete_goal_dialog_title">Delete Goal?</string>
     <string name="goals_screen_delete_goal_dialog_message">Are you sure you want to delete the goal \'%1$s\'?</string>
 
-    <!-- MovesByTagScreen -->
-    <string name="moves_for_tag_title">Moves for \"%1$s\"</string>
-    <string name="no_moves_for_tag_message">No moves found for this tag.</string>
-
     <!-- ArchivedGoalsScreen -->
     <string name="drawer_item_archived_goals">Archived Goals</string>
     <string name="archived_goals_no_goals">No archived goals found.</string>

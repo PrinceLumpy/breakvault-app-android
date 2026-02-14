@@ -21,6 +21,12 @@ enum class BattleSortOption {
     EnergyHighToLow, EnergyLowToHigh, StatusFireFirst, StatusHammerFirst
 }
 
+// Private state to hold only the user's direct interactions
+private data class UserInteractions(
+    val selectedTagNames: Set<String> = emptySet(),
+    val sortOption: BattleSortOption = BattleSortOption.EnergyLowToHigh,
+)
+
 // Final state for the UI. Contains only the data the UI needs to draw.
 data class BattleComboListUiState(
     val allCombos: List<BattleComboWithTags> = emptyList(),
@@ -32,21 +38,15 @@ data class BattleComboListUiState(
     val isLoading: Boolean = true
 )
 
-// Private state to hold only the user's direct interactions
-private data class UserInteractions(
-    val selectedTagNames: Set<String> = emptySet(),
-    val sortOption: BattleSortOption = BattleSortOption.EnergyLowToHigh,
-)
-
 @HiltViewModel
 class BattleComboListViewModel @Inject constructor(
     private val battleRepository: BattleRepository
 ) : ViewModel() {
 
+    // Consolidate user-driven state
     private val _userInteractions = MutableStateFlow(UserInteractions())
     private val _showResetDialog = MutableStateFlow(false)
 
-    // This is the single source of truth for the UI.
     val uiState: StateFlow<BattleComboListUiState> = combine(
         battleRepository.getAllBattleCombosWithTags(),
         battleRepository.getAllTags(),
@@ -86,30 +86,34 @@ class BattleComboListViewModel @Inject constructor(
         initialValue = BattleComboListUiState()
     )
 
-    fun onTagSelected(tagName: String) {
-        _userInteractions.update { currentState ->
-            val newSelectedTags = if (tagName in currentState.selectedTagNames) {
-                currentState.selectedTagNames - tagName
+    fun toggleTagFilter(tagName: String) {
+        _userInteractions.update { current ->
+            val newSelectedTags = if (tagName in current.selectedTagNames) {
+                current.selectedTagNames - tagName
             } else {
-                currentState.selectedTagNames + tagName
+                current.selectedTagNames + tagName
             }
-            currentState.copy(selectedTagNames = newSelectedTags)
+            current.copy(selectedTagNames = newSelectedTags)
         }
     }
 
-    fun onSortOptionChange(sortOption: BattleSortOption) {
+    fun clearFilters() {
+        _userInteractions.update { it.copy(selectedTagNames = emptySet()) }
+    }
+
+    fun changeSortOption(sortOption: BattleSortOption) {
         _userInteractions.update { it.copy(sortOption = sortOption) }
     }
 
-    fun onShowResetDialog() {
+    fun showResetDialog() {
         _showResetDialog.value = true
     }
 
-    fun onCancelReset() {
+    fun cancelReset() {
         _showResetDialog.value = false
     }
 
-    fun onConfirmReset() {
+    fun confirmReset() {
         viewModelScope.launch {
             battleRepository.resetAllBattleCombosUsage()
         }

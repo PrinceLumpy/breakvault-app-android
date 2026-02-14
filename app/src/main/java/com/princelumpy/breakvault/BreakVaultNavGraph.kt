@@ -5,8 +5,6 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -27,7 +25,6 @@ import com.princelumpy.breakvault.ui.goals.list.GoalsScreen
 import com.princelumpy.breakvault.ui.moves.addedit.AddEditMoveScreen
 import com.princelumpy.breakvault.ui.moves.list.MoveListScreen
 import com.princelumpy.breakvault.ui.moves.managetags.MoveTagListScreen
-import com.princelumpy.breakvault.ui.moves.movesbytag.MovesByTagScreen
 import com.princelumpy.breakvault.ui.savedcombos.addedit.AddEditComboScreen
 import com.princelumpy.breakvault.ui.savedcombos.list.SavedComboListScreen
 import com.princelumpy.breakvault.ui.settings.SettingsScreen
@@ -218,44 +215,12 @@ fun NavGraphBuilder.overlayNavGraph(
             BreakVaultNavigationActions(navController)
         }
         MoveTagListScreen(
-            onNavigateToMovesByTag = { tagId, tagName ->
-                navActions.navigateToMovesByTag(tagId, tagName)
-            },
             onNavigateBack = {
                 navActions.navigateUp()
             }
         )
     }
-
-    // MOVES_BY_TAG_ROUTE - Management screen
-    composable(
-        route = BreakVaultDestinations.MOVES_BY_TAG_ROUTE,
-        arguments = listOf(
-            navArgument(BreakVaultDestinationsArgs.TAG_ID_ARG) { type = NavType.StringType },
-            navArgument(BreakVaultDestinationsArgs.TAG_NAME_ARG) { type = NavType.StringType }
-        ),
-        enterTransition = {
-            slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                animationSpec = tween(300)
-            )
-        },
-        popExitTransition = {
-            slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                animationSpec = tween(300)
-            )
-        }
-    ) {
-        val navActions = remember(navController) {
-            BreakVaultNavigationActions(navController)
-        }
-        MovesByTagScreen(
-            onNavigateUp = { navActions.navigateUp() },
-            onNavigateToMove = { navActions.navigateToAddEditMove(it) },
-        )
-    }
-
+    
     // ADD_EDIT_MOVE_ROUTE - AddEdit screen
     composable(
         route = BreakVaultDestinations.ADD_EDIT_MOVE_ROUTE,

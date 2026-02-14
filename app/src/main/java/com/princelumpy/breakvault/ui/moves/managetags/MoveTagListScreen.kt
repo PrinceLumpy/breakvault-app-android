@@ -39,7 +39,6 @@ import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
  */
 @Composable
 fun MoveTagListScreen(
-    onNavigateToMovesByTag: (String, String) -> Unit,
     onNavigateBack: () -> Unit,
     moveTagListViewModel: MoveTagListViewModel = hiltViewModel()
 ) {

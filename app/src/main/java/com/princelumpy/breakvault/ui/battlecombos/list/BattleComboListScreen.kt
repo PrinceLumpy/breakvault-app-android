@@ -78,11 +78,12 @@ fun BattleComboListScreen(
 
     BattleComboListContent(
         uiState = uiState,
-        onSortOptionChange = battleComboListViewModel::onSortOptionChange,
-        onTagSelected = battleComboListViewModel::onTagSelected,
-        onShowResetDialog = battleComboListViewModel::onShowResetDialog,
-        onConfirmReset = battleComboListViewModel::onConfirmReset,
-        onCancelReset = battleComboListViewModel::onCancelReset,
+        onSortOptionChange = battleComboListViewModel::changeSortOption,
+        onToggleTagFilter = battleComboListViewModel::toggleTagFilter,
+        onClearFilters = battleComboListViewModel::clearFilters,
+        onShowResetDialog = battleComboListViewModel::showResetDialog,
+        onConfirmReset = battleComboListViewModel::confirmReset,
+        onCancelReset = battleComboListViewModel::cancelReset,
         onToggleUsed = battleComboListViewModel::toggleUsed,
         onNavigateToAddEditBattleCombo = onNavigateToAddEditBattleCombo,
         onNavigateToBattleTagList = onNavigateToBattleTagList,
@@ -95,7 +96,8 @@ fun BattleComboListScreen(
 fun BattleComboListContent(
     uiState: BattleComboListUiState,
     onSortOptionChange: (BattleSortOption) -> Unit,
-    onTagSelected: (String) -> Unit,
+    onToggleTagFilter: (String) -> Unit,
+    onClearFilters: () -> Unit,
     onShowResetDialog: () -> Unit,
     onConfirmReset: () -> Unit,
     onCancelReset: () -> Unit,
@@ -207,8 +209,9 @@ fun BattleComboListContent(
                     TagFilterRow(
                         tags = uiState.allTags,
                         selectedTagNames = uiState.selectedTagNames,
-                        onTagSelected = onTagSelected,
-                        getTagName = { it.name }
+                        onTagSelected = onToggleTagFilter,
+                        getTagName = { it.name },
+                        onClearFilters = onClearFilters
                     )
                 }
 
@@ -430,7 +433,8 @@ fun PreviewBattleComboListScreen() {
             showResetConfirmDialog = false
         ),
         onSortOptionChange = {},
-        onTagSelected = {},
+        onToggleTagFilter = {},
+        onClearFilters = {},
         onShowResetDialog = {},
         onConfirmReset = {},
         onCancelReset = {},
@@ -453,7 +457,8 @@ fun PreviewBattleComboListScreenEmpty() {
             showResetConfirmDialog = false
         ),
         onSortOptionChange = {},
-        onTagSelected = {},
+        onToggleTagFilter = {},
+        onClearFilters = {},
         onShowResetDialog = {},
         onConfirmReset = {},
         onCancelReset = {},
@@ -472,7 +477,8 @@ fun PreviewBattleComboListScreenResetDialog() {
             showResetConfirmDialog = true
         ),
         onSortOptionChange = {},
-        onTagSelected = {},
+        onToggleTagFilter = {},
+        onClearFilters = {},
         onShowResetDialog = {},
         onConfirmReset = {},
         onCancelReset = {},
@@ -535,6 +541,7 @@ fun PreviewTagFilterRow() {
         ),
         selectedTagNames = setOf("Power"),
         onTagSelected = {},
-        getTagName = { it.name }
+        getTagName = { it.name },
+        onClearFilters = {}
     )
 }

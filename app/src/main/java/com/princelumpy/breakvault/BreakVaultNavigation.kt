@@ -37,7 +37,6 @@ sealed class Screen(
 
     data object AddEditMove : Screen("create_edit_move")
     data object AddEditCombo : Screen("create_edit_combo")
-    data object MovesByTag : Screen("moves_by_tag")
     data object AddEditBattleCombo : Screen("add_edit_battle_combo")
     data object BattleTagList : Screen("battle_tag_list")
     data object AddEditGoal : Screen("edit_goal")
@@ -80,8 +79,6 @@ object BreakVaultDestinations {
         "${Screen.AddEditGoal.route}?${BreakVaultDestinationsArgs.GOAL_ID_ARG}={${BreakVaultDestinationsArgs.GOAL_ID_ARG}}"
     val ADD_EDIT_GOAL_STAGE_ROUTE =
         "${Screen.AddEditGoalStage.route}?${BreakVaultDestinationsArgs.GOAL_ID_ARG}={${BreakVaultDestinationsArgs.GOAL_ID_ARG}}&${BreakVaultDestinationsArgs.STAGE_ID_ARG}={${BreakVaultDestinationsArgs.STAGE_ID_ARG}}"
-    val MOVES_BY_TAG_ROUTE =
-        "${Screen.MovesByTag.route}/{${BreakVaultDestinationsArgs.TAG_ID_ARG}}/{${BreakVaultDestinationsArgs.TAG_NAME_ARG}}"
     val ADD_EDIT_BATTLE_COMBO_ROUTE =
         "${Screen.AddEditBattleCombo.route}?${BreakVaultDestinationsArgs.COMBO_ID_ARG}={${BreakVaultDestinationsArgs.COMBO_ID_ARG}}"
 }
@@ -154,10 +151,6 @@ class BreakVaultNavigationActions(private val navController: NavHostController) 
             Screen.AddEditBattleCombo.route
         }
         navController.navigate(route)
-    }
-
-    fun navigateToMovesByTag(tagId: String, tagName: String) {
-        navController.navigate("${Screen.MovesByTag.route}/$tagId/$tagName")
     }
 
     fun navigateToAddEditGoal(goalId: String?) {

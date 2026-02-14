@@ -35,6 +35,7 @@ import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.Move
 import com.princelumpy.breakvault.data.local.entity.MoveTag
 import com.princelumpy.breakvault.data.local.relation.MoveWithTags
+import com.princelumpy.breakvault.ui.common.FlexibleItemList
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -125,11 +126,11 @@ fun MoveListContent(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding)
+                    .padding(top = padding.calculateTopPadding())
             ) {
                 GenerateComboButton(onClick = onNavigateToComboGenerator)
 
-                Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingLarge))
+                Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingMedium))
 
                 if (uiState.allTags.isNotEmpty()) {
                     TagFilterRow(
@@ -237,17 +238,15 @@ fun MovesList(
     onEditClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LazyColumn(
+    FlexibleItemList(
+        items = moves,
+        getItemKey = { it.move.id },
         modifier = modifier
-            .padding(horizontal = AppStyleDefaults.SpacingLarge),
-        verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
-    ) {
-        items(moves, key = { it.move.id }) { moveWithTags ->
-            MoveCard(
-                moveWithTags = moveWithTags,
-                onEditClick = { onEditClick(moveWithTags.move.id) }
-            )
-        }
+    ) { moveWithTags ->
+        MoveCard(
+            moveWithTags = moveWithTags,
+            onEditClick = { onEditClick(moveWithTags.move.id) }
+        )
     }
 }
 

@@ -357,3 +357,40 @@ fun <T> GenericItemList(
         }
     }
 }
+
+/**
+ * A flexible generic list component with custom content for each item.
+ * Used for Move and BattleCombo lists where items need custom rendering.
+ *
+ * @param T The type of items in the list
+ * @param items List of items to display
+ * @param getItemKey Function to extract a unique key from an item
+ * @param modifier Optional modifier for the list
+ * @param itemContent Composable lambda to render each item's content
+ */
+@Composable
+fun <T> FlexibleItemList(
+    items: List<T>,
+    getItemKey: (T) -> String,
+    modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(
+        start = AppStyleDefaults.SpacingLarge,
+        end = AppStyleDefaults.SpacingLarge,
+        bottom = AppStyleDefaults.SpacingExtraLarge * 4 // default clearance for FAB
+    ),
+    itemContent: @Composable (T) -> Unit
+) {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize(),
+        contentPadding = contentPadding,
+        verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
+    ) {
+        items(
+            items = items,
+            key = { getItemKey(it) }
+        ) { item ->
+            itemContent(item)
+        }
+    }
+}

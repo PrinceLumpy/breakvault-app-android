@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
@@ -44,6 +42,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.SavedCombo
+import com.princelumpy.breakvault.ui.common.FlexibleItemList
 import com.princelumpy.breakvault.ui.moves.list.GenerateComboButton
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 
@@ -124,8 +123,7 @@ private fun SavedComboListScaffold(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(top = padding.calculateTopPadding()),
             ) {
                 GenerateComboButton(onClick = onNavigateToComboGenerator)
 
@@ -159,20 +157,15 @@ private fun ComboList(
     onEditClick: (SavedCombo) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LazyColumn(
-        modifier = modifier,
-        contentPadding = AppStyleDefaults.LazyListPadding,
-        verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
-    ) {
-        items(
-            savedCombos,
-            key = { it.id }
-        ) { savedCombo ->
-            SavedComboItem(
-                savedCombo = savedCombo,
-                onEditClick = { onEditClick(savedCombo) }
-            )
-        }
+    FlexibleItemList(
+        items = savedCombos,
+        getItemKey = { it.id },
+        modifier = modifier
+    ) { savedCombo ->
+        SavedComboItem(
+            savedCombo = savedCombo,
+            onEditClick = { onEditClick(savedCombo) }
+        )
     }
 }
 

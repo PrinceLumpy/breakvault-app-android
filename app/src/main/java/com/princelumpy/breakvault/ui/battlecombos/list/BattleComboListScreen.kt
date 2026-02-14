@@ -1,9 +1,7 @@
 package com.princelumpy.breakvault.ui.battlecombos.list
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -32,7 +29,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -47,7 +43,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,6 +64,7 @@ import com.princelumpy.breakvault.data.local.relation.BattleComboWithTags
 import com.princelumpy.breakvault.data.local.entity.BattleTag
 import com.princelumpy.breakvault.data.local.entity.EnergyLevel
 import com.princelumpy.breakvault.data.local.entity.TrainingStatus
+import com.princelumpy.breakvault.ui.common.FlexibleItemList
 
 @Composable
 fun BattleComboListScreen(
@@ -190,12 +186,12 @@ fun BattleComboListContent(
                 Icon(Icons.Filled.Add, contentDescription = "Add Battle Combo")
             }
         }
-    ) { paddingValues ->
+    ) { padding ->
         if (uiState.isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
+                    .padding(padding),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
@@ -204,7 +200,7 @@ fun BattleComboListContent(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
+                    .padding(top = padding.calculateTopPadding())
             ) {
                 if (uiState.allTags.isNotEmpty()) {
                     TagFilterRow(
@@ -250,23 +246,18 @@ fun BattleComboListContent(
                         }
                     }
                 } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 80.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(
-                            uiState.filteredAndSortedCombos,
-                            key = { it.battleCombo.id }
-                        ) { comboWithTags ->
-                            BattleComboItem(
-                                comboWithTags = comboWithTags,
-                                onClick = { onToggleUsed(comboWithTags.battleCombo) },
-                                onEditClick = {
-                                    onNavigateToAddEditBattleCombo(comboWithTags.battleCombo.id)
-                                }
-                            )
-                        }
+                    FlexibleItemList(
+                        items = uiState.filteredAndSortedCombos,
+                        getItemKey = { it.battleCombo.id },
+                        modifier = Modifier.fillMaxSize()
+                    ) { comboWithTags ->
+                        BattleComboItem(
+                            comboWithTags = comboWithTags,
+                            onClick = { onToggleUsed(comboWithTags.battleCombo) },
+                            onEditClick = {
+                                onNavigateToAddEditBattleCombo(comboWithTags.battleCombo.id)
+                            }
+                        )
                     }
                 }
             }

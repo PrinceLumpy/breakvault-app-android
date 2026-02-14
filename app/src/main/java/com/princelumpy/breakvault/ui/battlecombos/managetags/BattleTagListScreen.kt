@@ -1,52 +1,36 @@
 package com.princelumpy.breakvault.ui.battlecombos.managetags
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import AppStyleDefaults
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.common.Constants.BATTLE_TAG_CHARACTER_LIMIT
 import com.princelumpy.breakvault.data.local.entity.BattleTag
+import com.princelumpy.breakvault.ui.common.GenericItemList
 import com.princelumpy.breakvault.ui.common.TagDialog
 
 @Composable
@@ -55,6 +39,8 @@ fun BattleTagListScreen(
     battleTagListViewModel: BattleTagListViewModel = hiltViewModel()
 ) {
     val uiState by battleTagListViewModel.uiState.collectAsStateWithLifecycle()
+    val userInputs = uiState.userInputs
+    val dialogState = uiState.dialogState
 
     BattleTagListContent(
         uiState = uiState,
@@ -123,31 +109,22 @@ fun BattleTagListContent(
             }
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize()
-                .padding(AppStyleDefaults.SpacingLarge),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            if (uiState.tags.isEmpty() && !dialogState.showAddDialog) {
-                Text(stringResource(id = R.string.battle_tag_list_no_tags_message))
-            }
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
-            ) {
-                items(
-                    items = uiState.tags,
-                    key = { it.id }
-                ) { tag ->
-                    BattleTagListItem(
-                        tag = tag,
-                        onEditClick = { onEditTagClicked(tag) },
-                        onDeleteClick = { onDeleteTagClicked(tag) }
-                    )
-                }
-            }
+        if (uiState.tags.isEmpty()) {
+            EmptyTagListState(
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .fillMaxSize()
+            )
+        } else {
+            GenericItemList(
+                items = uiState.tags,
+                onItemClick = onEditTagClicked,
+                onEditClick = onEditTagClicked,
+                onDeleteClick = onDeleteTagClicked,
+                getItemKey = { it.id },
+                getItemName = { it.name },
+                modifier = Modifier.padding(paddingValues)
+            )
         }
     }
 
@@ -191,47 +168,15 @@ fun BattleTagListContent(
 }
 
 @Composable
-fun BattleTagListItem(
-    tag: BattleTag,
-    onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = AppStyleDefaults.SpacingSmall)
+private fun EmptyTagListState(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.padding(horizontal = AppStyleDefaults.SpacingLarge),
+        contentAlignment = Alignment.Center
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    horizontal = AppStyleDefaults.SpacingLarge,
-                    vertical = AppStyleDefaults.SpacingMedium
-                ),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = tag.name,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f)
-            )
-            Row {
-                IconButton(onClick = onEditClick) {
-                    Icon(
-                        Icons.Filled.Edit,
-                        contentDescription = stringResource(id = R.string.battle_tag_list_edit_icon_desc),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-                IconButton(onClick = onDeleteClick) {
-                    Icon(
-                        Icons.Filled.Delete,
-                        contentDescription = stringResource(id = R.string.battle_tag_list_delete_icon_desc),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
+        Text(
+            text = stringResource(id = R.string.battle_tag_list_no_tags_message),
+            style = MaterialTheme.typography.bodyLarge
+        )
     }
 }
 

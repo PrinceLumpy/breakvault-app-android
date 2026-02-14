@@ -1,4 +1,4 @@
-package com.princelumpy.breakvault.ui.battlecombos.managetags // Corrected package name
+package com.princelumpy.breakvault.ui.battlecombos.managetags
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 import javax.inject.Inject
 
 // State representing the user's direct inputs.
@@ -28,7 +29,7 @@ data class DialogState(
     val tagForDeleteDialog: BattleTag? = null
 )
 
-// Final state for the UI, combining all data sources.
+// The final, combined state for the UI to consume.
 data class BattleTagListUiState(
     val tags: List<BattleTag> = emptyList(),
     val userInputs: UserInputs = UserInputs(),
@@ -42,27 +43,27 @@ class BattleTagListViewModel @Inject constructor(
     private val battleRepository: BattleRepository
 ) : ViewModel() {
 
-    // Private state flows for each distinct concern
+    // Private state flows for each distinct concern.
     private val _userInputs = MutableStateFlow(UserInputs())
     private val _dialogState = MutableStateFlow(DialogState())
     private val _newTagNameError = MutableStateFlow<String?>(null)
     private val _editTagNameError = MutableStateFlow<String?>(null)
 
 
-    // The single source of truth for the UI
+    // The single source of truth for the UI, created by combining multiple flows.
     val uiState: StateFlow<BattleTagListUiState> = combine(
         battleRepository.getAllTags(), // Data from repository
-        _userInputs,                   // User's text input
-        _dialogState,                   // State of dialogs
-        _newTagNameError,               // Error messages
+        _userInputs,                 // User's text input
+        _dialogState,                // State of dialogs
+        _newTagNameError,            // Error messages
         _editTagNameError
-    ) { tags, userInputs, dialogState, isNewTagNameError, isEditTagNameError ->
+    ) { tags, userInputs, dialogState, newTagNameError, editTagNameError ->
         BattleTagListUiState(
             tags = tags,
             userInputs = userInputs,
             dialogState = dialogState,
-            newTagNameError = isNewTagNameError,
-            editTagNameError = isEditTagNameError
+            newTagNameError = newTagNameError,
+            editTagNameError = editTagNameError
         )
     }.stateIn(
         scope = viewModelScope,
@@ -95,7 +96,7 @@ class BattleTagListViewModel @Inject constructor(
     // --- Dialog State Handlers ---
 
     fun onAddTagClicked() {
-        _newTagNameError.update { null } // Clear error if user corrects input
+        _newTagNameError.update { null } // Clear error
         _dialogState.update { it.copy(showAddDialog = true) }
     }
 
@@ -144,7 +145,8 @@ class BattleTagListViewModel @Inject constructor(
         }
         // end validation
         viewModelScope.launch {
-            battleRepository.insertBattleTag(BattleTag(name = newTagName))
+            val newBattleTag = BattleTag(name = newTagName, id = UUID.randomUUID().toString())
+            battleRepository.insertBattleTag(newBattleTag)
             onAddTagDialogDismiss()
         }
     }

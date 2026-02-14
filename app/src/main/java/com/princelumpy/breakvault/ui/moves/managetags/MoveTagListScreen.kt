@@ -1,54 +1,36 @@
 package com.princelumpy.breakvault.ui.moves.managetags
 
 import AppStyleDefaults
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.MoveTag
+import com.princelumpy.breakvault.ui.common.GenericItemList
 import com.princelumpy.breakvault.ui.common.TagDialog
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 
@@ -69,7 +51,6 @@ fun MoveTagListScreen(
         tags = uiState.tags,
         onNavigateBack = onNavigateBack,
         onAddTagClicked = moveTagListViewModel::onAddTagClicked,
-        onTagClick = { onNavigateToMovesByTag(it.id, it.name) },
         onEditClick = moveTagListViewModel::onEditTagClicked,
         onDeleteClick = moveTagListViewModel::onDeleteTagClicked
     )
@@ -121,7 +102,6 @@ private fun MoveTagListScaffold(
     tags: List<MoveTag>,
     onNavigateBack: () -> Unit,
     onAddTagClicked: () -> Unit,
-    onTagClick: (MoveTag) -> Unit,
     onEditClick: (MoveTag) -> Unit,
     onDeleteClick: (MoveTag) -> Unit,
     modifier: Modifier = Modifier
@@ -160,11 +140,13 @@ private fun MoveTagListScaffold(
                     .fillMaxSize()
             )
         } else {
-            TagList(
-                tags = tags,
-                onTagClick = onTagClick,
+            GenericItemList(
+                items = tags,
+                onItemClick = onEditClick,
                 onEditClick = onEditClick,
                 onDeleteClick = onDeleteClick,
+                getItemKey = { it.id },
+                getItemName = { it.name },
                 modifier = Modifier.padding(paddingValues)
             )
         }
@@ -187,89 +169,6 @@ private fun EmptyTagListState(modifier: Modifier = Modifier) {
         )
     }
 }
-
-/**
- * A stateless list of tags.
- */
-@Composable
-private fun TagList(
-    tags: List<MoveTag>,
-    onTagClick: (MoveTag) -> Unit,
-    onEditClick: (MoveTag) -> Unit,
-    onDeleteClick: (MoveTag) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = AppStyleDefaults.SpacingLarge),
-        verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
-    ) {
-        items(
-            items = tags,
-            key = { it.id }
-        ) { tag ->
-            TagListItem(
-                moveTag = tag,
-                onItemClick = onTagClick,
-                onEditClick = onEditClick,
-                onDeleteClick = onDeleteClick
-            )
-        }
-    }
-}
-
-/**
- * A stateless item for a single tag in the list.
- */
-@Composable
-fun TagListItem(
-    moveTag: MoveTag,
-    onItemClick: (MoveTag) -> Unit,
-    onEditClick: (MoveTag) -> Unit,
-    onDeleteClick: (MoveTag) -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onItemClick(moveTag) },
-        elevation = CardDefaults.cardElevation(defaultElevation = AppStyleDefaults.SpacingSmall)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    horizontal = AppStyleDefaults.SpacingLarge,
-                    vertical = AppStyleDefaults.SpacingMedium
-                ),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = moveTag.name,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f)
-            )
-            Row {
-                IconButton(onClick = { onEditClick(moveTag) }) {
-                    Icon(
-                        Icons.Filled.Edit,
-                        contentDescription = stringResource(id = R.string.tag_list_edit_tag_description),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-                IconButton(onClick = { onDeleteClick(moveTag) }) {
-                    Icon(
-                        Icons.Filled.Delete,
-                        contentDescription = stringResource(id = R.string.tag_list_delete_tag_description),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-    }
-}
-
 
 /**
  * A stateless dialog for confirming tag deletion.
@@ -323,7 +222,6 @@ private fun MoveTagListScaffold_WithTags_Preview() {
             ),
             onNavigateBack = {},
             onAddTagClicked = {},
-            onTagClick = {},
             onEditClick = {},
             onDeleteClick = {}
         )
@@ -338,20 +236,6 @@ private fun MoveTagListScaffold_NoTags_Preview() {
             tags = emptyList(),
             onNavigateBack = {},
             onAddTagClicked = {},
-            onTagClick = {},
-            onEditClick = {},
-            onDeleteClick = {}
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun TagListItemPreview() {
-    BreakVaultTheme {
-        TagListItem(
-            moveTag = MoveTag(id = "1", name = "Footwork"),
-            onItemClick = {},
             onEditClick = {},
             onDeleteClick = {}
         )

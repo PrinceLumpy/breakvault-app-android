@@ -34,6 +34,7 @@ coreTesting = "2.2.0"
 kotlinxSerializationJson = "1.10.0"
 kotlinVersion = "2.3.0"
 uiGraphics = "1.10.2"
+foundationLayoutVersion = "1.10.2"
 
 [libraries]
 # Lifecycle
@@ -77,6 +78,7 @@ androidx-core-testing = { module = "androidx.arch.core:core-testing", version.re
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics", version.ref = "uiGraphics" }
+androidx-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayoutVersion" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

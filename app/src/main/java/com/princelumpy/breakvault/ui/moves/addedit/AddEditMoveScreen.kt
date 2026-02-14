@@ -7,8 +7,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -24,15 +21,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,6 +52,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.MoveTag
+import com.princelumpy.breakvault.ui.common.TagSelectionCard
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 
 // Constants for character limits (LAYER 1)
@@ -278,10 +273,19 @@ private fun AddEditMoveContent(
             keyboardActions = KeyboardActions(onDone = { onSaveMove() })
         )
 
-        MoveTagsSection(
+        Text(
+            stringResource(id = R.string.add_edit_move_select_tags_label),
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        TagSelectionCard(
             allTags = allTags,
             selectedTags = userInputs.selectedTags,
-            onTagSelected = onTagSelected
+            isLoading = false,
+            emptyMessage = stringResource(id = R.string.add_edit_move_no_tags_available_message),
+            onTagSelected = onTagSelected,
+            getTagId = { it.id },
+            getTagName = { it.name }
         )
 
         Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingMedium))
@@ -292,54 +296,6 @@ private fun AddEditMoveContent(
             onNewTagNameChange = onNewTagNameChange,
             onAddTag = onAddTag
         )
-    }
-}
-
-/**
- * A stateless section for displaying and selecting move tags.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun MoveTagsSection(
-    allTags: List<MoveTag>,
-    selectedTags: Set<String>,
-    onTagSelected: (String) -> Unit
-) {
-    Text(
-        stringResource(id = R.string.add_edit_move_select_tags_label),
-        style = MaterialTheme.typography.titleMedium
-    )
-    if (allTags.isEmpty()) {
-        Text(
-            stringResource(id = R.string.add_edit_move_no_tags_available_message),
-            style = MaterialTheme.typography.bodySmall
-        )
-    } else {
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium),
-            verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)
-        ) {
-            allTags.forEach { tag ->
-                val isSelected = selectedTags.contains(tag.id)
-                FilterChip(
-                    selected = isSelected,
-                    onClick = { onTagSelected(tag.id) },
-                    label = { Text(tag.name) },
-                    leadingIcon = if (isSelected) {
-                        {
-                            Icon(
-                                Icons.Filled.Done,
-                                stringResource(id = R.string.add_edit_move_selected_chip_description),
-                                Modifier.size(FilterChipDefaults.IconSize)
-                            )
-                        }
-                    } else {
-                        null
-                    }
-                )
-            }
-        }
     }
 }
 
@@ -517,7 +473,15 @@ private fun MoveTagsSection_WithTags_Preview() {
         MoveTag(id = "2", name = "Power")
     )
     BreakVaultTheme {
-        MoveTagsSection(allTags = dummyTags, selectedTags = setOf("1"), onTagSelected = {})
+        TagSelectionCard(
+            allTags = dummyTags,
+            selectedTags = setOf("1"),
+            isLoading = false,
+            emptyMessage = "No tags available",
+            onTagSelected = {},
+            getTagId = { it.id },
+            getTagName = { it.name }
+        )
     }
 }
 
@@ -525,7 +489,15 @@ private fun MoveTagsSection_WithTags_Preview() {
 @Composable
 private fun MoveTagsSection_NoTags_Preview() {
     BreakVaultTheme {
-        MoveTagsSection(allTags = emptyList(), selectedTags = emptySet(), onTagSelected = {})
+        TagSelectionCard(
+            allTags = emptyList<MoveTag>(),
+            selectedTags = emptySet(),
+            isLoading = false,
+            emptyMessage = "No tags available",
+            onTagSelected = {},
+            getTagId = { it.id },
+            getTagName = { it.name }
+        )
     }
 }
 

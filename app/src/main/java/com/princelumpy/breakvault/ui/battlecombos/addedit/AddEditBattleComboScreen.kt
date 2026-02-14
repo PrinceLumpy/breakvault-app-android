@@ -5,15 +5,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -22,7 +19,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
@@ -47,9 +43,12 @@ import com.princelumpy.breakvault.data.local.entity.BattleTag
 import com.princelumpy.breakvault.data.local.entity.EnergyLevel
 import com.princelumpy.breakvault.data.local.entity.TrainingStatus
 import com.princelumpy.breakvault.data.local.entity.SavedCombo
+import com.princelumpy.breakvault.ui.common.TagSelectionCard
+import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 
-
-// STATEFUL COMPOSABLE
+/**
+ * The main, stateful screen composable that holds the ViewModel and state.
+ */
 @Composable
 fun AddEditBattleComboScreen(
     onNavigateUp: () -> Unit,
@@ -71,7 +70,7 @@ fun AddEditBattleComboScreen(
         }
     }
 
-    AddEditBattleComboContent(
+    AddEditBattleComboScaffold(
         uiState = uiState,
         snackbarHostState = snackbarHostState,
         onNavigateUp = onNavigateUp,
@@ -100,10 +99,12 @@ fun AddEditBattleComboScreen(
     )
 }
 
-// STATELESS COMPOSABLE
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+/**
+ * A stateless scaffold that handles the overall layout for the Add/Edit Battle Combo screen.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddEditBattleComboContent(
+private fun AddEditBattleComboScaffold(
     uiState: AddEditBattleComboUiState,
     snackbarHostState: SnackbarHostState,
     onNavigateUp: () -> Unit,
@@ -181,44 +182,19 @@ fun AddEditBattleComboContent(
                 CircularProgressIndicator()
             }
         } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(AppStyleDefaults.SpacingLarge)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
-            ) {
-                DescriptionField(
-                    description = userInputs.description,
-                    descriptionError = dialogsAndMessages.descriptionError,
-                    onDescriptionChange = onDescriptionChange
-                )
-
-                if (userInputs.isNewCombo) {
-                    ImportButton(onClick = { onShowImportDialog(true) })
-                }
-
-                EnergySection(
-                    selectedEnergy = userInputs.selectedEnergy,
-                    onEnergyChange = onEnergyChange
-                )
-
-                ReadinessSection(
-                    selectedStatus = userInputs.selectedStatus,
-                    onStatusChange = onStatusChange
-                )
-
-                TagsSection(
-                    allBattleTags = uiState.allBattleTags,
-                    selectedTags = userInputs.selectedTags,
-                    newTagName = userInputs.newTagName,
-                    newTagError = dialogsAndMessages.newTagError,
-                    onTagSelected = onTagSelected,
-                    onNewTagNameChange = onNewTagNameChange,
-                    onAddBattleTag = onAddBattleTag
-                )
-            }
+            AddEditBattleComboFormContent(
+                modifier = Modifier.padding(paddingValues),
+                userInputs = userInputs,
+                dialogsAndMessages = dialogsAndMessages,
+                allBattleTags = uiState.allBattleTags,
+                onDescriptionChange = onDescriptionChange,
+                onShowImportDialog = onShowImportDialog,
+                onEnergyChange = onEnergyChange,
+                onStatusChange = onStatusChange,
+                onTagSelected = onTagSelected,
+                onNewTagNameChange = onNewTagNameChange,
+                onAddBattleTag = onAddBattleTag
+            )
         }
     }
 
@@ -239,9 +215,67 @@ fun AddEditBattleComboContent(
     }
 }
 
-// LAYER 1: Input Capping with Supporting Text Error Display
+/**
+ * The main form content composable containing all input fields.
+ */
 @Composable
-fun DescriptionField(
+private fun AddEditBattleComboFormContent(
+    modifier: Modifier = Modifier,
+    userInputs: UserInputs,
+    dialogsAndMessages: UiDialogsAndMessages,
+    allBattleTags: List<BattleTag>,
+    onDescriptionChange: (String) -> Unit,
+    onShowImportDialog: (Boolean) -> Unit,
+    onEnergyChange: (EnergyLevel) -> Unit,
+    onStatusChange: (TrainingStatus) -> Unit,
+    onTagSelected: (String) -> Unit,
+    onNewTagNameChange: (String) -> Unit,
+    onAddBattleTag: () -> Unit
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(AppStyleDefaults.SpacingLarge)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)
+    ) {
+        DescriptionField(
+            description = userInputs.description,
+            descriptionError = dialogsAndMessages.descriptionError,
+            onDescriptionChange = onDescriptionChange
+        )
+
+        if (userInputs.isNewCombo) {
+            ImportButton(onClick = { onShowImportDialog(true) })
+        }
+
+        EnergySection(
+            selectedEnergy = userInputs.selectedEnergy,
+            onEnergyChange = onEnergyChange
+        )
+
+        ReadinessSection(
+            selectedStatus = userInputs.selectedStatus,
+            onStatusChange = onStatusChange
+        )
+
+        TagsSection(
+            allBattleTags = allBattleTags,
+            selectedTags = userInputs.selectedTags,
+            newTagName = userInputs.newTagName,
+            newTagError = dialogsAndMessages.newTagError,
+            onTagSelected = onTagSelected,
+            onNewTagNameChange = onNewTagNameChange,
+            onAddBattleTag = onAddBattleTag
+        )
+    }
+}
+
+/**
+ * Description input field with character limit.
+ */
+@Composable
+private fun DescriptionField(
     description: String,
     descriptionError: String?,
     onDescriptionChange: (String) -> Unit
@@ -271,8 +305,11 @@ fun DescriptionField(
     )
 }
 
+/**
+ * Button to trigger import dialog.
+ */
 @Composable
-fun ImportButton(onClick: () -> Unit) {
+private fun ImportButton(onClick: () -> Unit) {
     Button(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -282,8 +319,11 @@ fun ImportButton(onClick: () -> Unit) {
     }
 }
 
+/**
+ * Section for selecting energy level.
+ */
 @Composable
-fun EnergySection(
+private fun EnergySection(
     selectedEnergy: EnergyLevel,
     onEnergyChange: (EnergyLevel) -> Unit
 ) {
@@ -316,8 +356,11 @@ fun EnergySection(
     }
 }
 
+/**
+ * Section for selecting training status/readiness.
+ */
 @Composable
-fun ReadinessSection(
+private fun ReadinessSection(
     selectedStatus: TrainingStatus,
     onStatusChange: (TrainingStatus) -> Unit
 ) {
@@ -344,9 +387,11 @@ fun ReadinessSection(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * Section for displaying and adding battle tags.
+ */
 @Composable
-fun TagsSection(
+private fun TagsSection(
     allBattleTags: List<BattleTag>,
     selectedTags: Set<String>,
     newTagName: String,
@@ -360,35 +405,15 @@ fun TagsSection(
         style = MaterialTheme.typography.titleMedium
     )
 
-    if (allBattleTags.isEmpty() && newTagName.isBlank()) {
-        Text(
-            stringResource(id = R.string.add_edit_battle_combo_no_tags_message),
-            style = MaterialTheme.typography.bodySmall
-        )
-    }
-
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium),
-        verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)
-    ) {
-        allBattleTags.forEach { tag ->
-            FilterChip(
-                selected = selectedTags.contains(tag.name),
-                onClick = { onTagSelected(tag.name) },
-                label = { Text(tag.name) },
-                leadingIcon = if (selectedTags.contains(tag.name)) {
-                    {
-                        Icon(
-                            Icons.Filled.Check,
-                            contentDescription = null,
-                            Modifier.size(FilterChipDefaults.IconSize)
-                        )
-                    }
-                } else null
-            )
-        }
-    }
+    TagSelectionCard(
+        allTags = allBattleTags,
+        selectedTags = selectedTags,
+        isLoading = false,
+        emptyMessage = stringResource(id = R.string.add_edit_battle_combo_no_tags_message),
+        onTagSelected = onTagSelected,
+        getTagId = { it.name },
+        getTagName = { it.name }
+    )
 
     NewTagInput(
         newTagName = newTagName,
@@ -398,9 +423,11 @@ fun TagsSection(
     )
 }
 
-// LAYER 1: Input Capping with Supporting Text Error Display
+/**
+ * Input field for adding a new tag with character limit.
+ */
 @Composable
-fun NewTagInput(
+private fun NewTagInput(
     newTagName: String,
     newTagError: String?,
     onNewTagNameChange: (String) -> Unit,
@@ -442,8 +469,11 @@ fun NewTagInput(
     }
 }
 
+/**
+ * Dialog for importing practice combos.
+ */
 @Composable
-fun ImportDialog(
+private fun ImportDialog(
     practiceCombos: List<SavedCombo>,
     onImportCombo: (SavedCombo) -> Unit,
     onDismiss: () -> Unit
@@ -492,8 +522,11 @@ fun ImportDialog(
     )
 }
 
+/**
+ * Dialog for confirming combo deletion.
+ */
 @Composable
-fun DeleteComboDialog(
+private fun DeleteComboDialog(
     comboDescription: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
@@ -520,8 +553,11 @@ fun DeleteComboDialog(
     )
 }
 
+/**
+ * Chip for displaying and selecting energy level.
+ */
 @Composable
-fun EnergyChip(
+private fun EnergyChip(
     label: String,
     color: Color,
     isSelected: Boolean,
@@ -538,55 +574,141 @@ fun EnergyChip(
     )
 }
 
-// PREVIEWS
-@Preview(showBackground = true)
+
+//region Previews
+
+@Preview(showBackground = true, name = "Add Battle Combo - New")
 @Composable
-fun PreviewDescriptionField() {
-    DescriptionField(
-        description = "Sample combo description",
-        descriptionError = null,
-        onDescriptionChange = {}
+private fun AddEditBattleComboFormContentPreview() {
+    val dummyTags = listOf(
+        BattleTag(name = "Opening"),
+        BattleTag(name = "Finisher"),
+        BattleTag(name = "Defensive")
     )
+    BreakVaultTheme {
+        AddEditBattleComboFormContent(
+            userInputs = UserInputs(
+                description = "Jab -> Cross -> Hook",
+                selectedEnergy = EnergyLevel.MEDIUM,
+                selectedStatus = TrainingStatus.TRAINING,
+                selectedTags = setOf("Opening"),
+                isNewCombo = true
+            ),
+            dialogsAndMessages = UiDialogsAndMessages(),
+            allBattleTags = dummyTags,
+            onDescriptionChange = {},
+            onShowImportDialog = {},
+            onEnergyChange = {},
+            onStatusChange = {},
+            onTagSelected = {},
+            onNewTagNameChange = {},
+            onAddBattleTag = {}
+        )
+    }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Edit Battle Combo - With Data")
 @Composable
-fun PreviewDescriptionFieldWithError() {
-    DescriptionField(
-        description = "",
-        descriptionError = "Description cannot be empty.",
-        onDescriptionChange = {}
+private fun AddEditBattleComboFormContentEditPreview() {
+    val dummyTags = listOf(
+        BattleTag(name = "Opening"),
+        BattleTag(name = "Finisher"),
+        BattleTag(name = "Defensive")
     )
+    BreakVaultTheme {
+        AddEditBattleComboFormContent(
+            userInputs = UserInputs(
+                description = "Uppercut -> Spinning Kick -> Ground Move",
+                selectedEnergy = EnergyLevel.HIGH,
+                selectedStatus = TrainingStatus.READY,
+                selectedTags = setOf("Finisher", "Opening"),
+                isNewCombo = false,
+                newTagName = "Power"
+            ),
+            dialogsAndMessages = UiDialogsAndMessages(),
+            allBattleTags = dummyTags,
+            onDescriptionChange = {},
+            onShowImportDialog = {},
+            onEnergyChange = {},
+            onStatusChange = {},
+            onTagSelected = {},
+            onNewTagNameChange = {},
+            onAddBattleTag = {}
+        )
+    }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Add Battle Combo - With Errors")
 @Composable
-fun PreviewNewTagInput() {
-    NewTagInput(
-        newTagName = "New Tag",
-        newTagError = null,
-        onNewTagNameChange = {},
-        onAddBattleTag = {}
+private fun AddEditBattleComboFormContentWithErrorsPreview() {
+    val dummyTags = listOf(
+        BattleTag(name = "Opening"),
+        BattleTag(name = "Finisher")
     )
+    BreakVaultTheme {
+        AddEditBattleComboFormContent(
+            userInputs = UserInputs(
+                description = "",
+                selectedEnergy = EnergyLevel.LOW,
+                selectedStatus = TrainingStatus.TRAINING,
+                selectedTags = emptySet(),
+                isNewCombo = true,
+                newTagName = "Opening"
+            ),
+            dialogsAndMessages = UiDialogsAndMessages(
+                descriptionError = "Description cannot be empty.",
+                newTagError = "Tag 'Opening' already exists."
+            ),
+            allBattleTags = dummyTags,
+            onDescriptionChange = {},
+            onShowImportDialog = {},
+            onEnergyChange = {},
+            onStatusChange = {},
+            onTagSelected = {},
+            onNewTagNameChange = {},
+            onAddBattleTag = {}
+        )
+    }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Delete Combo Dialog")
 @Composable
-fun PreviewNewTagInputWithError() {
-    NewTagInput(
-        newTagName = "Power",
-        newTagError = "Tag 'Power' already exists.",
-        onNewTagNameChange = {},
-        onAddBattleTag = {}
-    )
+private fun DeleteComboDialogPreview() {
+    BreakVaultTheme {
+        DeleteComboDialog(
+            comboDescription = "Jab -> Cross -> Hook",
+            onConfirm = {},
+            onDismiss = {}
+        )
+    }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Import Dialog - With Combos")
 @Composable
-fun PreviewDeleteComboDialog() {
-    DeleteComboDialog(
-        comboDescription = "Jab -> Cross -> Hook",
-        onConfirm = {},
-        onDismiss = {}
+private fun ImportDialogPreview() {
+    val dummyCombos = listOf(
+        SavedCombo(id = "1", name = "combo1", moves = listOf("Jab", "Cross", "Hook")),
+        SavedCombo(id = "2", name = "Combo 2", moves = listOf("Windmill", "Freeze", "Air Flare"))
     )
+    BreakVaultTheme {
+        ImportDialog(
+            practiceCombos = dummyCombos,
+            onImportCombo = {},
+            onDismiss = {}
+        )
+    }
 }
+
+@Preview(showBackground = true, name = "Import Dialog - Empty")
+@Composable
+private fun ImportDialogEmptyPreview() {
+    BreakVaultTheme {
+        ImportDialog(
+            practiceCombos = emptyList(),
+            onImportCombo = {},
+            onDismiss = {}
+        )
+    }
+}
+
+//endregion

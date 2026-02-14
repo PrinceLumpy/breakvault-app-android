@@ -1,13 +1,11 @@
 package com.princelumpy.breakvault.ui.combogenerator
 
 import AppStyleDefaults
-import androidx.compose.foundation.background
 import com.princelumpy.breakvault.data.local.entity.Move
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -23,10 +21,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
-import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +34,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.MoveTag
+import com.princelumpy.breakvault.ui.common.TagSelectionCard
 
 // STATEFUL COMPOSABLE
 @OptIn(ExperimentalMaterial3Api::class)
@@ -247,7 +244,6 @@ fun RandomModeUI(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MoveTagChipGroup(
     allMoveTags: List<MoveTag>,
@@ -255,72 +251,23 @@ fun MoveTagChipGroup(
     selectedMoveTags: Set<MoveTag>,
     onTagsChange: (Set<MoveTag>) -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(AppStyleDefaults.SpacingExtraLarge * 8),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        )
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(AppStyleDefaults.SpacingMedium),
-            contentAlignment = Alignment.Center
-        ) {
-            when {
-                isLoadingTags -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(AppStyleDefaults.SpacingExtraLarge)
-                    )
-                }
-
-                allMoveTags.isEmpty() -> {
-                    Text(
-                        stringResource(id = R.string.combo_generator_no_tags_message),
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-
-                else -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                    ) {
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium),
-                            verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)
-                        ) {
-                            allMoveTags.forEach { tag ->
-                                FilterChip(
-                                    selected = selectedMoveTags.contains(tag),
-                                    onClick = {
-                                        onTagsChange(
-                                            if (selectedMoveTags.contains(tag)) selectedMoveTags - tag
-                                            else selectedMoveTags + tag
-                                        )
-                                    },
-                                    label = { Text(tag.name) },
-                                    leadingIcon = if (selectedMoveTags.contains(tag)) {
-                                        {
-                                            Icon(
-                                                Icons.Filled.Done,
-                                                stringResource(id = R.string.add_edit_move_selected_chip_description),
-                                                Modifier.size(FilterChipDefaults.IconSize)
-                                            )
-                                        }
-                                    } else null
-                                )
-                            }
-                        }
-                    }
-                }
+    TagSelectionCard(
+        allTags = allMoveTags,
+        selectedTags = selectedMoveTags.map { it.id }.toSet(),
+        isLoading = isLoadingTags,
+        emptyMessage = stringResource(id = R.string.combo_generator_no_tags_message),
+        onTagSelected = { tagId ->
+            val tag = allMoveTags.find { it.id == tagId }
+            tag?.let {
+                onTagsChange(
+                    if (selectedMoveTags.contains(it)) selectedMoveTags - it
+                    else selectedMoveTags + it
+                )
             }
-        }
-    }
+        },
+        getTagId = { it.id },
+        getTagName = { it.name }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

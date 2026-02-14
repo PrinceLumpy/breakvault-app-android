@@ -18,6 +18,8 @@ sealed class Screen(
     @StringRes val labelResId: Int? = null,
     val icon: ImageVector? = null
 ) {
+    data object Main : Screen("main")
+
     data object MoveList :
         Screen("move_list", R.string.screen_label_moves, Icons.AutoMirrored.Filled.List)
 

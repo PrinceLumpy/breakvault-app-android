@@ -169,7 +169,7 @@ fun ComboGeneratorContent(
             ) {
                 Text(stringResource(id = R.string.combo_generator_generate_combo_button))
             }
-            
+
             GeneratedComboCard(comboText = uiState.generatedCombo.text)
         }
     }
@@ -406,6 +406,7 @@ fun StructuredModeUI(
 ) {
     var expanded by remember { mutableStateOf(false) }
     var selectedTagForDropdown by remember { mutableStateOf<MoveTag?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -416,13 +417,18 @@ fun StructuredModeUI(
             style = MaterialTheme.typography.titleMedium
         )
 
-        TagSelectionDropdown(
+        TagSelectionComboBox(
             allMoveTags = allMoveTags,
             isLoadingTags = isLoadingTags,
             selectedTag = selectedTagForDropdown,
+            searchQuery = searchQuery,
+            onSearchQueryChange = { searchQuery = it },
             expanded = expanded,
             onExpandedChange = { expanded = it },
-            onTagSelected = { selectedTagForDropdown = it }
+            onTagSelected = {
+                selectedTagForDropdown = it
+                searchQuery = ""
+            }
         )
 
         Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingSmall))
@@ -442,28 +448,47 @@ fun StructuredModeUI(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TagSelectionDropdown(
+fun TagSelectionComboBox(
     allMoveTags: List<MoveTag>,
     isLoadingTags: Boolean,
     selectedTag: MoveTag?,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
     onTagSelected: (MoveTag) -> Unit
 ) {
+    val filteredTags = remember(allMoveTags, searchQuery) {
+        if (searchQuery.isEmpty()) {
+            allMoveTags
+        } else {
+            allMoveTags.filter { it.name.contains(searchQuery, ignoreCase = true) }
+        }
+    }
+
     ExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { if (!isLoadingTags) onExpandedChange(it) }
     ) {
         OutlinedTextField(
-            value = selectedTag?.name ?: "",
-            onValueChange = {},
-            readOnly = true,
+            value = if (expanded) searchQuery else (selectedTag?.name ?: ""),
+            onValueChange = { newValue ->
+                onSearchQueryChange(newValue)
+                if (!expanded) {
+                    onExpandedChange(true)
+                }
+            },
             enabled = !isLoadingTags,
             label = {
                 Text(
                     if (isLoadingTags) "Loading tags..."
                     else stringResource(id = R.string.combo_generator_add_tag_to_sequence_label)
                 )
+            },
+            placeholder = {
+                if (expanded) {
+                    Text("Search tags...")
+                }
             },
             trailingIcon = {
                 if (isLoadingTags) {
@@ -477,20 +502,37 @@ fun TagSelectionDropdown(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable)
         )
         ExposedDropdownMenu(
             expanded = expanded,
-            onDismissRequest = { onExpandedChange(false) }
+            onDismissRequest = {
+                onExpandedChange(false)
+                onSearchQueryChange("")
+            }
         ) {
-            allMoveTags.forEach { tag ->
+            if (filteredTags.isEmpty()) {
                 DropdownMenuItem(
-                    text = { Text(tag.name) },
-                    onClick = {
-                        onTagSelected(tag)
-                        onExpandedChange(false)
-                    }
+                    text = {
+                        Text(
+                            "No tags found",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    onClick = {},
+                    enabled = false
                 )
+            } else {
+                filteredTags.forEach { tag ->
+                    DropdownMenuItem(
+                        text = { Text(tag.name) },
+                        onClick = {
+                            onTagSelected(tag)
+                            onExpandedChange(false)
+                        }
+                    )
+                }
             }
         }
     }

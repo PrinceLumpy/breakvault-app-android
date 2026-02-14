@@ -2,6 +2,7 @@ package com.princelumpy.breakvault.ui.moves.managetags
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.princelumpy.breakvault.common.Constants.MOVE_TAG_CHARACTER_LIMIT
 import com.princelumpy.breakvault.data.local.entity.MoveTag
 import com.princelumpy.breakvault.data.repository.MoveRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -32,7 +33,9 @@ data class DialogState(
 data class MoveTagListUiState(
     val tags: List<MoveTag> = emptyList(),
     val userInputs: UserInputs = UserInputs(),
-    val dialogState: DialogState = DialogState()
+    val dialogState: DialogState = DialogState(),
+    val newTagNameError: String? = null,
+    val editTagNameError: String? = null
 )
 
 @HiltViewModel
@@ -43,17 +46,23 @@ class MoveTagListViewModel @Inject constructor(
     // Private state flows for each distinct concern.
     private val _userInputs = MutableStateFlow(UserInputs())
     private val _dialogState = MutableStateFlow(DialogState())
+    private val _newTagNameError = MutableStateFlow<String?>(null)
+    private val _editTagNameError = MutableStateFlow<String?>(null)
 
     // The single source of truth for the UI, created by combining multiple flows.
     val uiState: StateFlow<MoveTagListUiState> = combine(
         moveRepository.getAllTags(), // Data from repository
         _userInputs,                 // User's text input
-        _dialogState                 // State of dialogs
-    ) { tags, userInputs, dialogState ->
+        _dialogState,                // State of dialogs
+        _newTagNameError,            // Error messages
+        _editTagNameError
+    ) { tags, userInputs, dialogState, newTagNameError, editTagNameError ->
         MoveTagListUiState(
             tags = tags,
             userInputs = userInputs,
-            dialogState = dialogState
+            dialogState = dialogState,
+            newTagNameError = newTagNameError,
+            editTagNameError = editTagNameError
         )
     }.stateIn(
         scope = viewModelScope,
@@ -64,35 +73,46 @@ class MoveTagListViewModel @Inject constructor(
     // --- User Input Handlers ---
 
     fun onNewTagNameChange(name: String) {
-        if (name.length <= 30) {
+        if (name.length <= MOVE_TAG_CHARACTER_LIMIT) {
             _userInputs.update { it.copy(newTagName = name) }
+            // Clear error if user corrects input
+            if (_newTagNameError.value != null) {
+                _newTagNameError.update { null }
+            }
         }
     }
 
     fun onTagNameForEditChange(name: String) {
-        if (name.length <= 30) {
+        if (name.length <= MOVE_TAG_CHARACTER_LIMIT) {
             _userInputs.update { it.copy(tagNameForEdit = name) }
+            // Clear error if user corrects input
+            if (_editTagNameError.value != null) {
+                _editTagNameError.update { null }
+            }
         }
     }
 
     // --- Dialog State Handlers ---
 
     fun onAddTagClicked() {
-        _userInputs.update { it.copy(newTagName = "") } // Clear previous input before showing
+        _newTagNameError.update { null } // Clear error
         _dialogState.update { it.copy(showAddDialog = true) }
     }
 
     fun onAddTagDialogDismiss() {
         _dialogState.update { it.copy(showAddDialog = false) }
+        _userInputs.update { it.copy(newTagName = "") } // Clear input
     }
 
     fun onEditTagClicked(tag: MoveTag) {
         _userInputs.update { it.copy(tagNameForEdit = tag.name) } // Pre-fill input
+        _editTagNameError.update { null }
         _dialogState.update { it.copy(tagForEditDialog = tag) }
     }
 
     fun onEditTagDialogDismiss() {
         _dialogState.update { it.copy(tagForEditDialog = null) }
+        _userInputs.update { it.copy(tagNameForEdit = "") }
     }
 
     fun onDeleteTagClicked(tag: MoveTag) {
@@ -107,13 +127,26 @@ class MoveTagListViewModel @Inject constructor(
 
     fun onAddTag() {
         val newTagName = _userInputs.value.newTagName.trim()
-        if (newTagName.isNotBlank()) {
-            viewModelScope.launch {
-                val newMoveTag = MoveTag(name = newTagName, id = UUID.randomUUID().toString())
-                moveRepository.insertMoveTag(newMoveTag)
-                // Hide dialog on success
-                onAddTagDialogDismiss()
-            }
+        val allTagNames = uiState.value.tags.map { it.name.lowercase() }
+
+        // begin validation
+        if (newTagName.isBlank()) {
+            _newTagNameError.value = "Tag name cannot be blank"
+            return
+        }
+        if (newTagName.length > MOVE_TAG_CHARACTER_LIMIT) {
+            _newTagNameError.value = "Tag name cannot exceed $MOVE_TAG_CHARACTER_LIMIT characters"
+            return
+        }
+        if (allTagNames.contains(newTagName.lowercase())) {
+            _newTagNameError.value = "Tag name already exists"
+            return
+        }
+        // end validation
+        viewModelScope.launch {
+            val newMoveTag = MoveTag(name = newTagName, id = UUID.randomUUID().toString())
+            moveRepository.insertMoveTag(newMoveTag)
+            onAddTagDialogDismiss()
         }
     }
 
@@ -121,12 +154,34 @@ class MoveTagListViewModel @Inject constructor(
         val tagToEdit = _dialogState.value.tagForEditDialog ?: return
         val newName = _userInputs.value.tagNameForEdit.trim()
 
-        if (newName.isNotBlank() && newName != tagToEdit.name) {
-            viewModelScope.launch {
-                moveRepository.updateTagName(tagToEdit.id, newName)
-                // Hide dialog on success
-                onEditTagDialogDismiss()
-            }
+        val allOtherTagNames = uiState.value.tags
+            .filter { it.id != tagToEdit.id }
+            .map { it.name.lowercase() }
+
+        // begin validation
+        if (newName.isBlank()) {
+            _editTagNameError.value = "Tag name cannot be empty."
+            return
+        }
+        if (newName.length > MOVE_TAG_CHARACTER_LIMIT) {
+            _editTagNameError.value = "Tag cannot exceed $MOVE_TAG_CHARACTER_LIMIT characters."
+            return
+        }
+        if (allOtherTagNames.contains(newName.lowercase())) {
+            _editTagNameError.value = "Another tag with this name already exists."
+            return
+        }
+        // end validation
+
+        // If no change, dismiss dialog
+        if (newName == tagToEdit.name) {
+            onEditTagDialogDismiss()
+            return
+        }
+
+        viewModelScope.launch {
+            moveRepository.updateTagName(tagToEdit.id, newName)
+            onEditTagDialogDismiss()
         }
     }
 
@@ -135,7 +190,7 @@ class MoveTagListViewModel @Inject constructor(
         viewModelScope.launch {
             moveRepository.deleteTagCompletely(tagToDelete)
             // Hide dialog on success
-            onDeleteTagDialogDismiss()
+            _dialogState.update { it.copy(tagForDeleteDialog = null) }
         }
     }
 }

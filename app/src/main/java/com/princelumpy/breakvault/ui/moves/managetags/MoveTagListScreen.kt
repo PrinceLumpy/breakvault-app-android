@@ -76,6 +76,8 @@ fun MoveTagListScreen(
     if (dialogState.showAddDialog) {
         AddTagDialog(
             newTagName = userInputs.newTagName,
+            isError = uiState.newTagNameError != null,
+            errorMessage = uiState.newTagNameError,
             onNewTagNameChange = moveTagListViewModel::onNewTagNameChange,
             onDismiss = moveTagListViewModel::onAddTagDialogDismiss,
             onConfirm = moveTagListViewModel::onAddTag
@@ -85,6 +87,8 @@ fun MoveTagListScreen(
     dialogState.tagForEditDialog?.let {
         EditTagDialog(
             tagNameForEdit = userInputs.tagNameForEdit,
+            isError = uiState.editTagNameError != null,
+            errorMessage = uiState.editTagNameError,
             onTagNameChange = moveTagListViewModel::onTagNameForEditChange,
             onDismiss = moveTagListViewModel::onEditTagDialogDismiss,
             onConfirm = moveTagListViewModel::onUpdateTag
@@ -266,6 +270,8 @@ fun TagListItem(
 @Composable
 private fun AddTagDialog(
     newTagName: String,
+    isError: Boolean,
+    errorMessage: String?,
     onNewTagNameChange: (String) -> Unit,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
@@ -298,6 +304,16 @@ private fun AddTagDialog(
                         }
                     }
                 ),
+                isError = isError,
+                supportingText = {
+                    if (isError) {
+                        Text(
+                            text = errorMessage ?: "",
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester)
@@ -325,6 +341,8 @@ private fun AddTagDialog(
 @Composable
 private fun EditTagDialog(
     tagNameForEdit: String,
+    isError: Boolean,
+    errorMessage: String?,
     onTagNameChange: (String) -> Unit,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
@@ -357,6 +375,16 @@ private fun EditTagDialog(
                         }
                     }
                 ),
+                isError = isError,
+                supportingText = {
+                    if (isError) {
+                        Text(
+                            text = errorMessage ?: "",
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester)

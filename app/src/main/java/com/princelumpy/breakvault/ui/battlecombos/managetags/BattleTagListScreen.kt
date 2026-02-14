@@ -47,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.common.Constants.BATTLE_TAG_CHARACTER_LIMIT
 import com.princelumpy.breakvault.data.local.entity.BattleTag
+import com.princelumpy.breakvault.ui.common.TagDialog
 
 @Composable
 fun BattleTagListScreen(
@@ -151,22 +152,30 @@ fun BattleTagListContent(
     }
 
     if (dialogState.showAddDialog) {
-        AddTagDialog(
-            newTagName = userInputs.newTagName,
+        TagDialog(
+            title = stringResource(id = R.string.tag_list_add_new_tag_dialog_title),
+            labelText = stringResource(id = R.string.tag_list_tag_name_label),
+            confirmButtonText = stringResource(id = R.string.common_add),
+            tagName = userInputs.newTagName,
+            characterLimit = BATTLE_TAG_CHARACTER_LIMIT,
             isError = uiState.newTagNameError != null,
             errorMessage = uiState.newTagNameError,
-            onNewTagNameChange = onNewTagNameChange,
+            onTagNameChange = onNewTagNameChange,
             onConfirm = onAddTag,
             onDismiss = onAddTagDialogDismiss
         )
     }
 
     dialogState.tagForEditDialog?.let {
-        EditTagDialog(
-            tagNameForEdit = userInputs.tagNameForEdit,
+        TagDialog(
+            title = stringResource(id = R.string.tag_list_edit_tag_name_dialog_title),
+            labelText = stringResource(id = R.string.tag_list_new_tag_name_label),
+            confirmButtonText = stringResource(id = R.string.common_save),
+            tagName = userInputs.tagNameForEdit,
+            characterLimit = BATTLE_TAG_CHARACTER_LIMIT,
             isError = uiState.editTagNameError != null,
             errorMessage = uiState.editTagNameError,
-            onTagNameForEditChange = onTagNameForEditChange,
+            onTagNameChange = onTagNameForEditChange,
             onConfirm = onUpdateTag,
             onDismiss = onEditTagDialogDismiss
         )
@@ -227,146 +236,6 @@ fun BattleTagListItem(
 }
 
 // --- DIALOGS ---
-
-@Composable
-private fun AddTagDialog(
-    newTagName: String,
-    isError: Boolean,
-    errorMessage: String?,
-    onNewTagNameChange: (String) -> Unit,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    val focusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(id = R.string.battle_tag_list_add_dialog_title)) },
-        text = {
-            OutlinedTextField(
-                value = newTagName,
-                onValueChange = {
-                    if (it.length <= BATTLE_TAG_CHARACTER_LIMIT) {
-                        onNewTagNameChange(it)
-                    }
-                },
-                label = { Text(stringResource(id = R.string.battle_tag_list_tag_name_label)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        if (newTagName.isNotBlank()) {
-                            onConfirm()
-                        }
-                    }
-                ),
-                isError = isError,
-                supportingText = {
-                    if (isError) {
-                        Text(
-                            text = errorMessage ?: "", // Display the error message
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester)
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = onConfirm,
-                enabled = newTagName.isNotBlank()
-            ) {
-                Text(stringResource(id = R.string.common_add))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(id = R.string.common_cancel))
-            }
-        }
-    )
-}
-
-@Composable
-private fun EditTagDialog(
-    tagNameForEdit: String,
-    isError: Boolean,
-    errorMessage: String?,
-    onTagNameForEditChange: (String) -> Unit,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    val focusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(id = R.string.battle_tag_list_edit_dialog_title)) },
-        text = {
-            OutlinedTextField(
-                value = tagNameForEdit,
-                onValueChange = {
-                    if (it.length <= BATTLE_TAG_CHARACTER_LIMIT) {
-                        onTagNameForEditChange(it)
-                    }
-                },
-                label = { Text(stringResource(id = R.string.battle_tag_list_new_tag_name_label)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        if (tagNameForEdit.isNotBlank()) {
-                            onConfirm()
-                        }
-                    }),
-                isError = isError,
-                supportingText = {
-                    if (isError) {
-                        Text(
-                            text = errorMessage ?: "", // Display the error message
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester)
-
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = onConfirm,
-                enabled = tagNameForEdit.isNotBlank()
-            ) {
-                Text(stringResource(id = R.string.common_save))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(id = R.string.common_cancel))
-            }
-        }
-    )
-}
 
 @Composable
 private fun DeleteTagDialog(
@@ -535,11 +404,15 @@ private fun BattleTagListContentPreview_DeleteDialog() {
 @Composable
 private fun AddTagDialogPreview() {
     MaterialTheme {
-        AddTagDialog(
-            newTagName = "New Tag",
+        TagDialog(
+            title = "Add New Tag",
+            labelText = "Tag Name",
+            confirmButtonText = "Add",
+            tagName = "New Tag",
+            characterLimit = BATTLE_TAG_CHARACTER_LIMIT,
             isError = false,
             errorMessage = null,
-            onNewTagNameChange = {},
+            onTagNameChange = {},
             onConfirm = {},
             onDismiss = {}
         )
@@ -576,11 +449,15 @@ private fun BattleTagListContentPreview_AddDialogError() {
 @Composable
 private fun EditTagDialogPreview() {
     MaterialTheme {
-        EditTagDialog(
-            tagNameForEdit = "Existing Tag",
+        TagDialog(
+            title = "Edit Tag Name",
+            labelText = "New Tag Name",
+            confirmButtonText = "Save",
+            tagName = "Existing Tag",
+            characterLimit = BATTLE_TAG_CHARACTER_LIMIT,
             isError = false,
             errorMessage = null,
-            onTagNameForEditChange = {},
+            onTagNameChange = {},
             onConfirm = {},
             onDismiss = {}
         )

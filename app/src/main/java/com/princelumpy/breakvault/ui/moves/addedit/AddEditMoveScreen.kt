@@ -20,6 +20,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
@@ -52,8 +53,11 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.MoveTag
+import com.princelumpy.breakvault.ui.common.TagDialog
 import com.princelumpy.breakvault.ui.common.TagSelectionCard
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
 // Constants for character limits (LAYER 1)
 private const val MOVE_NAME_CHARACTER_LIMIT = 100
@@ -273,10 +277,25 @@ private fun AddEditMoveContent(
             keyboardActions = KeyboardActions(onDone = { onSaveMove() })
         )
 
-        Text(
-            stringResource(id = R.string.add_edit_move_select_tags_label),
-            style = MaterialTheme.typography.titleMedium
-        )
+        var showAddTagDialog by remember { mutableStateOf(false) }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                stringResource(id = R.string.add_edit_move_select_tags_label),
+                style = MaterialTheme.typography.titleMedium
+            )
+            IconButton(onClick = { showAddTagDialog = true }) {
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = stringResource(id = R.string.add_edit_move_add_new_tag_label),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
 
         TagSelectionCard(
             allTags = allTags,
@@ -288,58 +307,25 @@ private fun AddEditMoveContent(
             getTagName = { it.name }
         )
 
-        Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingMedium))
-
-        AddNewTagSection(
-            newTagName = userInputs.newTagName,
-            newTagError = dialogsAndMessages.newTagError,
-            onNewTagNameChange = onNewTagNameChange,
-            onAddTag = onAddTag
-        )
-    }
-}
-
-/**
- * A stateless section for adding a new tag.
- */
-@Composable
-private fun AddNewTagSection(
-    newTagName: String,
-    newTagError: String?,
-    onNewTagNameChange: (String) -> Unit,
-    onAddTag: () -> Unit
-) {
-    Text(
-        stringResource(id = R.string.add_edit_move_add_new_tag_label),
-        style = MaterialTheme.typography.titleMedium
-    )
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
-    ) {
-        // LAYER 1: Input Capping with Supporting Text Error Display
-        OutlinedTextField(
-            value = newTagName,
-            onValueChange = { newText ->
-                if (newText.length <= MOVE_TAG_CHARACTER_LIMIT) {
-                    onNewTagNameChange(newText)
+        if (showAddTagDialog) {
+            TagDialog(
+                title = stringResource(id = R.string.add_edit_move_add_new_tag_label),
+                labelText = stringResource(id = R.string.add_edit_move_new_tag_name_label),
+                confirmButtonText = stringResource(id = R.string.common_add),
+                tagName = userInputs.newTagName,
+                characterLimit = MOVE_TAG_CHARACTER_LIMIT,
+                isError = dialogsAndMessages.newTagError != null,
+                errorMessage = dialogsAndMessages.newTagError,
+                onTagNameChange = onNewTagNameChange,
+                onConfirm = {
+                    onAddTag()
+                    // Note: Dialog will close when tag is successfully added via ViewModel
+                },
+                onDismiss = {
+                    showAddTagDialog = false
+                    onNewTagNameChange("") // Clear input on dismiss
                 }
-            },
-            label = { Text(stringResource(id = R.string.add_edit_move_new_tag_name_label)) },
-            modifier = Modifier.weight(1f),
-            singleLine = true,
-            isError = newTagError != null,
-            supportingText = {
-                newTagError?.let {
-                    Text(it, color = MaterialTheme.colorScheme.error)
-                }
-            },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { onAddTag() })
-        )
-        Button(onClick = onAddTag) {
-            Text(stringResource(id = R.string.common_add))
+            )
         }
     }
 }
@@ -497,32 +483,6 @@ private fun MoveTagsSection_NoTags_Preview() {
             onTagSelected = {},
             getTagId = { it.id },
             getTagName = { it.name }
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun AddNewTagSectionPreview() {
-    BreakVaultTheme {
-        AddNewTagSection(
-            newTagName = "New Style",
-            newTagError = null,
-            onNewTagNameChange = {},
-            onAddTag = {}
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun AddNewTagSectionWithErrorPreview() {
-    BreakVaultTheme {
-        AddNewTagSection(
-            newTagName = "Power",
-            newTagError = "Tag 'Power' already exists.",
-            onNewTagNameChange = {},
-            onAddTag = {}
         )
     }
 }

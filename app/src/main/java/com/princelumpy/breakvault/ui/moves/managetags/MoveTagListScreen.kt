@@ -49,6 +49,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.MoveTag
+import com.princelumpy.breakvault.ui.common.TagDialog
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 
 /**
@@ -74,19 +75,25 @@ fun MoveTagListScreen(
     )
 
     if (dialogState.showAddDialog) {
-        AddTagDialog(
-            newTagName = userInputs.newTagName,
+        TagDialog(
+            title = stringResource(id = R.string.tag_list_add_new_tag_dialog_title),
+            labelText = stringResource(id = R.string.tag_list_tag_name_label),
+            confirmButtonText = stringResource(id = R.string.common_add),
+            tagName = userInputs.newTagName,
             isError = uiState.newTagNameError != null,
             errorMessage = uiState.newTagNameError,
-            onNewTagNameChange = moveTagListViewModel::onNewTagNameChange,
+            onTagNameChange = moveTagListViewModel::onNewTagNameChange,
             onDismiss = moveTagListViewModel::onAddTagDialogDismiss,
             onConfirm = moveTagListViewModel::onAddTag
         )
     }
 
     dialogState.tagForEditDialog?.let {
-        EditTagDialog(
-            tagNameForEdit = userInputs.tagNameForEdit,
+        TagDialog(
+            title = stringResource(id = R.string.tag_list_edit_tag_name_dialog_title),
+            labelText = stringResource(id = R.string.tag_list_new_tag_name_label),
+            confirmButtonText = stringResource(id = R.string.common_save),
+            tagName = userInputs.tagNameForEdit,
             isError = uiState.editTagNameError != null,
             errorMessage = uiState.editTagNameError,
             onTagNameChange = moveTagListViewModel::onTagNameForEditChange,
@@ -265,148 +272,6 @@ fun TagListItem(
 
 
 /**
- * A stateless dialog for adding a new tag.
- */
-@Composable
-private fun AddTagDialog(
-    newTagName: String,
-    isError: Boolean,
-    errorMessage: String?,
-    onNewTagNameChange: (String) -> Unit,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val focusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
-
-    AlertDialog(
-        modifier = modifier,
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(id = R.string.tag_list_add_new_tag_dialog_title)) },
-        text = {
-            OutlinedTextField(
-                value = newTagName,
-                onValueChange = onNewTagNameChange,
-                label = { Text(stringResource(id = R.string.tag_list_tag_name_label)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        if (newTagName.isNotBlank()) {
-                            onConfirm()
-                        }
-                    }
-                ),
-                isError = isError,
-                supportingText = {
-                    if (isError) {
-                        Text(
-                            text = errorMessage ?: "",
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester)
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = onConfirm,
-                enabled = newTagName.isNotBlank()
-            ) {
-                Text(stringResource(id = R.string.common_add))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(id = R.string.common_cancel))
-            }
-        }
-    )
-}
-
-/**
- * A stateless dialog for editing a tag name.
- */
-@Composable
-private fun EditTagDialog(
-    tagNameForEdit: String,
-    isError: Boolean,
-    errorMessage: String?,
-    onTagNameChange: (String) -> Unit,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val focusRequester = remember { FocusRequester() }
-
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
-
-    AlertDialog(
-        modifier = modifier,
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(id = R.string.tag_list_edit_tag_name_dialog_title)) },
-        text = {
-            OutlinedTextField(
-                value = tagNameForEdit,
-                onValueChange = onTagNameChange,
-                label = { Text(stringResource(id = R.string.tag_list_new_tag_name_label)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        if (tagNameForEdit.isNotBlank()) {
-                            onConfirm()
-                        }
-                    }
-                ),
-                isError = isError,
-                supportingText = {
-                    if (isError) {
-                        Text(
-                            text = errorMessage ?: "",
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester)
-            )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = onConfirm,
-                enabled = tagNameForEdit.isNotBlank()
-            ) {
-                Text(stringResource(id = R.string.common_save))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(id = R.string.common_cancel))
-            }
-        }
-    )
-}
-
-/**
  * A stateless dialog for confirming tag deletion.
  */
 @Composable
@@ -497,9 +362,12 @@ private fun TagListItemPreview() {
 @Composable
 private fun AddTagDialogPreview() {
     BreakVaultTheme {
-        AddTagDialog(
-            newTagName = "Flow",
-            onNewTagNameChange = {},
+        TagDialog(
+            title = "Add New Tag",
+            labelText = "Tag Name",
+            confirmButtonText = "Add",
+            tagName = "Flow",
+            onTagNameChange = {},
             onDismiss = {},
             onConfirm = {},
             isError = false,
@@ -512,8 +380,11 @@ private fun AddTagDialogPreview() {
 @Composable
 private fun EditTagDialogPreview() {
     BreakVaultTheme {
-        EditTagDialog(
-            tagNameForEdit = "Old Name",
+        TagDialog(
+            title = "Edit Tag Name",
+            labelText = "New Tag Name",
+            confirmButtonText = "Save",
+            tagName = "Old Name",
             onTagNameChange = {},
             onDismiss = {},
             onConfirm = {},

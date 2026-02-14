@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
@@ -43,8 +44,11 @@ import com.princelumpy.breakvault.data.local.entity.BattleTag
 import com.princelumpy.breakvault.data.local.entity.EnergyLevel
 import com.princelumpy.breakvault.data.local.entity.TrainingStatus
 import com.princelumpy.breakvault.data.local.entity.SavedCombo
+import com.princelumpy.breakvault.ui.common.TagDialog
 import com.princelumpy.breakvault.ui.common.TagSelectionCard
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
 /**
  * The main, stateful screen composable that holds the ViewModel and state.
@@ -400,10 +404,25 @@ private fun TagsSection(
     onNewTagNameChange: (String) -> Unit,
     onAddBattleTag: () -> Unit
 ) {
-    Text(
-        stringResource(id = R.string.add_edit_battle_combo_tags_label),
-        style = MaterialTheme.typography.titleMedium
-    )
+    var showAddTagDialog by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            stringResource(id = R.string.add_edit_battle_combo_tags_label),
+            style = MaterialTheme.typography.titleMedium
+        )
+        IconButton(onClick = { showAddTagDialog = true }) {
+            Icon(
+                Icons.Filled.Add,
+                contentDescription = stringResource(id = R.string.add_edit_battle_combo_new_tag_label),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
 
     TagSelectionCard(
         allTags = allBattleTags,
@@ -415,57 +434,25 @@ private fun TagsSection(
         getTagName = { it.name }
     )
 
-    NewTagInput(
-        newTagName = newTagName,
-        newTagError = newTagError,
-        onNewTagNameChange = onNewTagNameChange,
-        onAddBattleTag = onAddBattleTag
-    )
-}
-
-/**
- * Input field for adding a new tag with character limit.
- */
-@Composable
-private fun NewTagInput(
-    newTagName: String,
-    newTagError: String?,
-    onNewTagNameChange: (String) -> Unit,
-    onAddBattleTag: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
-    ) {
-        OutlinedTextField(
-            value = newTagName,
-            onValueChange = { newText ->
-                if (newText.length <= BATTLE_TAG_CHARACTER_LIMIT) {
-                    onNewTagNameChange(newText)
-                }
-            },
-            label = { Text(stringResource(id = R.string.add_edit_battle_combo_new_tag_label)) },
-            modifier = Modifier.weight(1f),
-            singleLine = true,
+    if (showAddTagDialog) {
+        TagDialog(
+            title = stringResource(id = R.string.add_edit_battle_combo_new_tag_label),
+            labelText = stringResource(id = R.string.add_edit_battle_combo_new_tag_label),
+            confirmButtonText = stringResource(id = R.string.common_add),
+            tagName = newTagName,
+            characterLimit = BATTLE_TAG_CHARACTER_LIMIT,
             isError = newTagError != null,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { onAddBattleTag() }),
-            supportingText = {
-                if (newTagError != null) {
-                    Text(newTagError, color = MaterialTheme.colorScheme.error)
-                } else {
-                    Text(
-                        text = "${newTagName.length} / $BATTLE_TAG_CHARACTER_LIMIT",
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.End
-                    )
-                }
+            errorMessage = newTagError,
+            onTagNameChange = onNewTagNameChange,
+            onConfirm = {
+                onAddBattleTag()
+                // Note: Dialog will close when tag is successfully added via ViewModel
+            },
+            onDismiss = {
+                showAddTagDialog = false
+                onNewTagNameChange("") // Clear input on dismiss
             }
         )
-        Button(onClick = onAddBattleTag) {
-            Text(stringResource(id = R.string.common_add))
-        }
     }
 }
 

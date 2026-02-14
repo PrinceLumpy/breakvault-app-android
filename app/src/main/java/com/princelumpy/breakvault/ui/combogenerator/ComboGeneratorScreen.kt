@@ -1,14 +1,17 @@
 package com.princelumpy.breakvault.ui.combogenerator
 
 import AppStyleDefaults
+import androidx.compose.foundation.background
 import com.princelumpy.breakvault.data.local.entity.Move
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Done
@@ -26,6 +30,8 @@ import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -74,7 +80,7 @@ fun ComboGeneratorContent(
     onNavigateUp: () -> Unit,
     onModeChange: (GenerationMode) -> Unit,
     onTagsChange: (Set<MoveTag>) -> Unit,
-    onLengthChange: (String) -> Unit,
+    onLengthChange: (Float) -> Unit,
     onAllowRepeatsChange: (Boolean) -> Unit,
     onAddTagToSequence: (MoveTag) -> Unit,
     onRemoveLastTagFromSequence: () -> Unit,
@@ -115,11 +121,11 @@ fun ComboGeneratorContent(
         Column(
             modifier = Modifier
                 .padding(paddingValues)
-                .padding(AppStyleDefaults.SpacingLarge)
+                .padding(horizontal = AppStyleDefaults.SpacingLarge)
                 .verticalScroll(rememberScrollState())
                 .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
+            verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
         ) {
             ModeTabRow(
                 currentMode = uiState.settings.currentMode,
@@ -130,12 +136,12 @@ fun ComboGeneratorContent(
                 GenerationMode.Random -> {
                     RandomModeUI(
                         allMoveTags = uiState.allTags,
+                        isLoadingTags = uiState.isLoadingTags,
                         selectedMoveTags = uiState.settings.selectedTags,
                         onTagsChange = onTagsChange,
                         selectedLength = uiState.settings.selectedLength,
-                        lengthError = uiState.dialogAndMessages.lengthError,
-                        onLengthChange = { textValue ->
-                            onLengthChange(textValue)
+                        onLengthChange = { length ->
+                            onLengthChange(length)
                         },
                         allowRepeats = uiState.settings.allowRepeats,
                         onAllowRepeatsChange = onAllowRepeatsChange
@@ -145,14 +151,13 @@ fun ComboGeneratorContent(
                 GenerationMode.Structured -> {
                     StructuredModeUI(
                         allMoveTags = uiState.allTags,
+                        isLoadingTags = uiState.isLoadingTags,
                         moveTagSequence = uiState.settings.structuredMoveTagSequence,
                         onAddTagToSequence = onAddTagToSequence,
                         onRemoveLastTagFromSequence = onRemoveLastTagFromSequence
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingSmall))
 
             Button(
                 onClick = onGenerateCombo,
@@ -164,9 +169,7 @@ fun ComboGeneratorContent(
             ) {
                 Text(stringResource(id = R.string.combo_generator_generate_combo_button))
             }
-
-            Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingSmall))
-
+            
             GeneratedComboCard(comboText = uiState.generatedCombo.text)
         }
     }
@@ -211,11 +214,11 @@ fun GeneratedComboCard(comboText: String) {
 @Composable
 fun RandomModeUI(
     allMoveTags: List<MoveTag>,
+    isLoadingTags: Boolean,
     selectedMoveTags: Set<MoveTag>,
     onTagsChange: (Set<MoveTag>) -> Unit,
-    selectedLength: Int?,
-    lengthError: String?,
-    onLengthChange: (String) -> Unit,
+    selectedLength: Int,
+    onLengthChange: (Float) -> Unit,
     allowRepeats: Boolean,
     onAllowRepeatsChange: (Boolean) -> Unit
 ) {
@@ -228,24 +231,17 @@ fun RandomModeUI(
             style = MaterialTheme.typography.titleMedium
         )
 
-        if (allMoveTags.isEmpty()) {
-            Text(
-                stringResource(id = R.string.combo_generator_no_tags_message),
-                style = MaterialTheme.typography.bodySmall
-            )
-        } else {
-            MoveTagChipGroup(
-                allMoveTags = allMoveTags,
-                selectedMoveTags = selectedMoveTags,
-                onTagsChange = onTagsChange
-            )
-        }
+        MoveTagChipGroup(
+            allMoveTags = allMoveTags,
+            isLoadingTags = isLoadingTags,
+            selectedMoveTags = selectedMoveTags,
+            onTagsChange = onTagsChange
+        )
 
         RandomModeControls(
             allowRepeats = allowRepeats,
             onAllowRepeatsChange = onAllowRepeatsChange,
             selectedLength = selectedLength,
-            lengthError = lengthError,
             onLengthChange = onLengthChange
         )
     }
@@ -255,34 +251,74 @@ fun RandomModeUI(
 @Composable
 fun MoveTagChipGroup(
     allMoveTags: List<MoveTag>,
+    isLoadingTags: Boolean,
     selectedMoveTags: Set<MoveTag>,
     onTagsChange: (Set<MoveTag>) -> Unit
 ) {
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium),
-        verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(AppStyleDefaults.SpacingExtraLarge * 8),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        )
     ) {
-        allMoveTags.forEach { tag ->
-            FilterChip(
-                selected = selectedMoveTags.contains(tag),
-                onClick = {
-                    onTagsChange(
-                        if (selectedMoveTags.contains(tag)) selectedMoveTags - tag
-                        else selectedMoveTags + tag
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(AppStyleDefaults.SpacingMedium),
+            contentAlignment = Alignment.Center
+        ) {
+            when {
+                isLoadingTags -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(AppStyleDefaults.SpacingExtraLarge)
                     )
-                },
-                label = { Text(tag.name) },
-                leadingIcon = if (selectedMoveTags.contains(tag)) {
-                    {
-                        Icon(
-                            Icons.Filled.Done,
-                            stringResource(id = R.string.add_edit_move_selected_chip_description),
-                            Modifier.size(FilterChipDefaults.IconSize)
-                        )
+                }
+
+                allMoveTags.isEmpty() -> {
+                    Text(
+                        stringResource(id = R.string.combo_generator_no_tags_message),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
+                else -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium),
+                            verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)
+                        ) {
+                            allMoveTags.forEach { tag ->
+                                FilterChip(
+                                    selected = selectedMoveTags.contains(tag),
+                                    onClick = {
+                                        onTagsChange(
+                                            if (selectedMoveTags.contains(tag)) selectedMoveTags - tag
+                                            else selectedMoveTags + tag
+                                        )
+                                    },
+                                    label = { Text(tag.name) },
+                                    leadingIcon = if (selectedMoveTags.contains(tag)) {
+                                        {
+                                            Icon(
+                                                Icons.Filled.Done,
+                                                stringResource(id = R.string.add_edit_move_selected_chip_description),
+                                                Modifier.size(FilterChipDefaults.IconSize)
+                                            )
+                                        }
+                                    } else null
+                                )
+                            }
+                        }
                     }
-                } else null
-            )
+                }
+            }
         }
     }
 }
@@ -292,9 +328,8 @@ fun MoveTagChipGroup(
 fun RandomModeControls(
     allowRepeats: Boolean,
     onAllowRepeatsChange: (Boolean) -> Unit,
-    selectedLength: Int?,
-    lengthError: String?,
-    onLengthChange: (String) -> Unit,
+    selectedLength: Int,
+    onLengthChange: (Float) -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -330,11 +365,10 @@ fun RandomModeControls(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LengthSlider(
-    selectedLength: Int?,
-    onLengthChange: (String) -> Unit
+    selectedLength: Int,
+    onLengthChange: (Float) -> Unit
 ) {
-    val currentLength = selectedLength ?: 4
-    var sliderValue by remember { mutableFloatStateOf(currentLength.toFloat()) }
+    var sliderValue by remember { mutableFloatStateOf(selectedLength.toFloat()) }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -352,7 +386,7 @@ fun LengthSlider(
                 sliderValue = it
             },
             onValueChangeFinished = {
-                onLengthChange(sliderValue.toInt().toString())
+                onLengthChange(sliderValue)
             },
             valueRange = 1f..5f,
             steps = 3,
@@ -365,6 +399,7 @@ fun LengthSlider(
 @Composable
 fun StructuredModeUI(
     allMoveTags: List<MoveTag>,
+    isLoadingTags: Boolean,
     moveTagSequence: List<MoveTag>,
     onAddTagToSequence: (MoveTag) -> Unit,
     onRemoveLastTagFromSequence: () -> Unit
@@ -383,11 +418,14 @@ fun StructuredModeUI(
 
         TagSelectionDropdown(
             allMoveTags = allMoveTags,
+            isLoadingTags = isLoadingTags,
             selectedTag = selectedTagForDropdown,
             expanded = expanded,
             onExpandedChange = { expanded = it },
             onTagSelected = { selectedTagForDropdown = it }
         )
+
+        Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingSmall))
 
         SequenceControlButtons(
             selectedTag = selectedTagForDropdown,
@@ -395,6 +433,8 @@ fun StructuredModeUI(
             onRemoveLastTag = onRemoveLastTagFromSequence,
             canRemove = moveTagSequence.isNotEmpty()
         )
+
+        Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingSmall))
 
         CurrentSequenceCard(moveTagSequence = moveTagSequence)
     }
@@ -404,6 +444,7 @@ fun StructuredModeUI(
 @Composable
 fun TagSelectionDropdown(
     allMoveTags: List<MoveTag>,
+    isLoadingTags: Boolean,
     selectedTag: MoveTag?,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
@@ -411,14 +452,29 @@ fun TagSelectionDropdown(
 ) {
     ExposedDropdownMenuBox(
         expanded = expanded,
-        onExpandedChange = onExpandedChange
+        onExpandedChange = { if (!isLoadingTags) onExpandedChange(it) }
     ) {
         OutlinedTextField(
             value = selectedTag?.name ?: "",
             onValueChange = {},
             readOnly = true,
-            label = { Text(stringResource(id = R.string.combo_generator_add_tag_to_sequence_label)) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            enabled = !isLoadingTags,
+            label = {
+                Text(
+                    if (isLoadingTags) "Loading tags..."
+                    else stringResource(id = R.string.combo_generator_add_tag_to_sequence_label)
+                )
+            },
+            trailingIcon = {
+                if (isLoadingTags) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(AppStyleDefaults.SpacingMedium),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
@@ -516,6 +572,7 @@ fun PreviewMoveTagChipGroup() {
                 MoveTag("2", "Cross"),
                 MoveTag("3", "Hook")
             ),
+            isLoadingTags = false,
             selectedMoveTags = setOf(MoveTag("1", "Jab")),
             onTagsChange = {}
         )
@@ -530,7 +587,6 @@ fun PreviewRandomModeControls() {
             allowRepeats = true,
             onAllowRepeatsChange = {},
             selectedLength = 5,
-            lengthError = null,
             onLengthChange = {}
         )
     }
@@ -566,6 +622,7 @@ fun PreviewComboGeneratorContent_RandomMode() {
                     MoveTag("2", "Cross"),
                     MoveTag("3", "Hook")
                 ),
+                isLoadingTags = false,
                 generatedCombo = GeneratedComboState(
                     moves = listOf(
                         Move(id = "1", name = "Jab"),
@@ -608,6 +665,7 @@ fun PreviewComboGeneratorContent_StructuredMode() {
                     MoveTag("2", "Cross"),
                     MoveTag("3", "Hook")
                 ),
+                isLoadingTags = false,
                 generatedCombo = GeneratedComboState(
                     listOf(
                         Move(id = "1", name = "Jab"),

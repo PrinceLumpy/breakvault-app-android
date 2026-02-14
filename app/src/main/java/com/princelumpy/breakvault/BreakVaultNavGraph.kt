@@ -1,6 +1,7 @@
 package com.princelumpy.breakvault
 
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -123,16 +124,16 @@ fun BreakVaultNavGraph(
                         )
                     }
                 }
-                // Add/Edit screens: fade out the previous screen
+                // Add/Edit screens: no exit transition
                 addEditScreens.any { targetRoute?.startsWith(it.substringBefore('?')) == true } -> {
-                    fadeOut(animationSpec = tween(150))
+                    ExitTransition.None
                 }
-                // Management screens: fade out the previous screen
+                // Management screens: no exit transition
                 managementScreens.any { targetRoute?.startsWith(it.substringBefore('?')) == true } -> {
-                    fadeOut(animationSpec = tween(150))
+                    ExitTransition.None
                 }
-                // Default: fade
-                else -> fadeOut(animationSpec = tween(150))
+                // Default: None
+                else -> ExitTransition.None
             }
         },
         popEnterTransition = {

@@ -95,6 +95,10 @@ class BreakVaultNavigationActions(private val navController: NavHostController) 
         }
     }
 
+    fun navigateToComboGenerator() {
+        navController.navigate(Screen.ComboGenerator.route)
+    }
+
     fun navigateToMoveTagList() {
         navController.navigate(Screen.TagList.route) {
             popUpTo(BreakVaultDestinations.MOVE_LIST_ROUTE) {
@@ -109,10 +113,6 @@ class BreakVaultNavigationActions(private val navController: NavHostController) 
                 inclusive = false
             }
         }
-    }
-
-    fun navigateToComboGenerator() {
-        navController.navigate(Screen.ComboGenerator.route)
     }
 
     fun navigateToBattleTagList() {

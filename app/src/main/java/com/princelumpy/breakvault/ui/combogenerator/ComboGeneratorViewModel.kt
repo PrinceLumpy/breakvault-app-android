@@ -29,7 +29,7 @@ enum class GenerationMode {
 data class GenerationSettings(
     val currentMode: GenerationMode = GenerationMode.Random,
     val selectedTags: Set<MoveTag> = emptySet(),
-    val selectedLength: Int? = null,
+    val selectedLength: Int = 3,
     val allowRepeats: Boolean = true,
     val structuredMoveTagSequence: List<MoveTag> = emptyList()
 )
@@ -43,12 +43,12 @@ data class GeneratedComboState(
 // State for transient UI events like dialogs and messages.
 data class DialogAndMessageState(
     val snackbarMessage: String? = null,
-    val lengthError: String? = null
 )
 
 // The final, combined state for the UI to consume.
 data class ComboGeneratorUiState(
     val allTags: List<MoveTag> = emptyList(),
+    val isLoadingTags: Boolean = true,
     val settings: GenerationSettings = GenerationSettings(),
     val generatedCombo: GeneratedComboState = GeneratedComboState(),
     val dialogAndMessages: DialogAndMessageState = DialogAndMessageState()
@@ -74,6 +74,7 @@ class ComboGeneratorViewModel @Inject constructor(
     ) { allTags, settings, generatedCombo, dialogAndMessages ->
         ComboGeneratorUiState(
             allTags = allTags,
+            isLoadingTags = allTags.isEmpty(),
             settings = settings,
             generatedCombo = generatedCombo,
             dialogAndMessages = dialogAndMessages
@@ -81,20 +82,10 @@ class ComboGeneratorViewModel @Inject constructor(
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000L),
-        initialValue = ComboGeneratorUiState()
+        initialValue = ComboGeneratorUiState(isLoadingTags = true)
     )
 
     fun generateCombo() {
-        // Clear previous length error
-        _dialogAndMessages.update { it.copy(lengthError = null) }
-
-        // Validate length when specified
-        val specifiedLength = _settings.value.selectedLength
-        if (specifiedLength != null && specifiedLength <= 0) {
-            _dialogAndMessages.update { it.copy(lengthError = "Length must be greater than 0") }
-            return
-        }
-
         viewModelScope.launch {
             val moves = when (_settings.value.currentMode) {
                 GenerationMode.Random -> generateRandomMoves()
@@ -175,13 +166,9 @@ class ComboGeneratorViewModel @Inject constructor(
         _settings.update { it.copy(allowRepeats = allow) }
     }
 
-    fun onLengthChange(length: String) {
-        val lengthAsInt = length.toIntOrNull()
+    fun onLengthChange(length: Float) {
+        val lengthAsInt = length.toInt()
         _settings.update { it.copy(selectedLength = lengthAsInt) }
-        // Clear error when user changes the value
-        if (_dialogAndMessages.value.lengthError != null) {
-            _dialogAndMessages.update { it.copy(lengthError = null) }
-        }
     }
 
     fun onAddTagToSequence(tag: MoveTag) {

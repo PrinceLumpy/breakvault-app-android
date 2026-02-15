@@ -52,6 +52,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -521,7 +522,7 @@ private fun ReorderableGoalStageItem(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         shape = MaterialTheme.shapes.small,
         shadowElevation = elevation,
         tonalElevation = if (isDragging) 4.dp else 0.dp
@@ -571,6 +572,16 @@ private fun ReorderableGoalStageItem(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+            }
+            // Edit Icon
+            IconButton(
+                onClick = onClick
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = "Edit stage",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

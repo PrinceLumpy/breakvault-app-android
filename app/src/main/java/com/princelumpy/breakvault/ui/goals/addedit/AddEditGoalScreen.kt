@@ -1,6 +1,7 @@
 package com.princelumpy.breakvault.ui.goals.addedit
 
 import AppStyleDefaults
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +14,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -22,7 +27,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -132,6 +142,7 @@ fun AddEditGoalScreen(
         stages = uiState.stages,
         onAddStageClick = { addEditGoalViewModel.onAddStageClicked() },
         onEditStageClick = { addEditGoalViewModel.onEditStageClicked(it) },
+        onStageMove = { from, to -> addEditGoalViewModel.onStageMove(from, to) },
         onArchiveClick = { addEditGoalViewModel.archiveGoal { onNavigateUp() } },
         onDeleteClick = { showDeleteConfirmationDialog = true },
         hasUnsavedChanges = addEditGoalViewModel.hasUnsavedChanges(),
@@ -160,6 +171,7 @@ private fun AddEditGoalScaffold(
     stages: List<GoalStage>,
     onAddStageClick: () -> Unit,
     onEditStageClick: (GoalStage) -> Unit,
+    onStageMove: (Int, Int) -> Unit,
     onArchiveClick: () -> Unit,
     onDeleteClick: () -> Unit,
     hasUnsavedChanges: Boolean,
@@ -215,7 +227,8 @@ private fun AddEditGoalScaffold(
                 descriptionError = descriptionError,
                 stages = stages,
                 onAddStageClick = onAddStageClick,
-                onEditStageClick = onEditStageClick
+                onEditStageClick = onEditStageClick,
+                onStageMove = onStageMove
             )
         }
     }
@@ -232,7 +245,8 @@ private fun AddEditGoalContent(
     descriptionError: String?,
     stages: List<GoalStage>,
     onAddStageClick: () -> Unit,
-    onEditStageClick: (GoalStage) -> Unit
+    onEditStageClick: (GoalStage) -> Unit,
+    onStageMove: (Int, Int) -> Unit
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -303,7 +317,8 @@ private fun AddEditGoalContent(
         GoalStagesList(
             stages = stages,
             onAddStageClick = onAddStageClick,
-            onEditStageClick = onEditStageClick
+            onEditStageClick = onEditStageClick,
+            onStageMove = onStageMove
         )
     }
 }
@@ -365,7 +380,8 @@ private fun AddEditGoalTopBar(
 private fun GoalStagesList(
     stages: List<GoalStage>,
     onAddStageClick: () -> Unit,
-    onEditStageClick: (GoalStage) -> Unit
+    onEditStageClick: (GoalStage) -> Unit,
+    onStageMove: (Int, Int) -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -404,18 +420,29 @@ private fun GoalStagesList(
             )
         }
     } else {
-        Column(
+        val hapticFeedback = LocalHapticFeedback.current
+        val lazyListState = rememberLazyListState()
+        val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
+            onStageMove(from.index, to.index)
+            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+
+        LazyColumn(
+            state = lazyListState,
             verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall),
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 200.dp)
-                .verticalScroll(rememberScrollState())
+                .heightIn(max = 300.dp)
         ) {
-            stages.forEach { goalStage ->
-                EditGoalStageItem(
-                    stage = goalStage,
-                    onClick = { onEditStageClick(goalStage) }
-                )
+            items(stages, key = { it.id }) { goalStage ->
+                ReorderableItem(reorderableState, key = goalStage.id) { isDragging ->
+                    ReorderableGoalStageItem(
+                        stage = goalStage,
+                        isDragging = isDragging,
+                        onClick = { onEditStageClick(goalStage) },
+                        scope = this
+                    )
+                }
             }
         }
     }
@@ -449,6 +476,82 @@ private fun EditGoalStageItem(
             // Stage content
             Column(
                 modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = stage.name.ifBlank { "Untitled Stage" },
+                    style = MaterialTheme.typography.bodyLarge
+                )
+
+                if (stage.targetCount > 0) {
+                    Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingSmall))
+                    AppLinearProgressIndicator(
+                        progress = { stageProgress.toFloat() },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "${stage.currentCount} / ${stage.targetCount} reps",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReorderableGoalStageItem(
+    stage: GoalStage,
+    isDragging: Boolean,
+    onClick: () -> Unit,
+    scope: sh.calvin.reorderable.ReorderableCollectionItemScope,
+    modifier: Modifier = Modifier
+) {
+    val elevation by animateDpAsState(
+        targetValue = if (isDragging) 8.dp else 2.dp,
+        label = "elevation"
+    )
+
+    val stageProgress = if (stage.targetCount > 0) {
+        (stage.currentCount.toDouble() / stage.targetCount.toDouble()).coerceIn(0.0, 1.0)
+    } else {
+        0.0
+    }
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        shape = MaterialTheme.shapes.small,
+        shadowElevation = elevation,
+        tonalElevation = if (isDragging) 4.dp else 0.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onClick() }
+                .padding(AppStyleDefaults.SpacingMedium),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Drag handle icon
+            IconButton(
+                onClick = {},
+                modifier = with(scope) {
+                    Modifier.draggableHandle()
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.DragHandle,
+                    contentDescription = "Reorder stage",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.width(AppStyleDefaults.SpacingSmall))
+
+            // Stage content
+            Column(
+                modifier = Modifier.weight(1f)
             ) {
                 Text(
                     text = stage.name.ifBlank { "Untitled Stage" },

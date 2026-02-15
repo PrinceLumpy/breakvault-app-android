@@ -70,6 +70,10 @@ class AddEditGoalViewModel @Inject constructor(
     // Track original values to detect changes
     private var originalTitle: String? = null
     private var originalDescription: String? = null
+    private var originalStagesOrder: List<GoalStage>? = null
+
+    // UI state for reorderable stages
+    private val _uiStages = MutableStateFlow<List<GoalStage>>(emptyList())
 
     val uiState: StateFlow<AddEditGoalUiState> = combine(
         goalId.flatMapLatest { id ->
@@ -83,23 +87,28 @@ class AddEditGoalViewModel @Inject constructor(
         },
         _userInputs,
         _dialogState,
-        _uiState
-    ) { goalWithStages, userInputs, dialogState, uiState ->
+        _uiState,
+        _uiStages
+    ) { goalWithStages, userInputs, dialogState, uiState, uiStages ->
 
         // This logic runs when loading an existing goal for the first time.
         if (goalWithStages != null && !uiState.isInitialLoadDone) {
+            val sortedStages = goalWithStages.stages.sortedBy { it.orderIndex }
             originalTitle = goalWithStages.goal.title
             originalDescription = goalWithStages.goal.description
+            originalStagesOrder = sortedStages
             _userInputs.value = UserInputs(
                 title = goalWithStages.goal.title,
                 description = goalWithStages.goal.description
             )
+            _uiStages.value = sortedStages
             _uiState.update { it.copy(isInitialLoadDone = true) }
         }
 
         AddEditGoalUiState(
             goalId = goalWithStages?.goal?.id,
-            stages = goalWithStages?.stages?.sortedBy { it.orderIndex } ?: emptyList(),
+            stages = if (uiStages.isNotEmpty()) uiStages else (goalWithStages?.stages?.sortedBy { it.orderIndex }
+                ?: emptyList()),
             userInputs = userInputs,
             dialogState = dialogState,
             isNewGoal = goalWithStages == null,
@@ -129,6 +138,14 @@ class AddEditGoalViewModel @Inject constructor(
             // Clear error when user starts typing
             if (_uiState.value.descriptionError != null) {
                 _uiState.update { it.copy(descriptionError = null) }
+            }
+        }
+    }
+
+    fun onStageMove(fromIndex: Int, toIndex: Int) {
+        _uiStages.update { list ->
+            list.toMutableList().apply {
+                add(toIndex, removeAt(fromIndex))
             }
         }
     }
@@ -190,6 +207,18 @@ class AddEditGoalViewModel @Inject constructor(
                         lastUpdated = System.currentTimeMillis()
                     )
                     goalRepository.updateGoal(updatedGoal)
+
+                    // Update stage order if changed
+                    if (_uiStages.value != originalStagesOrder) {
+                        val reorderedStages = _uiStages.value.mapIndexed { index, stage ->
+                            stage.copy(
+                                orderIndex = index,
+                                lastUpdated = System.currentTimeMillis()
+                            )
+                        }
+                        goalRepository.updateGoalStages(reorderedStages)
+                    }
+
                     onSuccess(currentGoalId)
                 }
             }
@@ -276,7 +305,9 @@ class AddEditGoalViewModel @Inject constructor(
         }
 
         // For existing goals, check if any fields have been modified
+        val stagesOrderChanged = _uiStages.value != originalStagesOrder
         return currentInputs.title != originalTitle ||
-                currentInputs.description != originalDescription
+                currentInputs.description != originalDescription ||
+                stagesOrderChanged
     }
 }

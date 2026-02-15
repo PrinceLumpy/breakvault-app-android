@@ -1,5 +1,6 @@
 package com.princelumpy.breakvault.ui.practicecombos.addedit
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.princelumpy.breakvault.data.local.entity.Move
@@ -152,10 +153,11 @@ class AddEditPracticeComboViewModel @Inject constructor(
     }
 
     fun onMovesReordered(reorderedMoves: List<String>) {
-        // Update UI state immediately so the reorder is visible
-        _userInputs.update { it.copy(selectedMoves = reorderedMoves) }
-        // Also track pending order for save
+        // Store the pending order; will be saved to DB when user clicks save FAB
+        // Do NOT update _userInputs here - let the UI manage local state during and after reorder
+        Log.d("PracticeComboVM", "Received reordered moves: $reorderedMoves")
         pendingMovesOrder = reorderedMoves
+        Log.d("PracticeComboVM", "pendingMovesOrder is now: $pendingMovesOrder")
     }
 
     fun onExpandedChange(expanded: Boolean) {
@@ -203,8 +205,11 @@ class AddEditPracticeComboViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            // Use pending moves order if available, otherwise use current input moves
+            // Use pending reordered moves if available, otherwise use current input moves
             val finalMoves = pendingMovesOrder?.map { it.trim() } ?: trimmedMoves
+            Log.d("PracticeComboVM", "saveCombo: pendingMovesOrder = $pendingMovesOrder")
+            Log.d("PracticeComboVM", "saveCombo: trimmedMoves = $trimmedMoves")
+            Log.d("PracticeComboVM", "saveCombo: finalMoves (what will be saved) = $finalMoves")
 
             if (currentUiState.isNewCombo) {
                 practiceComboRepository.insertPracticeCombo(
@@ -227,6 +232,8 @@ class AddEditPracticeComboViewModel @Inject constructor(
                 }
             }
 
+            // Update original values for change detection
+            originalSelectedMoves = finalMoves
             // Clear pending order after save
             pendingMovesOrder = null
             onSuccess()
@@ -268,8 +275,9 @@ class AddEditPracticeComboViewModel @Inject constructor(
                     currentInputs.selectedMoves.isNotEmpty()
         }
 
-        // For existing combos, check if any fields have been modified
+        // For existing combos, check if any fields have been modified (including pending reorder)
         return currentInputs.comboName != originalComboName ||
-                currentInputs.selectedMoves != originalSelectedMoves
+                currentInputs.selectedMoves != originalSelectedMoves ||
+                pendingMovesOrder != null
     }
 }

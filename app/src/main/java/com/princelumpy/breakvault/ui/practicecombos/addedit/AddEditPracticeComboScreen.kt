@@ -1,5 +1,6 @@
 package com.princelumpy.breakvault.ui.practicecombos.addedit
 
+import android.util.Log
 import AppStyleDefaults
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -380,13 +381,10 @@ private fun SelectedMovesList(
             )
         } else {
             var movesList by remember { mutableStateOf(selectedMoves) }
-            var isDragging by remember { mutableStateOf(false) }
 
-            // Update the local list when selectedMoves prop changes (but not while dragging)
+            // Update local list when selectedMoves changes from ViewModel
             LaunchedEffect(selectedMoves) {
-                if (!isDragging) {
-                    movesList = selectedMoves
-                }
+                movesList = selectedMoves
             }
 
             val lazyListState = rememberLazyListState()
@@ -397,14 +395,10 @@ private fun SelectedMovesList(
                     movesList = movesList.toMutableList().apply {
                         add(to.index, removeAt(from.index))
                     }
-                }
-
-            // Track when dragging ends and notify ViewModel of new order
-            LaunchedEffect(isDragging) {
-                if (!isDragging && movesList != selectedMoves) {
+                    Log.d("PracticeComboScreen", "After reorder: movesList = $movesList")
+                    // Immediately notify ViewModel of the new order
                     onMovesReordered(movesList)
                 }
-            }
 
             LazyColumn(
                 state = lazyListState,
@@ -413,21 +407,13 @@ private fun SelectedMovesList(
                     .fillMaxWidth()
                     .height(300.dp) // Fixed height since it's in a scrollable parent
             ) {
-                itemsIndexed(movesList, key = { index, _ -> "move_$index" }) { index, moveName ->
+                itemsIndexed(
+                    movesList,
+                    key = { index, item -> "$item-$index" }) { index, moveName ->
                     ReorderableItem(
                         reorderableLazyListState,
-                        key = "move_$index"
+                        key = "$moveName-$index"
                     ) { isItemDragging ->
-                        LaunchedEffect(isItemDragging) {
-                            if (isItemDragging) {
-                                isDragging = true
-                            } else if (isDragging) {
-                                // Small delay to ensure all items have stopped dragging
-                                kotlinx.coroutines.delay(50)
-                                isDragging = false
-                            }
-                        }
-
                         val dragHandleModifier = Modifier.draggableHandle(
                             onDragStarted = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -436,7 +422,12 @@ private fun SelectedMovesList(
 
                         ComboMoveItem(
                             moveName = moveName,
-                            onRemove = { onRemoveMove(index) },
+                            onRemove = {
+                                movesList = movesList.toMutableList().apply {
+                                    removeAt(index)
+                                }
+                                onMovesReordered(movesList)
+                            },
                             isDragging = isItemDragging,
                             dragHandleModifier = dragHandleModifier
                         )

@@ -13,9 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -25,7 +22,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -45,21 +41,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
-import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.rememberReorderableLazyListState
-import sh.calvin.reorderable.ReorderableLazyListState
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -141,7 +132,6 @@ fun AddEditGoalScreen(
         stages = uiState.stages,
         onAddStageClick = { addEditGoalViewModel.onAddStageClicked() },
         onEditStageClick = { addEditGoalViewModel.onEditStageClicked(it) },
-        onStagesReordered = { addEditGoalViewModel.onStagesReordered(it) },
         onArchiveClick = { addEditGoalViewModel.archiveGoal { onNavigateUp() } },
         onDeleteClick = { showDeleteConfirmationDialog = true },
         hasUnsavedChanges = addEditGoalViewModel.hasUnsavedChanges(),
@@ -170,7 +160,6 @@ private fun AddEditGoalScaffold(
     stages: List<GoalStage>,
     onAddStageClick: () -> Unit,
     onEditStageClick: (GoalStage) -> Unit,
-    onStagesReordered: (List<GoalStage>) -> Unit,
     onArchiveClick: () -> Unit,
     onDeleteClick: () -> Unit,
     hasUnsavedChanges: Boolean,
@@ -226,8 +215,7 @@ private fun AddEditGoalScaffold(
                 descriptionError = descriptionError,
                 stages = stages,
                 onAddStageClick = onAddStageClick,
-                onEditStageClick = onEditStageClick,
-                onStagesReordered = onStagesReordered
+                onEditStageClick = onEditStageClick
             )
         }
     }
@@ -244,8 +232,7 @@ private fun AddEditGoalContent(
     descriptionError: String?,
     stages: List<GoalStage>,
     onAddStageClick: () -> Unit,
-    onEditStageClick: (GoalStage) -> Unit,
-    onStagesReordered: (List<GoalStage>) -> Unit
+    onEditStageClick: (GoalStage) -> Unit
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -316,8 +303,7 @@ private fun AddEditGoalContent(
         GoalStagesList(
             stages = stages,
             onAddStageClick = onAddStageClick,
-            onEditStageClick = onEditStageClick,
-            onStagesReordered = onStagesReordered
+            onEditStageClick = onEditStageClick
         )
     }
 }
@@ -373,26 +359,17 @@ private fun AddEditGoalTopBar(
 }
 
 /**
- * A stateless composable to display the list of goal stages with drag-to-reorder functionality.
+ * A stateless composable to display the list of goal stages.
  */
 @Composable
 private fun GoalStagesList(
     stages: List<GoalStage>,
     onAddStageClick: () -> Unit,
-    onEditStageClick: (GoalStage) -> Unit,
-    onStagesReordered: (List<GoalStage>) -> Unit
+    onEditStageClick: (GoalStage) -> Unit
 ) {
-    var stagesList by remember { mutableStateOf(stages) }
-    var isDragging by remember { mutableStateOf(false) }
-
-    // Update the local list when stages prop changes (but not while dragging)
-    LaunchedEffect(stages) {
-        if (!isDragging) {
-            stagesList = stages
-        }
-    }
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -413,7 +390,7 @@ private fun GoalStagesList(
 
     HorizontalDivider(modifier = Modifier.padding(vertical = AppStyleDefaults.SpacingLarge))
 
-    if (stagesList.isEmpty()) {
+    if (stages.isEmpty()) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -427,54 +404,18 @@ private fun GoalStagesList(
             )
         }
     } else {
-        val haptic = LocalHapticFeedback.current
-        val lazyListState = rememberLazyListState()
-
-        val reorderableLazyListState = rememberReorderableLazyListState(lazyListState) { from, to ->
-            stagesList = stagesList.toMutableList().apply {
-                add(to.index, removeAt(from.index))
-            }
-        }
-
-        // Update pending order in ViewModel when dragging ends
-        LaunchedEffect(isDragging) {
-            if (!isDragging && stagesList.map { it.id } != stages.map { it.id }) {
-                onStagesReordered(stagesList)
-            }
-        }
-
-        LazyColumn(
-            state = lazyListState,
+        Column(
             verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(300.dp) // Give it a fixed height since it's in a scrollable parent
+                .heightIn(max = 200.dp)
+                .verticalScroll(rememberScrollState())
         ) {
-            items(stagesList, key = { it.id }) { goalStage ->
-                ReorderableItem(reorderableLazyListState, key = goalStage.id) { isItemDragging ->
-                    LaunchedEffect(isItemDragging) {
-                        if (isItemDragging) {
-                            isDragging = true
-                        } else if (isDragging) {
-                            // Small delay to ensure all items have stopped dragging
-                            kotlinx.coroutines.delay(50)
-                            isDragging = false
-                        }
-                    }
-
-                    val dragHandleModifier = Modifier.draggableHandle(
-                        onDragStarted = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        }
-                    )
-
-                    EditGoalStageItem(
-                        stage = goalStage,
-                        onClick = { onEditStageClick(goalStage) },
-                        isDragging = isItemDragging,
-                        dragHandleModifier = dragHandleModifier
-                    )
-                }
+            stages.forEach { goalStage ->
+                EditGoalStageItem(
+                    stage = goalStage,
+                    onClick = { onEditStageClick(goalStage) }
+                )
             }
         }
     }
@@ -484,8 +425,7 @@ private fun GoalStagesList(
 private fun EditGoalStageItem(
     stage: GoalStage,
     onClick: () -> Unit,
-    isDragging: Boolean,
-    dragHandleModifier: Modifier
+    modifier: Modifier = Modifier
 ) {
     val stageProgress = if (stage.targetCount > 0) {
         (stage.currentCount.toDouble() / stage.targetCount.toDouble()).coerceIn(0.0, 1.0)
@@ -494,14 +434,11 @@ private fun EditGoalStageItem(
     }
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = if (isDragging) {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        },
-        shape = MaterialTheme.shapes.small,
-        tonalElevation = if (isDragging) 4.dp else 0.dp
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        shape = MaterialTheme.shapes.small
     ) {
         Row(
             modifier = Modifier
@@ -509,24 +446,9 @@ private fun EditGoalStageItem(
                 .padding(AppStyleDefaults.SpacingMedium),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Drag handle icon with drag gesture
-            IconButton(
-                onClick = {},
-                modifier = dragHandleModifier
-            ) {
-                Icon(
-                    imageVector = Icons.Default.DragHandle,
-                    contentDescription = "Drag to reorder",
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
             // Stage content
             Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { onClick() }
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     text = stage.name.ifBlank { "Untitled Stage" },

@@ -67,9 +67,6 @@ class AddEditGoalViewModel @Inject constructor(
     private val _dialogState = MutableStateFlow(DialogState())
     private val _uiState = MutableStateFlow(UiState())
 
-    // Track pending stage reordering (only saved when user clicks save FAB)
-    private var pendingStageOrder: List<GoalStage>? = null
-
     // Track original values to detect changes
     private var originalTitle: String? = null
     private var originalDescription: String? = null
@@ -183,12 +180,6 @@ class AddEditGoalViewModel @Inject constructor(
                     description = trimmedDescription
                 )
                 goalRepository.insertGoal(newGoal)
-
-                // Save pending stage order if exists
-                pendingStageOrder?.let { stages ->
-                    savePendingStageOrder(stages)
-                }
-
                 onSuccess(newGoal.id)
             } else {
                 // Update existing goal
@@ -199,24 +190,10 @@ class AddEditGoalViewModel @Inject constructor(
                         lastUpdated = System.currentTimeMillis()
                     )
                     goalRepository.updateGoal(updatedGoal)
-
-                    // Save pending stage order if exists
-                    pendingStageOrder?.let { stages ->
-                        savePendingStageOrder(stages)
-                    }
-
                     onSuccess(currentGoalId)
                 }
             }
         }
-    }
-
-    private suspend fun savePendingStageOrder(stages: List<GoalStage>) {
-        val updatedStages = stages.mapIndexed { index, stage ->
-            stage.copy(orderIndex = index, lastUpdated = System.currentTimeMillis())
-        }
-        goalRepository.updateGoalStages(updatedStages)
-        pendingStageOrder = null
     }
 
     fun archiveGoal(onSuccess: () -> Unit) {
@@ -283,14 +260,9 @@ class AddEditGoalViewModel @Inject constructor(
         _dialogState.update { it.copy(navigateToEditStage = null) }
     }
 
-    fun onStagesReordered(reorderedStages: List<GoalStage>) {
-        // Store the pending order; will be saved when user clicks save FAB
-        pendingStageOrder = reorderedStages
-    }
-
     /**
      * Check if there are unsaved changes in the form.
-     * Returns true if any field has been modified or if stages have been reordered.
+     * Returns true if any field has been modified.
      */
     fun hasUnsavedChanges(): Boolean {
         val currentState = uiState.value
@@ -303,9 +275,8 @@ class AddEditGoalViewModel @Inject constructor(
                     currentState.stages.isNotEmpty()
         }
 
-        // For existing goals, check if any fields have been modified or stages reordered
-        return pendingStageOrder != null ||
-                currentInputs.title != originalTitle ||
+        // For existing goals, check if any fields have been modified
+        return currentInputs.title != originalTitle ||
                 currentInputs.description != originalDescription
     }
 }

@@ -1,6 +1,5 @@
 package com.princelumpy.breakvault.ui.practicecombos.addedit
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.princelumpy.breakvault.data.local.entity.Move
@@ -19,10 +18,16 @@ import javax.inject.Inject
 // Constants for character limits
 private const val COMBO_NAME_CHARACTER_LIMIT = 30
 
+// Wrapper class to give each move a unique ID for reordering
+data class ReorderableMove(
+    val id: String,
+    val value: String
+)
+
 // State for the user's direct inputs.
 data class UserInputs(
     val comboName: String = "",
-    val selectedMoves: List<String> = emptyList(),
+    val selectedMoves: List<ReorderableMove> = emptyList(),
     val searchText: String = ""
 )
 
@@ -61,8 +66,8 @@ class AddEditPracticeComboViewModel @Inject constructor(
     private var originalComboName: String? = null
     private var originalSelectedMoves: List<String>? = null
 
-    // Track pending reordered moves (only saved when FAB clicked)
-    private var pendingMovesOrder: List<String>? = null
+    // ID counter for new moves
+    private var nextMoveId = 0
 
     val uiState: StateFlow<AddEditComboUiState> = combine(
         practiceComboRepository.getAllMoves(),
@@ -100,9 +105,18 @@ class AddEditPracticeComboViewModel @Inject constructor(
             if (comboToEdit != null) {
                 originalComboName = comboToEdit.name
                 originalSelectedMoves = comboToEdit.moves
+
+                // Convert List<String> to List<ReorderableMove> with unique IDs
+                val reorderableMoves = comboToEdit.moves.map { moveName ->
+                    ReorderableMove(
+                        id = "move_${nextMoveId++}",
+                        value = moveName
+                    )
+                }
+
                 _userInputs.value = UserInputs(
                     comboName = comboToEdit.name,
-                    selectedMoves = comboToEdit.moves
+                    selectedMoves = reorderableMoves
                 )
                 _metadata.value = comboId to false
             }
@@ -129,9 +143,14 @@ class AddEditPracticeComboViewModel @Inject constructor(
     }
 
     fun addMoveToCombo(move: String) {
+        val reorderableMove = ReorderableMove(
+            id = "move_${nextMoveId++}",
+            value = move
+        )
+
         _userInputs.update {
             it.copy(
-                selectedMoves = it.selectedMoves + move,
+                selectedMoves = it.selectedMoves + reorderableMove,
                 searchText = "" // Clear search text after selection
             )
         }
@@ -145,19 +164,19 @@ class AddEditPracticeComboViewModel @Inject constructor(
         _dialogsAndMessages.update { it.copy(dropdownExpanded = false) }
     }
 
-    fun removeMoveFromCombo(index: Int) {
+    fun removeMoveFromCombo(id: String) {
         _userInputs.update {
-            val newSelectedMoves = it.selectedMoves.toMutableList().apply { removeAt(index) }
-            it.copy(selectedMoves = newSelectedMoves)
+            it.copy(selectedMoves = it.selectedMoves.filter { move -> move.id != id })
         }
     }
 
-    fun onMovesReordered(reorderedMoves: List<String>) {
-        // Store the pending order; will be saved to DB when user clicks save FAB
-        // Do NOT update _userInputs here - let the UI manage local state during and after reorder
-        Log.d("PracticeComboVM", "Received reordered moves: $reorderedMoves")
-        pendingMovesOrder = reorderedMoves
-        Log.d("PracticeComboVM", "pendingMovesOrder is now: $pendingMovesOrder")
+    fun onMoveReordered(fromIndex: Int, toIndex: Int) {
+        _userInputs.update {
+            val newMoves = it.selectedMoves.toMutableList().apply {
+                add(toIndex, removeAt(fromIndex))
+            }
+            it.copy(selectedMoves = newMoves)
+        }
     }
 
     fun onExpandedChange(expanded: Boolean) {
@@ -171,8 +190,8 @@ class AddEditPracticeComboViewModel @Inject constructor(
 
         // Trim input values
         val trimmedComboName = inputs.comboName.trim()
-        // Trim moves as well (remove leading/trailing whitespace from each move)
-        val trimmedMoves = inputs.selectedMoves.map { it.trim() }
+        // Extract and trim move values (remove leading/trailing whitespace from each move)
+        val trimmedMoves = inputs.selectedMoves.map { it.value.trim() }
 
         // Don't save if there are no changes (avoids unnecessary database updates)
         if (!hasUnsavedChanges()) {
@@ -205,31 +224,23 @@ class AddEditPracticeComboViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            // Use pending reordered moves if available, otherwise use current input moves
-            val finalMoves = pendingMovesOrder?.map { it.trim() } ?: trimmedMoves
-            Log.d("PracticeComboVM", "saveCombo: pendingMovesOrder = $pendingMovesOrder")
-            Log.d("PracticeComboVM", "saveCombo: trimmedMoves = $trimmedMoves")
-            Log.d("PracticeComboVM", "saveCombo: finalMoves (what will be saved) = $finalMoves")
-
             if (currentUiState.isNewCombo) {
                 practiceComboRepository.insertPracticeCombo(
                     PracticeCombo(
                         name = trimmedComboName,
-                        moves = finalMoves
+                        moves = trimmedMoves
                     )
                 )
             } else {
                 practiceComboRepository.updatePracticeCombo(
                     currentUiState.comboId!!,
                     trimmedComboName,
-                    finalMoves
+                    trimmedMoves
                 )
             }
 
             // Update original values for change detection
-            originalSelectedMoves = finalMoves
-            // Clear pending order after save
-            pendingMovesOrder = null
+            originalSelectedMoves = trimmedMoves
             onSuccess()
         }
     }
@@ -265,9 +276,10 @@ class AddEditPracticeComboViewModel @Inject constructor(
                     currentInputs.selectedMoves.isNotEmpty()
         }
 
-        // For existing combos, check if any fields have been modified (including pending reorder)
+        // For existing combos, check if any fields have been modified
+        // Extract the string values from ReorderableMove for comparison
+        val currentMoves = currentInputs.selectedMoves.map { it.value }
         return currentInputs.comboName != originalComboName ||
-                currentInputs.selectedMoves != originalSelectedMoves ||
-                pendingMovesOrder != null
+                currentMoves != originalSelectedMoves
     }
 }

@@ -1,35 +1,36 @@
 package com.princelumpy.breakvault.ui.practicecombos.addedit
 
-import android.util.Log
 import AppStyleDefaults
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,13 +42,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,13 +65,9 @@ import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.Move
 import com.princelumpy.breakvault.ui.common.UnsavedChangesDialog
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.unit.dp
-import sh.calvin.reorderable.ReorderableItem
-import sh.calvin.reorderable.rememberReorderableLazyListState
 
 // Constants for character limits (LAYER 1)
 private const val COMBO_NAME_CHARACTER_LIMIT = 30
@@ -134,7 +128,7 @@ fun AddEditPracticeComboScreen(
         },
         onComboNameChange = { addEditPracticeComboViewModel.onComboNameChange(it) },
         onRemoveMove = { addEditPracticeComboViewModel.removeMoveFromCombo(it) },
-        onMovesReordered = { addEditPracticeComboViewModel.onMovesReordered(it) },
+        onMoveReordered = { from, to -> addEditPracticeComboViewModel.onMoveReordered(from, to) },
         onSearchTextChange = { addEditPracticeComboViewModel.onSearchTextChange(it) },
         onExpandedChange = { addEditPracticeComboViewModel.onExpandedChange(it) },
         onAddMove = { addEditPracticeComboViewModel.addMoveToCombo(it) },
@@ -166,8 +160,8 @@ private fun AddEditPracticeComboScaffold(
     addEditPracticeComboViewModel: AddEditPracticeComboViewModel,
     onNavigateUp: () -> Unit,
     onComboNameChange: (String) -> Unit,
-    onRemoveMove: (Int) -> Unit,
-    onMovesReordered: (List<String>) -> Unit,
+    onRemoveMove: (String) -> Unit,
+    onMoveReordered: (Int, Int) -> Unit,
     onSearchTextChange: (String) -> Unit,
     onExpandedChange: (Boolean) -> Unit,
     onAddMove: (String) -> Unit,
@@ -230,7 +224,7 @@ private fun AddEditPracticeComboScaffold(
                 focusRequester = focusRequester,
                 onComboNameChange = onComboNameChange,
                 onRemoveMove = onRemoveMove,
-                onMovesReordered = onMovesReordered,
+                onMoveReordered = onMoveReordered,
                 onSearchTextChange = onSearchTextChange,
                 onExpandedChange = onExpandedChange,
                 onAddMove = onAddMove
@@ -295,8 +289,8 @@ private fun AddEditComboContent(
     uiState: AddEditComboUiState,
     focusRequester: FocusRequester,
     onComboNameChange: (String) -> Unit,
-    onRemoveMove: (Int) -> Unit,
-    onMovesReordered: (List<String>) -> Unit,
+    onRemoveMove: (String) -> Unit,
+    onMoveReordered: (Int, Int) -> Unit,
     onSearchTextChange: (String) -> Unit,
     onExpandedChange: (Boolean) -> Unit,
     onAddMove: (String) -> Unit,
@@ -307,8 +301,7 @@ private fun AddEditComboContent(
 
     Column(
         modifier = modifier
-            .padding(horizontal = AppStyleDefaults.SpacingLarge)
-            .verticalScroll(rememberScrollState()),
+            .padding(horizontal = AppStyleDefaults.SpacingLarge),
         verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
     ) {
         // LAYER 1: Input Capping with Supporting Text Error Display
@@ -337,7 +330,7 @@ private fun AddEditComboContent(
             selectedMoves = userInputs.selectedMoves,
             movesError = dialogsAndMessages.movesError,
             onRemoveMove = onRemoveMove,
-            onMovesReordered = onMovesReordered
+            onMoveReordered = onMoveReordered
         )
 
         AddMoveDropdown(
@@ -352,16 +345,18 @@ private fun AddEditComboContent(
 }
 
 /**
- * A stateless section for displaying the list of selected moves.
+ * A stateless section for displaying the list of selected moves with reordering.
  */
 @Composable
 private fun SelectedMovesList(
-    selectedMoves: List<String>,
+    selectedMoves: List<ReorderableMove>,
     movesError: String?,
-    onRemoveMove: (Int) -> Unit,
-    onMovesReordered: (List<String>) -> Unit,
+    onRemoveMove: (String) -> Unit,
+    onMoveReordered: (Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val hapticFeedback = LocalHapticFeedback.current
+
     Column(modifier = modifier) {
         Text(
             stringResource(R.string.select_moves_title),
@@ -376,56 +371,31 @@ private fun SelectedMovesList(
                 modifier = Modifier.padding(vertical = AppStyleDefaults.SpacingMedium)
             )
         } else {
-            var movesList by remember { mutableStateOf(selectedMoves) }
-
-            // Update local list when selectedMoves changes from ViewModel
-            LaunchedEffect(selectedMoves) {
-                movesList = selectedMoves
-            }
-
             val lazyListState = rememberLazyListState()
-            val haptic = LocalHapticFeedback.current
-
             val reorderableLazyListState =
                 rememberReorderableLazyListState(lazyListState) { from, to ->
-                    movesList = movesList.toMutableList().apply {
-                        add(to.index, removeAt(from.index))
-                    }
-                    Log.d("PracticeComboScreen", "After reorder: movesList = $movesList")
-                    // Immediately notify ViewModel of the new order
-                    onMovesReordered(movesList)
+                    onMoveReordered(from.index, to.index)
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                 }
 
             LazyColumn(
                 state = lazyListState,
                 verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(300.dp) // Fixed height since it's in a scrollable parent
+                modifier = Modifier.fillMaxWidth()
             ) {
-                itemsIndexed(
-                    movesList,
-                    key = { index, item -> "$item-$index" }) { index, moveName ->
+                items(
+                    items = selectedMoves,
+                    key = { it.id }
+                ) { move ->
                     ReorderableItem(
-                        reorderableLazyListState,
-                        key = "$moveName-$index"
-                    ) { isItemDragging ->
-                        val dragHandleModifier = Modifier.draggableHandle(
-                            onDragStarted = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            }
-                        )
-
+                        state = reorderableLazyListState,
+                        key = move.id
+                    ) { isDragging ->
                         ComboMoveItem(
-                            moveName = moveName,
-                            onRemove = {
-                                movesList = movesList.toMutableList().apply {
-                                    removeAt(index)
-                                }
-                                onMovesReordered(movesList)
-                            },
-                            isDragging = isItemDragging,
-                            dragHandleModifier = dragHandleModifier
+                            move = move,
+                            isDragging = isDragging,
+                            onRemove = { onRemoveMove(move.id) },
+                            scope = this
                         )
                     }
                 }
@@ -542,19 +512,22 @@ private fun DeleteComboDialog(
 
 @Composable
 private fun ComboMoveItem(
-    moveName: String,
-    onRemove: () -> Unit,
+    move: ReorderableMove,
     isDragging: Boolean,
-    dragHandleModifier: Modifier = Modifier
+    onRemove: () -> Unit,
+    scope: sh.calvin.reorderable.ReorderableCollectionItemScope,
+    modifier: Modifier = Modifier
 ) {
+    val elevation by animateDpAsState(
+        targetValue = if (isDragging) 8.dp else 2.dp,
+        label = "elevation"
+    )
+
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = if (isDragging) {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        },
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
         shape = MaterialTheme.shapes.small,
+        shadowElevation = elevation,
         tonalElevation = if (isDragging) 4.dp else 0.dp
     ) {
         Row(
@@ -563,21 +536,20 @@ private fun ComboMoveItem(
                 .padding(AppStyleDefaults.SpacingMedium),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Drag handle icon with drag gesture
-            IconButton(
-                onClick = {},
-                modifier = dragHandleModifier
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.DragHandle,
-                    contentDescription = "Drag to reorder",
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            // Drag handle icon
+            Icon(
+                imageVector = Icons.Filled.DragHandle,
+                contentDescription = "Reorder move",
+                modifier = with(scope) {
+                    Modifier.draggableHandle()
+                },
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.width(AppStyleDefaults.SpacingMedium))
 
             Text(
-                text = moveName,
+                text = move.value,
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.weight(1f)
             )
@@ -614,10 +586,14 @@ private fun AddEditComboTopBar_EditPreview() {
 private fun SelectedMovesList_WithMoves_Preview() {
     BreakVaultTheme {
         SelectedMovesList(
-            selectedMoves = listOf("Windmill", "Flare", "Airflare"),
+            selectedMoves = listOf(
+                ReorderableMove("1", "Windmill"),
+                ReorderableMove("2", "Flare"),
+                ReorderableMove("3", "Airflare")
+            ),
             movesError = null,
             onRemoveMove = {},
-            onMovesReordered = {}
+            onMoveReordered = { _, _ -> }
         )
     }
 }
@@ -630,7 +606,7 @@ private fun SelectedMovesList_NoMoves_Preview() {
             selectedMoves = emptyList(),
             movesError = null,
             onRemoveMove = {},
-            onMovesReordered = {}
+            onMoveReordered = { _, _ -> }
         )
     }
 }
@@ -643,7 +619,7 @@ private fun SelectedMovesList_ErrorPreview() {
             selectedMoves = emptyList(),
             movesError = "Please add at least one move to the combo.",
             onRemoveMove = {},
-            onMovesReordered = {}
+            onMoveReordered = { _, _ -> }
         )
     }
 }
@@ -667,7 +643,20 @@ private fun AddMoveDropdownPreview() {
 @Composable
 private fun ComboMoveItemPreview() {
     BreakVaultTheme {
-        ComboMoveItem(moveName = "Windmill", onRemove = {}, isDragging = false)
+        val lazyListState = rememberLazyListState()
+        val reorderableState = rememberReorderableLazyListState(lazyListState) { _, _ -> }
+        LazyColumn(state = lazyListState) {
+            items(items = listOf(ReorderableMove("1", "Windmill")), key = { it.id }) { move ->
+                ReorderableItem(reorderableState, key = move.id) { isDragging ->
+                    ComboMoveItem(
+                        move = move,
+                        isDragging = isDragging,
+                        onRemove = {},
+                        scope = this
+                    )
+                }
+            }
+        }
     }
 }
 

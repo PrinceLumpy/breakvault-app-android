@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +44,7 @@ import com.princelumpy.breakvault.data.local.entity.TrainingStatus
 import com.princelumpy.breakvault.data.local.entity.PracticeCombo
 import com.princelumpy.breakvault.ui.common.TagDialog
 import com.princelumpy.breakvault.ui.common.TagSelectionCard
+import com.princelumpy.breakvault.ui.common.UnsavedChangesDialog
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -59,6 +61,7 @@ fun AddEditBattleComboScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    var showUnsavedChangesDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(comboId) {
         viewModel.loadCombo(comboId)
@@ -71,10 +74,36 @@ fun AddEditBattleComboScreen(
         }
     }
 
+    if (showUnsavedChangesDialog) {
+        UnsavedChangesDialog(
+            onDismiss = { showUnsavedChangesDialog = false },
+            onConfirm = {
+                showUnsavedChangesDialog = false
+                onNavigateUp()
+            }
+        )
+    }
+
+    // Handle system back button
+    BackHandler(enabled = true) {
+        if (viewModel.hasUnsavedChanges()) {
+            showUnsavedChangesDialog = true
+        } else {
+            onNavigateUp()
+        }
+    }
+
     AddEditBattleComboScaffold(
         uiState = uiState,
         snackbarHostState = snackbarHostState,
-        onNavigateUp = onNavigateUp,
+        viewModel = viewModel,
+        onNavigateUp = {
+            if (viewModel.hasUnsavedChanges()) {
+                showUnsavedChangesDialog = true
+            } else {
+                onNavigateUp()
+            }
+        },
         onSaveClick = {
             viewModel.saveCombo {
                 keyboardController?.hide()
@@ -91,6 +120,7 @@ fun AddEditBattleComboScreen(
         onImportCombo = viewModel::onImportCombo,
         onDeleteComboClick = viewModel::onDeleteComboClick,
         onConfirmComboDelete = {
+            viewModel.onCancelComboDelete() // Dismiss dialog first
             viewModel.onConfirmComboDelete {
                 keyboardController?.hide()
                 onNavigateUp()
@@ -108,6 +138,7 @@ fun AddEditBattleComboScreen(
 private fun AddEditBattleComboScaffold(
     uiState: AddEditBattleComboUiState,
     snackbarHostState: SnackbarHostState,
+    viewModel: AddEditBattleComboViewModel,
     onNavigateUp: () -> Unit,
     onSaveClick: () -> Unit,
     onDescriptionChange: (String) -> Unit,
@@ -158,10 +189,12 @@ private fun AddEditBattleComboScaffold(
             )
         },
         floatingActionButton = {
+            val hasUnsavedChanges = viewModel.hasUnsavedChanges()
+            val isValid = uiState.userInputs.description.isNotBlank()
             FloatingActionButton(
                 onClick = onSaveClick,
                 modifier = Modifier.imePadding(),
-                containerColor = if (uiState.userInputs.description.isNotBlank())
+                containerColor = if (isValid && hasUnsavedChanges)
                     MaterialTheme.colorScheme.primary
                 else
                     MaterialTheme.colorScheme.surfaceVariant

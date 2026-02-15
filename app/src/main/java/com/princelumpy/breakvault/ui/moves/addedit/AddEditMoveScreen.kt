@@ -39,6 +39,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,6 +56,7 @@ import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.MoveTag
 import com.princelumpy.breakvault.ui.common.TagDialog
 import com.princelumpy.breakvault.ui.common.TagSelectionCard
+import com.princelumpy.breakvault.ui.common.UnsavedChangesDialog
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -75,6 +77,7 @@ fun AddEditMoveScreen(
     val uiState by moveViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val focusManager = LocalFocusManager.current
+    var showUnsavedChangesDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(key1 = moveId) {
         moveViewModel.loadMove(moveId)
@@ -87,10 +90,36 @@ fun AddEditMoveScreen(
         }
     }
 
+    if (showUnsavedChangesDialog) {
+        UnsavedChangesDialog(
+            onDismiss = { showUnsavedChangesDialog = false },
+            onConfirm = {
+                showUnsavedChangesDialog = false
+                onNavigateUp()
+            }
+        )
+    }
+
+    // Handle system back button
+    BackHandler(enabled = true) {
+        if (moveViewModel.hasUnsavedChanges()) {
+            showUnsavedChangesDialog = true
+        } else {
+            onNavigateUp()
+        }
+    }
+
     AddEditMoveScaffold(
         uiState = uiState,
         snackbarHostState = snackbarHostState,
-        onNavigateUp = onNavigateUp,
+        moveViewModel = moveViewModel,
+        onNavigateUp = {
+            if (moveViewModel.hasUnsavedChanges()) {
+                showUnsavedChangesDialog = true
+            } else {
+                onNavigateUp()
+            }
+        },
         onMoveNameChange = { moveViewModel.onMoveNameChange(it) },
         onTagSelected = { moveViewModel.onTagSelected(it) },
         onNewTagNameChange = { moveViewModel.onNewTagNameChange(it) },
@@ -103,6 +132,7 @@ fun AddEditMoveScreen(
         },
         onDeleteMoveClick = { moveViewModel.onDeleteMoveClick() },
         onConfirmMoveDelete = {
+            moveViewModel.onCancelMoveDelete() // Dismiss dialog first
             moveViewModel.onConfirmMoveDelete {
                 focusManager.clearFocus()
                 onNavigateUp()
@@ -120,6 +150,7 @@ fun AddEditMoveScreen(
 private fun AddEditMoveScaffold(
     uiState: AddEditMoveUiState,
     snackbarHostState: SnackbarHostState,
+    moveViewModel: AddEditMoveViewModel,
     onNavigateUp: () -> Unit,
     onMoveNameChange: (String) -> Unit,
     onTagSelected: (String) -> Unit,
@@ -142,10 +173,12 @@ private fun AddEditMoveScaffold(
             )
         },
         floatingActionButton = {
+            val hasUnsavedChanges = moveViewModel.hasUnsavedChanges()
+            val isValid = uiState.userInputs.moveName.isNotBlank()
             FloatingActionButton(
                 onClick = onSaveMove,
                 modifier = Modifier.imePadding(),
-                containerColor = if (uiState.userInputs.moveName.isNotBlank())
+                containerColor = if (isValid && hasUnsavedChanges)
                     MaterialTheme.colorScheme.primary
                 else
                     MaterialTheme.colorScheme.surfaceVariant

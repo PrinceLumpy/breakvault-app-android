@@ -209,6 +209,12 @@
     <string name="common_back_button_description">Back</string>
     <string name="common_ok">OK</string>
     <string name="common_clear_filters">Clear Filters</string>
+
+    <!-- Unsaved Changes Dialog -->
+    <string name="unsaved_changes_dialog_title">Unsaved Changes</string>
+    <string name="unsaved_changes_dialog_message">You have unsaved changes. Are you sure you want to leave without saving?</string>
+    <string name="unsaved_changes_dialog_discard">Leave</string>
+    <string name="unsaved_changes_dialog_keep_editing">Keep Editing</string>
     <string name="screen_label_battle">Battle</string>
     <string name="archived_goals_title">Archived Goals
 </string>

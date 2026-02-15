@@ -62,6 +62,12 @@ class AddEditBattleComboViewModel @Inject constructor(
 
     private val _isInitialLoadDone = MutableStateFlow(false)
 
+    // Track original values to detect changes
+    private var originalDescription: String? = null
+    private var originalEnergy: EnergyLevel? = null
+    private var originalStatus: TrainingStatus? = null
+    private var originalSelectedTags: Set<String>? = null
+
 
     val uiState: StateFlow<AddEditBattleComboUiState> = combine(
         _userInputs,
@@ -93,6 +99,10 @@ class AddEditBattleComboViewModel @Inject constructor(
         viewModelScope.launch {
             val comboWithTags = battleRepository.getBattleComboWithTags(comboId)
             if (comboWithTags != null) {
+                originalDescription = comboWithTags.battleCombo.description
+                originalEnergy = comboWithTags.battleCombo.energy
+                originalStatus = comboWithTags.battleCombo.status
+                originalSelectedTags = comboWithTags.tags.map { it.id }.toSet()
                 _userInputs.value = UserInputs(
                     comboId = comboId,
                     description = comboWithTags.battleCombo.description,
@@ -207,16 +217,25 @@ class AddEditBattleComboViewModel @Inject constructor(
     fun saveCombo(onSuccess: () -> Unit) {
         val currentInputs = _userInputs.value
 
+        // Trim input values
+        val trimmedDescription = currentInputs.description.trim()
+
+        // Don't save if there are no changes (avoids unnecessary database updates)
+        if (!hasUnsavedChanges()) {
+            onSuccess()
+            return
+        }
+
         // Defensive guards against all business rules
         when {
-            currentInputs.description.isBlank() -> {
+            trimmedDescription.isBlank() -> {
                 _dialogsAndMessages.update {
                     it.copy(descriptionError = "Description cannot be empty.")
                 }
                 return
             }
 
-            currentInputs.description.length > BATTLE_COMBO_DESCRIPTION_CHARACTER_LIMIT -> {
+            trimmedDescription.length > BATTLE_COMBO_DESCRIPTION_CHARACTER_LIMIT -> {
                 _dialogsAndMessages.update {
                     it.copy(descriptionError = "Description cannot exceed $BATTLE_COMBO_DESCRIPTION_CHARACTER_LIMIT characters.")
                 }
@@ -227,7 +246,7 @@ class AddEditBattleComboViewModel @Inject constructor(
         viewModelScope.launch {
             val battleCombo = BattleCombo(
                 id = currentInputs.comboId ?: "",
-                description = currentInputs.description,
+                description = trimmedDescription,
                 energy = currentInputs.selectedEnergy,
                 status = currentInputs.selectedStatus,
                 isUsed = currentInputs.isUsed
@@ -274,5 +293,27 @@ class AddEditBattleComboViewModel @Inject constructor(
 
     fun onSnackbarMessageShown() {
         _dialogsAndMessages.update { it.copy(snackbarMessage = null) }
+    }
+
+    /**
+     * Check if there are unsaved changes in the form.
+     * Returns true if any field has been modified.
+     */
+    fun hasUnsavedChanges(): Boolean {
+        val currentInputs = _userInputs.value
+
+        // For new combos, check if any fields have been filled
+        if (currentInputs.isNewCombo) {
+            return currentInputs.description.isNotBlank() ||
+                    currentInputs.selectedEnergy != EnergyLevel.NONE ||
+                    currentInputs.selectedStatus != TrainingStatus.TRAINING ||
+                    currentInputs.selectedTags.isNotEmpty()
+        }
+
+        // For existing combos, check if any fields have been modified
+        return currentInputs.description != originalDescription ||
+                currentInputs.selectedEnergy != originalEnergy ||
+                currentInputs.selectedStatus != originalStatus ||
+                currentInputs.selectedTags != originalSelectedTags
     }
 }

@@ -32,6 +32,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,7 +52,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.common.Constants.GOAL_STAGE_TITLE_CHARACTER_LIMIT
 import com.princelumpy.breakvault.common.Constants.GOAL_STAGE_UNIT_CHARACTER_LIMIT
+import com.princelumpy.breakvault.ui.common.UnsavedChangesDialog
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
 /**
  * The main, stateful screen composable that holds the ViewModel and state.
@@ -65,6 +69,7 @@ fun AddEditGoalStageScreen(
     addEditGoalStageViewModel: AddEditGoalStageViewModel = hiltViewModel()
 ) {
     val uiState by addEditGoalStageViewModel.uiState.collectAsStateWithLifecycle()
+    var showUnsavedChangesDialog by remember { mutableStateOf(false) }
 
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
@@ -84,18 +89,50 @@ fun AddEditGoalStageScreen(
         val dialogState = currentUiState.dialogState
         val uiState = currentUiState.uiState
 
+        if (showUnsavedChangesDialog) {
+            UnsavedChangesDialog(
+                onDismiss = { showUnsavedChangesDialog = false },
+                onConfirm = {
+                    showUnsavedChangesDialog = false
+                    onNavigateUp()
+                }
+            )
+        }
+
+        // Handle system back button
+        BackHandler(enabled = true) {
+            if (addEditGoalStageViewModel.hasUnsavedChanges()) {
+                showUnsavedChangesDialog = true
+            } else {
+                onNavigateUp()
+            }
+        }
+
         Scaffold(
             topBar = {
                 AddEditGoalStageTopBar(
                     isNewStage = currentUiState.isNewStage,
-                    onNavigateUp = onNavigateUp,
+                    onNavigateUp = {
+                        if (addEditGoalStageViewModel.hasUnsavedChanges()) {
+                            showUnsavedChangesDialog = true
+                        } else {
+                            onNavigateUp()
+                        }
+                    },
                     onDeleteClick = { addEditGoalStageViewModel.showDeleteDialog(true) }
                 )
             },
             floatingActionButton = {
+                val hasUnsavedChanges = addEditGoalStageViewModel.hasUnsavedChanges()
+                val isValid = userInputs.name.isNotBlank()
                 FloatingActionButton(
                     onClick = { addEditGoalStageViewModel.saveStage { onNavigateUp() } },
-                    modifier = Modifier.imePadding()
+                    modifier = Modifier.imePadding(),
+                    containerColor = if (isValid && hasUnsavedChanges) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    }
                 ) {
                     Icon(
                         Icons.Filled.Save,
@@ -143,7 +180,10 @@ fun AddEditGoalStageScreen(
         if (dialogState.showDeleteDialog) {
             DeleteGoalStageDialog(
                 onDismiss = { addEditGoalStageViewModel.showDeleteDialog(false) },
-                onConfirmDelete = { addEditGoalStageViewModel.deleteStage { onNavigateUp() } }
+                onConfirmDelete = {
+                    addEditGoalStageViewModel.showDeleteDialog(false)
+                    addEditGoalStageViewModel.deleteStage { onNavigateUp() }
+                }
             )
         }
     }

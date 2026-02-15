@@ -11,6 +11,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -19,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -40,6 +45,9 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,7 +64,15 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.Move
+import com.princelumpy.breakvault.ui.common.UnsavedChangesDialog
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.dp
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 // Constants for character limits (LAYER 1)
 private const val COMBO_NAME_CHARACTER_LIMIT = 30
@@ -74,6 +90,7 @@ fun AddEditPracticeComboScreen(
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val snackbarHostState = remember { SnackbarHostState() }
+    var showUnsavedChangesDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(key1 = comboId) {
         addEditPracticeComboViewModel.loadCombo(comboId)
@@ -85,13 +102,40 @@ fun AddEditPracticeComboScreen(
         }
     }
 
+    if (showUnsavedChangesDialog) {
+        UnsavedChangesDialog(
+            onDismiss = { showUnsavedChangesDialog = false },
+            onConfirm = {
+                showUnsavedChangesDialog = false
+                onNavigateUp()
+            }
+        )
+    }
+
+    // Handle system back button
+    BackHandler(enabled = true) {
+        if (addEditPracticeComboViewModel.hasUnsavedChanges()) {
+            showUnsavedChangesDialog = true
+        } else {
+            onNavigateUp()
+        }
+    }
+
     AddEditPracticeComboScaffold(
         uiState = uiState,
         focusRequester = focusRequester,
         snackbarHostState = snackbarHostState,
-        onNavigateUp = onNavigateUp,
+        addEditPracticeComboViewModel = addEditPracticeComboViewModel,
+        onNavigateUp = {
+            if (addEditPracticeComboViewModel.hasUnsavedChanges()) {
+                showUnsavedChangesDialog = true
+            } else {
+                onNavigateUp()
+            }
+        },
         onComboNameChange = { addEditPracticeComboViewModel.onComboNameChange(it) },
         onRemoveMove = { addEditPracticeComboViewModel.removeMoveFromCombo(it) },
+        onMovesReordered = { addEditPracticeComboViewModel.onMovesReordered(it) },
         onSearchTextChange = { addEditPracticeComboViewModel.onSearchTextChange(it) },
         onExpandedChange = { addEditPracticeComboViewModel.onExpandedChange(it) },
         onAddMove = { addEditPracticeComboViewModel.addMoveToCombo(it) },
@@ -103,6 +147,7 @@ fun AddEditPracticeComboScreen(
         },
         onDeleteComboClick = { addEditPracticeComboViewModel.onDeleteComboClick() },
         onConfirmComboDelete = {
+            addEditPracticeComboViewModel.onCancelComboDelete() // Dismiss dialog first
             addEditPracticeComboViewModel.onConfirmComboDelete {
                 focusManager.clearFocus()
                 onNavigateUp()
@@ -120,9 +165,11 @@ private fun AddEditPracticeComboScaffold(
     uiState: AddEditComboUiState,
     focusRequester: FocusRequester,
     snackbarHostState: SnackbarHostState,
+    addEditPracticeComboViewModel: AddEditPracticeComboViewModel,
     onNavigateUp: () -> Unit,
     onComboNameChange: (String) -> Unit,
     onRemoveMove: (Int) -> Unit,
+    onMovesReordered: (List<String>) -> Unit,
     onSearchTextChange: (String) -> Unit,
     onExpandedChange: (Boolean) -> Unit,
     onAddMove: (String) -> Unit,
@@ -146,10 +193,12 @@ private fun AddEditPracticeComboScaffold(
             )
         },
         floatingActionButton = {
+            val hasUnsavedChanges = addEditPracticeComboViewModel.hasUnsavedChanges()
+            val isValid = userInputs.comboName.isNotBlank() && userInputs.selectedMoves.isNotEmpty()
             FloatingActionButton(
                 onClick = onSaveCombo,
                 modifier = Modifier.imePadding(),
-                containerColor = if (userInputs.comboName.isNotBlank() && userInputs.selectedMoves.isNotEmpty())
+                containerColor = if (isValid && hasUnsavedChanges)
                     MaterialTheme.colorScheme.primary
                 else
                     MaterialTheme.colorScheme.surfaceVariant
@@ -184,6 +233,7 @@ private fun AddEditPracticeComboScaffold(
                 focusRequester = focusRequester,
                 onComboNameChange = onComboNameChange,
                 onRemoveMove = onRemoveMove,
+                onMovesReordered = onMovesReordered,
                 onSearchTextChange = onSearchTextChange,
                 onExpandedChange = onExpandedChange,
                 onAddMove = onAddMove
@@ -249,6 +299,7 @@ private fun AddEditComboContent(
     focusRequester: FocusRequester,
     onComboNameChange: (String) -> Unit,
     onRemoveMove: (Int) -> Unit,
+    onMovesReordered: (List<String>) -> Unit,
     onSearchTextChange: (String) -> Unit,
     onExpandedChange: (Boolean) -> Unit,
     onAddMove: (String) -> Unit,
@@ -288,7 +339,8 @@ private fun AddEditComboContent(
         SelectedMovesList(
             selectedMoves = userInputs.selectedMoves,
             movesError = dialogsAndMessages.movesError,
-            onRemoveMove = onRemoveMove
+            onRemoveMove = onRemoveMove,
+            onMovesReordered = onMovesReordered
         )
 
         AddMoveDropdown(
@@ -310,6 +362,7 @@ private fun SelectedMovesList(
     selectedMoves: List<String>,
     movesError: String?,
     onRemoveMove: (Int) -> Unit,
+    onMovesReordered: (List<String>) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -326,14 +379,68 @@ private fun SelectedMovesList(
                 modifier = Modifier.padding(vertical = AppStyleDefaults.SpacingMedium)
             )
         } else {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
+            var movesList by remember { mutableStateOf(selectedMoves) }
+            var isDragging by remember { mutableStateOf(false) }
+
+            // Update the local list when selectedMoves prop changes (but not while dragging)
+            LaunchedEffect(selectedMoves) {
+                if (!isDragging) {
+                    movesList = selectedMoves
+                }
+            }
+
+            val lazyListState = rememberLazyListState()
+            val haptic = LocalHapticFeedback.current
+
+            val reorderableLazyListState =
+                rememberReorderableLazyListState(lazyListState) { from, to ->
+                    movesList = movesList.toMutableList().apply {
+                        add(to.index, removeAt(from.index))
+                    }
+                }
+
+            // Track when dragging ends and notify ViewModel of new order
+            LaunchedEffect(isDragging) {
+                if (!isDragging && movesList != selectedMoves) {
+                    onMovesReordered(movesList)
+                }
+            }
+
+            LazyColumn(
+                state = lazyListState,
+                verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp) // Fixed height since it's in a scrollable parent
             ) {
-                selectedMoves.forEachIndexed { index, moveName ->
-                    ComboMoveItem(
-                        moveName = moveName,
-                        onRemove = { onRemoveMove(index) }
-                    )
+                itemsIndexed(movesList, key = { index, _ -> "move_$index" }) { index, moveName ->
+                    ReorderableItem(
+                        reorderableLazyListState,
+                        key = "move_$index"
+                    ) { isItemDragging ->
+                        LaunchedEffect(isItemDragging) {
+                            if (isItemDragging) {
+                                isDragging = true
+                            } else if (isDragging) {
+                                // Small delay to ensure all items have stopped dragging
+                                kotlinx.coroutines.delay(50)
+                                isDragging = false
+                            }
+                        }
+
+                        val dragHandleModifier = Modifier.draggableHandle(
+                            onDragStarted = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
+                        )
+
+                        ComboMoveItem(
+                            moveName = moveName,
+                            onRemove = { onRemoveMove(index) },
+                            isDragging = isItemDragging,
+                            dragHandleModifier = dragHandleModifier
+                        )
+                    }
                 }
             }
         }
@@ -449,20 +556,39 @@ private fun DeleteComboDialog(
 @Composable
 private fun ComboMoveItem(
     moveName: String,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    isDragging: Boolean,
+    dragHandleModifier: Modifier = Modifier
 ) {
-    Card(
-        elevation = CardDefaults.cardElevation(defaultElevation = AppStyleDefaults.SpacingSmall),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth()
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = if (isDragging) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+        },
+        shape = MaterialTheme.shapes.small,
+        tonalElevation = if (isDragging) 4.dp else 0.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(AppStyleDefaults.SpacingMedium),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            // Drag handle icon with drag gesture
+            IconButton(
+                onClick = {},
+                modifier = dragHandleModifier
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.DragHandle,
+                    contentDescription = "Drag to reorder",
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
             Text(
                 text = moveName,
                 style = MaterialTheme.typography.bodyLarge,
@@ -473,6 +599,7 @@ private fun ComboMoveItem(
                 Icon(
                     imageVector = Icons.Filled.Delete,
                     contentDescription = stringResource(id = R.string.add_edit_combo_remove_move_description),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -502,7 +629,8 @@ private fun SelectedMovesList_WithMoves_Preview() {
         SelectedMovesList(
             selectedMoves = listOf("Windmill", "Flare", "Airflare"),
             movesError = null,
-            onRemoveMove = {}
+            onRemoveMove = {},
+            onMovesReordered = {}
         )
     }
 }
@@ -514,7 +642,8 @@ private fun SelectedMovesList_NoMoves_Preview() {
         SelectedMovesList(
             selectedMoves = emptyList(),
             movesError = null,
-            onRemoveMove = {}
+            onRemoveMove = {},
+            onMovesReordered = {}
         )
     }
 }
@@ -526,7 +655,8 @@ private fun SelectedMovesList_ErrorPreview() {
         SelectedMovesList(
             selectedMoves = emptyList(),
             movesError = "Please add at least one move to the combo.",
-            onRemoveMove = {}
+            onRemoveMove = {},
+            onMovesReordered = {}
         )
     }
 }
@@ -550,7 +680,7 @@ private fun AddMoveDropdownPreview() {
 @Composable
 private fun ComboMoveItemPreview() {
     BreakVaultTheme {
-        ComboMoveItem(moveName = "Windmill", onRemove = {})
+        ComboMoveItem(moveName = "Windmill", onRemove = {}, isDragging = false)
     }
 }
 

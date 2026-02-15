@@ -36,6 +36,7 @@ kotlinxSerializationJson = "1.10.0"
 kotlinVersion = "2.3.0"
 uiGraphics = "1.10.2"
 foundationLayoutVersion = "1.10.2"
+material3 = "1.4.0"
 
 [libraries]
 # Lifecycle
@@ -81,6 +82,7 @@ androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-te
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics", version.ref = "uiGraphics" }
 androidx-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayoutVersion" }
+androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

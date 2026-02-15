@@ -63,6 +63,12 @@ class AddEditGoalStageViewModel @Inject constructor(
     private var goalId: String? = null
     private var stageId: String? = null
 
+    // Track original values to detect changes
+    private var originalName: String? = null
+    private var originalCurrentCount: String? = null
+    private var originalTargetCount: String? = null
+    private var originalUnit: String? = null
+
     val uiState: StateFlow<GoalStageUiState?> = combine(
         _userInputs,
         _dialogState,
@@ -100,6 +106,10 @@ class AddEditGoalStageViewModel @Inject constructor(
         viewModelScope.launch {
             val stage = goalRepository.getGoalStageById(stageId)
             if (stage != null) {
+                originalName = stage.name
+                originalCurrentCount = stage.currentCount.toString()
+                originalTargetCount = stage.targetCount.toString()
+                originalUnit = stage.unit
                 _userInputs.value = UserInputs(
                     name = stage.name,
                     currentCount = stage.currentCount.toString(),
@@ -161,12 +171,26 @@ class AddEditGoalStageViewModel @Inject constructor(
     fun saveStage(onSuccess: (String) -> Unit) {
         val currentUiState = uiState.value ?: return
         val inputs = currentUiState.userInputs
+
+        // Trim input values
+        val trimmedName = inputs.name.trim()
+        val trimmedUnit = inputs.unit.trim()
+
         val current = inputs.currentCount.toIntOrNull()
         val target = inputs.targetCount.toIntOrNull()
 
+        // Don't save if there are no changes (avoids unnecessary lastUpdated field updates)
+        if (!hasUnsavedChanges()) {
+            // For existing stages with no changes, just navigate back
+            if (!currentUiState.isNewStage) {
+                onSuccess(currentUiState.goalId)
+                return
+            }
+        }
+
         // --- Start of Guarding Block ---
         when {
-            inputs.name.isBlank() -> {
+            trimmedName.isBlank() -> {
                 _uiState.update { it.copy(nameError = "Stage name cannot be empty.") }
                 return
             }
@@ -191,7 +215,7 @@ class AddEditGoalStageViewModel @Inject constructor(
                 return
             }
 
-            inputs.unit.length > GOAL_STAGE_UNIT_CHARACTER_LIMIT -> {
+            trimmedUnit.length > GOAL_STAGE_UNIT_CHARACTER_LIMIT -> {
                 _uiState.update { it.copy(unitError = "Unit cannot exceed $GOAL_STAGE_UNIT_CHARACTER_LIMIT characters.") }
                 return
             }
@@ -212,10 +236,10 @@ class AddEditGoalStageViewModel @Inject constructor(
             val stageToSave = GoalStage(
                 id = currentUiState.stageId ?: UUID.randomUUID().toString(),
                 goalId = currentUiState.goalId,
-                name = inputs.name,
+                name = trimmedName,
                 currentCount = current,
                 targetCount = target,
-                unit = inputs.unit,
+                unit = trimmedUnit,
                 orderIndex = orderIndex
             )
 
@@ -236,5 +260,28 @@ class AddEditGoalStageViewModel @Inject constructor(
                 onSuccess()
             }
         }
+    }
+
+    /**
+     * Check if there are unsaved changes in the form.
+     * Returns true if any field has been modified.
+     */
+    fun hasUnsavedChanges(): Boolean {
+        val currentState = uiState.value ?: return false
+        val currentInputs = currentState.userInputs
+
+        // For new stages, check if any fields have been filled beyond defaults
+        if (currentState.isNewStage) {
+            return currentInputs.name.isNotBlank() ||
+                    currentInputs.currentCount != "0" ||
+                    currentInputs.targetCount.isNotBlank() ||
+                    currentInputs.unit != "reps"
+        }
+
+        // For existing stages, check if any fields have been modified
+        return currentInputs.name != originalName ||
+                currentInputs.currentCount != originalCurrentCount ||
+                currentInputs.targetCount != originalTargetCount ||
+                currentInputs.unit != originalUnit
     }
 }

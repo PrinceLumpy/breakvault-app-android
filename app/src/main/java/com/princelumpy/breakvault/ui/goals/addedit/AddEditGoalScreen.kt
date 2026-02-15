@@ -44,6 +44,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -70,6 +71,7 @@ import com.princelumpy.breakvault.common.Constants.GOAL_DESCRIPTION_CHARACTER_LI
 import com.princelumpy.breakvault.common.Constants.GOAL_TITLE_CHARACTER_LIMIT
 import com.princelumpy.breakvault.data.local.entity.GoalStage
 import com.princelumpy.breakvault.ui.common.AppLinearProgressIndicator
+import com.princelumpy.breakvault.ui.common.UnsavedChangesDialog
 
 @Composable
 fun AddEditGoalScreen(
@@ -80,6 +82,7 @@ fun AddEditGoalScreen(
     val uiState by addEditGoalViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
+    var showUnsavedChangesDialog by remember { mutableStateOf(false) }
 
     val userInputs = uiState.userInputs
     val dialogState = uiState.dialogState
@@ -109,10 +112,29 @@ fun AddEditGoalScreen(
         DeleteGoalConfirmationDialog(
             onDismiss = { showDeleteConfirmationDialog = false },
             onConfirmDelete = {
-                addEditGoalViewModel.deleteGoal { onNavigateUp() }
                 showDeleteConfirmationDialog = false
+                addEditGoalViewModel.deleteGoal { onNavigateUp() }
             }
         )
+    }
+
+    if (showUnsavedChangesDialog) {
+        UnsavedChangesDialog(
+            onDismiss = { showUnsavedChangesDialog = false },
+            onConfirm = {
+                showUnsavedChangesDialog = false
+                onNavigateUp()
+            }
+        )
+    }
+
+    // Handle system back button
+    BackHandler(enabled = true) {
+        if (addEditGoalViewModel.hasUnsavedChanges()) {
+            showUnsavedChangesDialog = true
+        } else {
+            onNavigateUp()
+        }
     }
 
     AddEditGoalScaffold(
@@ -131,8 +153,15 @@ fun AddEditGoalScreen(
         onStagesReordered = { addEditGoalViewModel.onStagesReordered(it) },
         onArchiveClick = { addEditGoalViewModel.archiveGoal { onNavigateUp() } },
         onDeleteClick = { showDeleteConfirmationDialog = true },
+        hasUnsavedChanges = addEditGoalViewModel.hasUnsavedChanges(),
         onSaveClick = { addEditGoalViewModel.saveGoal { onNavigateUp() } },
-        onNavigateUp = onNavigateUp
+        onNavigateUp = {
+            if (addEditGoalViewModel.hasUnsavedChanges()) {
+                showUnsavedChangesDialog = true
+            } else {
+                onNavigateUp()
+            }
+        }
     )
 }
 
@@ -154,6 +183,7 @@ private fun AddEditGoalScaffold(
     onStagesReordered: (List<GoalStage>) -> Unit,
     onArchiveClick: () -> Unit,
     onDeleteClick: () -> Unit,
+    hasUnsavedChanges: Boolean,
     onSaveClick: () -> Unit,
     onNavigateUp: () -> Unit
 ) {
@@ -176,8 +206,8 @@ private fun AddEditGoalScaffold(
                     onSaveClick()
                 },
                 modifier = Modifier.imePadding(),
-                // Updated FAB color based on whether the required title is filled
-                containerColor = if (title.isNotBlank()) {
+                // Updated FAB color: enabled only if title is filled AND there are unsaved changes
+                containerColor = if (title.isNotBlank() && hasUnsavedChanges) {
                     MaterialTheme.colorScheme.primary
                 } else {
                     MaterialTheme.colorScheme.surfaceVariant

@@ -70,6 +70,10 @@ class AddEditGoalViewModel @Inject constructor(
     // Track pending stage reordering (only saved when user clicks save FAB)
     private var pendingStageOrder: List<GoalStage>? = null
 
+    // Track original values to detect changes
+    private var originalTitle: String? = null
+    private var originalDescription: String? = null
+
     val uiState: StateFlow<AddEditGoalUiState> = combine(
         goalId.flatMapLatest { id ->
             if (id == null) {
@@ -87,6 +91,8 @@ class AddEditGoalViewModel @Inject constructor(
 
         // This logic runs when loading an existing goal for the first time.
         if (goalWithStages != null && !uiState.isInitialLoadDone) {
+            originalTitle = goalWithStages.goal.title
+            originalDescription = goalWithStages.goal.description
             _userInputs.value = UserInputs(
                 title = goalWithStages.goal.title,
                 description = goalWithStages.goal.description
@@ -134,19 +140,33 @@ class AddEditGoalViewModel @Inject constructor(
     fun saveGoal(onSuccess: (goalId: String) -> Unit) {
         val currentInputs = _userInputs.value
 
+        // Trim input values
+        val trimmedTitle = currentInputs.title.trim()
+        val trimmedDescription = currentInputs.description.trim()
+
+        // Don't save if there are no changes (avoids unnecessary lastUpdated field updates)
+        if (!hasUnsavedChanges()) {
+            // For existing goals with no changes, just navigate back
+            val currentGoalId = goalId.value
+            if (currentGoalId != null) {
+                onSuccess(currentGoalId)
+                return
+            }
+        }
+
         // --- Start of Guarding Block ---
         when {
-            currentInputs.title.isBlank() -> {
+            trimmedTitle.isBlank() -> {
                 _uiState.update { it.copy(titleError = "Goal title cannot be blank.") }
                 return
             }
             // Defensive length check for title
-            currentInputs.title.length > GOAL_TITLE_CHARACTER_LIMIT -> {
+            trimmedTitle.length > GOAL_TITLE_CHARACTER_LIMIT -> {
                 _uiState.update { it.copy(titleError = "Title cannot exceed ${GOAL_TITLE_CHARACTER_LIMIT} characters.") }
                 return
             }
             // Defensive length check for description
-            currentInputs.description.length > GOAL_DESCRIPTION_CHARACTER_LIMIT -> {
+            trimmedDescription.length > GOAL_DESCRIPTION_CHARACTER_LIMIT -> {
                 _uiState.update { it.copy(descriptionError = "Description cannot exceed ${GOAL_DESCRIPTION_CHARACTER_LIMIT} characters.") }
                 return
             }
@@ -159,8 +179,8 @@ class AddEditGoalViewModel @Inject constructor(
                 // Create new goal
                 val newGoal = Goal(
                     id = UUID.randomUUID().toString(),
-                    title = currentInputs.title,
-                    description = currentInputs.description
+                    title = trimmedTitle,
+                    description = trimmedDescription
                 )
                 goalRepository.insertGoal(newGoal)
 
@@ -174,8 +194,8 @@ class AddEditGoalViewModel @Inject constructor(
                 // Update existing goal
                 goalRepository.getGoalById(currentGoalId)?.let { existingGoal ->
                     val updatedGoal = existingGoal.copy(
-                        title = currentInputs.title,
-                        description = currentInputs.description,
+                        title = trimmedTitle,
+                        description = trimmedDescription,
                         lastUpdated = System.currentTimeMillis()
                     )
                     goalRepository.updateGoal(updatedGoal)
@@ -249,5 +269,26 @@ class AddEditGoalViewModel @Inject constructor(
     fun onStagesReordered(reorderedStages: List<GoalStage>) {
         // Store the pending order; will be saved when user clicks save FAB
         pendingStageOrder = reorderedStages
+    }
+
+    /**
+     * Check if there are unsaved changes in the form.
+     * Returns true if any field has been modified or if stages have been reordered.
+     */
+    fun hasUnsavedChanges(): Boolean {
+        val currentState = uiState.value
+        val currentInputs = _userInputs.value
+
+        // For new goals, check if any fields have been filled
+        if (currentState.isNewGoal) {
+            return currentInputs.title.isNotBlank() ||
+                    currentInputs.description.isNotBlank() ||
+                    currentState.stages.isNotEmpty()
+        }
+
+        // For existing goals, check if any fields have been modified or stages reordered
+        return pendingStageOrder != null ||
+                currentInputs.title != originalTitle ||
+                currentInputs.description != originalDescription
     }
 }

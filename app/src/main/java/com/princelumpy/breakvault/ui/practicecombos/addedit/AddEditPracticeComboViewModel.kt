@@ -56,6 +56,13 @@ class AddEditPracticeComboViewModel @Inject constructor(
         MutableStateFlow<Pair<String?, Boolean>>(null to true) // Pair<comboId, isNewCombo>
     private val _isInitialLoadDone = MutableStateFlow(false)
 
+    // Track original values to detect changes
+    private var originalComboName: String? = null
+    private var originalSelectedMoves: List<String>? = null
+
+    // Track pending reordered moves (only saved when FAB clicked)
+    private var pendingMovesOrder: List<String>? = null
+
     val uiState: StateFlow<AddEditComboUiState> = combine(
         practiceComboRepository.getAllMoves(),
         _userInputs,
@@ -90,6 +97,8 @@ class AddEditPracticeComboViewModel @Inject constructor(
         viewModelScope.launch {
             val comboToEdit = practiceComboRepository.getPracticeComboById(comboId)
             if (comboToEdit != null) {
+                originalComboName = comboToEdit.name
+                originalSelectedMoves = comboToEdit.moves
                 _userInputs.value = UserInputs(
                     comboName = comboToEdit.name,
                     selectedMoves = comboToEdit.moves
@@ -142,6 +151,13 @@ class AddEditPracticeComboViewModel @Inject constructor(
         }
     }
 
+    fun onMovesReordered(reorderedMoves: List<String>) {
+        // Update UI state immediately so the reorder is visible
+        _userInputs.update { it.copy(selectedMoves = reorderedMoves) }
+        // Also track pending order for save
+        pendingMovesOrder = reorderedMoves
+    }
+
     fun onExpandedChange(expanded: Boolean) {
         _dialogsAndMessages.update { it.copy(dropdownExpanded = expanded) }
     }
@@ -151,23 +167,34 @@ class AddEditPracticeComboViewModel @Inject constructor(
         val currentUiState = uiState.value
         val inputs = currentUiState.userInputs
 
+        // Trim input values
+        val trimmedComboName = inputs.comboName.trim()
+        // Trim moves as well (remove leading/trailing whitespace from each move)
+        val trimmedMoves = inputs.selectedMoves.map { it.trim() }
+
+        // Don't save if there are no changes (avoids unnecessary database updates)
+        if (!hasUnsavedChanges()) {
+            onSuccess()
+            return
+        }
+
         // Defensive guards against all business rules
         when {
-            inputs.comboName.isBlank() -> {
+            trimmedComboName.isBlank() -> {
                 _dialogsAndMessages.update {
                     it.copy(comboNameError = "Combo name cannot be empty.")
                 }
                 return
             }
 
-            inputs.comboName.length > COMBO_NAME_CHARACTER_LIMIT -> {
+            trimmedComboName.length > COMBO_NAME_CHARACTER_LIMIT -> {
                 _dialogsAndMessages.update {
                     it.copy(comboNameError = "Combo name cannot exceed $COMBO_NAME_CHARACTER_LIMIT characters.")
                 }
                 return
             }
 
-            inputs.selectedMoves.isEmpty() -> {
+            trimmedMoves.isEmpty() -> {
                 _dialogsAndMessages.update {
                     it.copy(movesError = "Please add at least one move to the combo.")
                 }
@@ -176,26 +203,32 @@ class AddEditPracticeComboViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
+            // Use pending moves order if available, otherwise use current input moves
+            val finalMoves = pendingMovesOrder?.map { it.trim() } ?: trimmedMoves
+
             if (currentUiState.isNewCombo) {
                 practiceComboRepository.insertPracticeCombo(
                     PracticeCombo(
-                        name = inputs.comboName,
-                        moves = inputs.selectedMoves
+                        name = trimmedComboName,
+                        moves = finalMoves
                     )
                 )
                 _dialogsAndMessages.update {
-                    it.copy(snackbarMessage = "Combo \"${inputs.comboName}\" created successfully!")
+                    it.copy(snackbarMessage = "Combo \"${trimmedComboName}\" created successfully!")
                 }
             } else {
                 practiceComboRepository.updatePracticeCombo(
                     currentUiState.comboId!!,
-                    inputs.comboName,
-                    inputs.selectedMoves
+                    trimmedComboName,
+                    finalMoves
                 )
                 _dialogsAndMessages.update {
-                    it.copy(snackbarMessage = "Combo \"${inputs.comboName}\" updated successfully!")
+                    it.copy(snackbarMessage = "Combo \"${trimmedComboName}\" updated successfully!")
                 }
             }
+
+            // Clear pending order after save
+            pendingMovesOrder = null
             onSuccess()
         }
     }
@@ -219,5 +252,24 @@ class AddEditPracticeComboViewModel @Inject constructor(
 
     fun onCancelComboDelete() {
         _dialogsAndMessages.update { it.copy(showDeleteDialog = false) }
+    }
+
+    /**
+     * Check if there are unsaved changes in the form.
+     * Returns true if any field has been modified.
+     */
+    fun hasUnsavedChanges(): Boolean {
+        val currentState = uiState.value
+        val currentInputs = currentState.userInputs
+
+        // For new combos, check if any fields have been filled
+        if (currentState.isNewCombo) {
+            return currentInputs.comboName.isNotBlank() ||
+                    currentInputs.selectedMoves.isNotEmpty()
+        }
+
+        // For existing combos, check if any fields have been modified
+        return currentInputs.comboName != originalComboName ||
+                currentInputs.selectedMoves != originalSelectedMoves
     }
 }

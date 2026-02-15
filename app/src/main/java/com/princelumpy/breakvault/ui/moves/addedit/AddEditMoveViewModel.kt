@@ -58,6 +58,10 @@ class AddEditMoveViewModel @Inject constructor(
         MutableStateFlow<Pair<String?, Boolean>>(null to true) // Pair<moveId, isNewMove>
     private val _isInitialLoadDone = MutableStateFlow(false)
 
+    // Track original values to detect changes
+    private var originalMoveName: String? = null
+    private var originalSelectedTags: Set<String>? = null
+
 
     val uiState: StateFlow<AddEditMoveUiState> = combine(
         moveRepository.getAllTags(),
@@ -91,6 +95,8 @@ class AddEditMoveViewModel @Inject constructor(
         viewModelScope.launch {
             val moveWithTags = moveRepository.getMoveWithTags(moveId)
             if (moveWithTags != null) {
+                originalMoveName = moveWithTags.move.name
+                originalSelectedTags = moveWithTags.moveTags.map { it.id }.toSet()
                 _userInputs.value = UserInputs(
                     moveName = moveWithTags.move.name,
                     selectedTags = moveWithTags.moveTags.map { it.id }.toSet()
@@ -189,16 +195,25 @@ class AddEditMoveViewModel @Inject constructor(
         val currentUiState = uiState.value
         val inputs = currentUiState.userInputs
 
+        // Trim input values
+        val trimmedMoveName = inputs.moveName.trim()
+
+        // Don't save if there are no changes (avoids unnecessary database updates)
+        if (!hasUnsavedChanges()) {
+            onSuccess()
+            return
+        }
+
         // Defensive guards against all business rules
         when {
-            inputs.moveName.isBlank() -> {
+            trimmedMoveName.isBlank() -> {
                 _dialogsAndMessages.update {
                     it.copy(moveNameError = "Move name cannot be empty.")
                 }
                 return
             }
 
-            inputs.moveName.length > MOVE_NAME_CHARACTER_LIMIT -> {
+            trimmedMoveName.length > MOVE_NAME_CHARACTER_LIMIT -> {
                 _dialogsAndMessages.update {
                     it.copy(moveNameError = "Move name cannot exceed $MOVE_NAME_CHARACTER_LIMIT characters.")
                 }
@@ -211,11 +226,11 @@ class AddEditMoveViewModel @Inject constructor(
                 .filter { it.id in inputs.selectedTags }
 
             if (currentUiState.isNewMove) {
-                val newMove = Move(id = UUID.randomUUID().toString(), name = inputs.moveName)
+                val newMove = Move(id = UUID.randomUUID().toString(), name = trimmedMoveName)
                 moveRepository.insertMoveWithTags(newMove, selectedTagObjects)
             } else {
                 currentUiState.moveId?.let { moveId ->
-                    moveRepository.updateMoveWithTags(moveId, inputs.moveName, selectedTagObjects)
+                    moveRepository.updateMoveWithTags(moveId, trimmedMoveName, selectedTagObjects)
                 }
             }
             onSuccess()
@@ -244,5 +259,24 @@ class AddEditMoveViewModel @Inject constructor(
 
     fun onSnackbarMessageShown() {
         _dialogsAndMessages.update { it.copy(snackbarMessage = null) }
+    }
+
+    /**
+     * Check if there are unsaved changes in the form.
+     * Returns true if any field has been modified.
+     */
+    fun hasUnsavedChanges(): Boolean {
+        val currentState = uiState.value
+        val currentInputs = currentState.userInputs
+
+        // For new moves, check if any fields have been filled
+        if (currentState.isNewMove) {
+            return currentInputs.moveName.isNotBlank() ||
+                    currentInputs.selectedTags.isNotEmpty()
+        }
+
+        // For existing moves, check if any fields have been modified
+        return currentInputs.moveName != originalMoveName ||
+                currentInputs.selectedTags != originalSelectedTags
     }
 }

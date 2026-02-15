@@ -445,3 +445,32 @@ fun <T> TagFilterRow(
         }
     }
 }
+
+/**
+ * A shared dialog component for warning users about unsaved changes.
+ * Displayed when navigating away from add/edit screens with unsaved changes.
+ *
+ * @param onDismiss Callback when user chooses to stay on the current screen
+ * @param onConfirm Callback when user confirms leaving without saving
+ */
+@Composable
+fun UnsavedChangesDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(id = R.string.unsaved_changes_dialog_title)) },
+        text = { Text(stringResource(id = R.string.unsaved_changes_dialog_message)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(id = R.string.unsaved_changes_dialog_discard))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(id = R.string.unsaved_changes_dialog_keep_editing))
+            }
+        }
+    )
+}

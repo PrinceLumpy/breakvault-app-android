@@ -228,10 +228,12 @@ class AddEditMoveViewModel @Inject constructor(
             if (currentUiState.isNewMove) {
                 val newMove = Move(id = UUID.randomUUID().toString(), name = trimmedMoveName)
                 moveRepository.insertMoveWithTags(newMove, selectedTagObjects)
+                _dialogsAndMessages.update { it.copy(snackbarMessage = "Move created successfully!") }
             } else {
                 currentUiState.moveId?.let { moveId ->
                     moveRepository.updateMoveWithTags(moveId, trimmedMoveName, selectedTagObjects)
                 }
+                _dialogsAndMessages.update { it.copy(snackbarMessage = "Move updated successfully!") }
             }
             onSuccess()
         }
@@ -248,6 +250,7 @@ class AddEditMoveViewModel @Inject constructor(
             val moveWithTags = moveRepository.getMoveWithTags(moveId)
             moveWithTags?.let {
                 moveRepository.deleteMove(it.move)
+                _dialogsAndMessages.update { it.copy(snackbarMessage = "Move deleted") }
                 onSuccess()
             }
         }

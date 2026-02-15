@@ -26,7 +26,8 @@ data class UserInputs(
 data class DialogState(
     val showAddDialog: Boolean = false,
     val tagForEditDialog: MoveTag? = null,
-    val tagForDeleteDialog: MoveTag? = null
+    val tagForDeleteDialog: MoveTag? = null,
+    val snackbarMessage: String? = null
 )
 
 // The final, combined state for the UI to consume.
@@ -146,6 +147,7 @@ class MoveTagListViewModel @Inject constructor(
         viewModelScope.launch {
             val newMoveTag = MoveTag(name = newTagName, id = UUID.randomUUID().toString())
             moveRepository.insertMoveTag(newMoveTag)
+            _dialogState.update { it.copy(snackbarMessage = "Tag created successfully!") }
             onAddTagDialogDismiss()
         }
     }
@@ -181,6 +183,7 @@ class MoveTagListViewModel @Inject constructor(
 
         viewModelScope.launch {
             moveRepository.updateTagName(tagToEdit.id, newName)
+            _dialogState.update { it.copy(snackbarMessage = "Tag updated successfully!") }
             onEditTagDialogDismiss()
         }
     }
@@ -189,8 +192,13 @@ class MoveTagListViewModel @Inject constructor(
         val tagToDelete = _dialogState.value.tagForDeleteDialog ?: return
         viewModelScope.launch {
             moveRepository.deleteTagCompletely(tagToDelete)
+            _dialogState.update { it.copy(snackbarMessage = "Tag deleted") }
             // Hide dialog on success
             _dialogState.update { it.copy(tagForDeleteDialog = null) }
         }
+    }
+
+    fun onSnackbarMessageShown() {
+        _dialogState.update { it.copy(snackbarMessage = null) }
     }
 }

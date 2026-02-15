@@ -26,7 +26,8 @@ data class UserInputs(
 data class DialogState(
     val showAddDialog: Boolean = false,
     val tagForEditDialog: BattleTag? = null,
-    val tagForDeleteDialog: BattleTag? = null
+    val tagForDeleteDialog: BattleTag? = null,
+    val snackbarMessage: String? = null
 )
 
 // The final, combined state for the UI to consume.
@@ -147,6 +148,7 @@ class BattleTagListViewModel @Inject constructor(
         viewModelScope.launch {
             val newBattleTag = BattleTag(name = newTagName, id = UUID.randomUUID().toString())
             battleRepository.insertBattleTag(newBattleTag)
+            _dialogState.update { it.copy(snackbarMessage = "Tag created successfully!") }
             onAddTagDialogDismiss()
         }
     }
@@ -182,6 +184,7 @@ class BattleTagListViewModel @Inject constructor(
 
         viewModelScope.launch {
             battleRepository.updateTagName(tagToEdit.id, newName)
+            _dialogState.update { it.copy(snackbarMessage = "Tag updated successfully!") }
             onEditTagDialogDismiss()
         }
     }
@@ -190,8 +193,13 @@ class BattleTagListViewModel @Inject constructor(
         val tagToDelete = _dialogState.value.tagForDeleteDialog ?: return
         viewModelScope.launch {
             battleRepository.deleteTagCompletely(tagToDelete)
+            _dialogState.update { it.copy(snackbarMessage = "Tag deleted") }
             // Hide dialog on success
             _dialogState.update { it.copy(tagForDeleteDialog = null) }
         }
+    }
+
+    fun onSnackbarMessageShown() {
+        _dialogState.update { it.copy(snackbarMessage = null) }
     }
 }

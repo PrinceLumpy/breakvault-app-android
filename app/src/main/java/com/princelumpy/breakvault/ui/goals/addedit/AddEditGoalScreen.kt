@@ -154,7 +154,7 @@ fun AddEditGoalScreen(
         onArchiveClick = { addEditGoalViewModel.archiveGoal { onNavigateUp() } },
         onDeleteClick = { showDeleteConfirmationDialog = true },
         hasUnsavedChanges = addEditGoalViewModel.hasUnsavedChanges(),
-        onSaveClick = { addEditGoalViewModel.saveGoal { onNavigateUp() } },
+        onSaveClick = { addEditGoalViewModel.saveGoal(showSnackbar = false) { onNavigateUp() } },
         onNavigateUp = {
             if (addEditGoalViewModel.hasUnsavedChanges()) {
                 showUnsavedChangesDialog = true

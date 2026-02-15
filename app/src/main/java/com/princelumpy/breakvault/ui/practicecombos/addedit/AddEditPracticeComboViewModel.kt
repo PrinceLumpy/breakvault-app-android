@@ -253,6 +253,7 @@ class AddEditPracticeComboViewModel @Inject constructor(
 
         viewModelScope.launch {
             practiceComboRepository.deletePracticeCombo(comboId)
+            _dialogsAndMessages.update { it.copy(snackbarMessage = "Combo deleted") }
             onSuccess()
         }
     }

@@ -137,7 +137,7 @@ class AddEditGoalViewModel @Inject constructor(
     }
 
     // --- Data Operation Handlers ---
-    fun saveGoal(onSuccess: (goalId: String) -> Unit) {
+    fun saveGoal(showSnackbar: Boolean = false, onSuccess: (goalId: String) -> Unit) {
         val currentInputs = _userInputs.value
 
         // Trim input values
@@ -189,6 +189,10 @@ class AddEditGoalViewModel @Inject constructor(
                     savePendingStageOrder(stages)
                 }
 
+                if (showSnackbar) {
+                    _dialogState.update { it.copy(snackbarMessage = "Goal saved") }
+                }
+
                 onSuccess(newGoal.id)
             } else {
                 // Update existing goal
@@ -203,6 +207,10 @@ class AddEditGoalViewModel @Inject constructor(
                     // Save pending stage order if exists
                     pendingStageOrder?.let { stages ->
                         savePendingStageOrder(stages)
+                    }
+
+                    if (showSnackbar) {
+                        _dialogState.update { it.copy(snackbarMessage = "Changes saved") }
                     }
 
                     onSuccess(currentGoalId)
@@ -223,6 +231,7 @@ class AddEditGoalViewModel @Inject constructor(
         viewModelScope.launch {
             goalId.value?.let {
                 goalRepository.archiveGoal(it)
+                _dialogState.update { it.copy(snackbarMessage = "Goal archived") }
                 onSuccess()
             }
         }
@@ -232,6 +241,7 @@ class AddEditGoalViewModel @Inject constructor(
         viewModelScope.launch {
             goalId.value?.let {
                 goalRepository.deleteGoalAndStages(it)
+                _dialogState.update { it.copy(snackbarMessage = "Goal deleted") }
                 onSuccess()
             }
         }
@@ -244,11 +254,18 @@ class AddEditGoalViewModel @Inject constructor(
 
     fun onAddStageClicked() {
         if (uiState.value.isNewGoal) {
-            saveGoal { newGoalId ->
+            saveGoal(showSnackbar = false) { newGoalId ->
                 _dialogState.update { it.copy(navigateToAddStageWithGoalId = newGoalId) }
             }
         } else {
-            _dialogState.update { it.copy(navigateToAddStageWithGoalId = uiState.value.goalId) }
+            // Auto-save existing goal if there are unsaved changes
+            if (hasUnsavedChanges()) {
+                saveGoal(showSnackbar = true) { goalId ->
+                    _dialogState.update { it.copy(navigateToAddStageWithGoalId = goalId) }
+                }
+            } else {
+                _dialogState.update { it.copy(navigateToAddStageWithGoalId = uiState.value.goalId) }
+            }
         }
     }
 
@@ -258,7 +275,21 @@ class AddEditGoalViewModel @Inject constructor(
 
     fun onEditStageClicked(stage: GoalStage) {
         uiState.value.goalId?.let { gId ->
-            _dialogState.update { it.copy(navigateToEditStage = Pair(gId, stage.id)) }
+            // Auto-save if there are unsaved changes
+            if (hasUnsavedChanges()) {
+                saveGoal(showSnackbar = true) { savedGoalId ->
+                    _dialogState.update {
+                        it.copy(
+                            navigateToEditStage = Pair(
+                                savedGoalId,
+                                stage.id
+                            )
+                        )
+                    }
+                }
+            } else {
+                _dialogState.update { it.copy(navigateToEditStage = Pair(gId, stage.id)) }
+            }
         }
     }
 

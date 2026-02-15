@@ -261,11 +261,13 @@ class AddEditBattleComboViewModel @Inject constructor(
                     battleCombo,
                     selectedTagObjects
                 )
+                _dialogsAndMessages.update { it.copy(snackbarMessage = "Combo created successfully!") }
             } else {
                 battleRepository.updateBattleComboWithTags(
                     battleCombo,
                     selectedTagObjects
                 )
+                _dialogsAndMessages.update { it.copy(snackbarMessage = "Combo updated successfully!") }
             }
             onSuccess()
         }
@@ -282,6 +284,7 @@ class AddEditBattleComboViewModel @Inject constructor(
             val comboWithTags = battleRepository.getBattleComboWithTags(comboId)
             comboWithTags?.let {
                 battleRepository.deleteBattleCombo(it.battleCombo)
+                _dialogsAndMessages.update { it.copy(snackbarMessage = "Combo deleted") }
                 onSuccess()
             }
         }

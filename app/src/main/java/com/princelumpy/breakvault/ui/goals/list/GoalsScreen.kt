@@ -112,7 +112,7 @@ fun GoalsContent(
             )
         },
         floatingActionButton = {
-            if (!uiState.isLoading) {
+            if (!uiState.isLoading && uiState.goals.isNotEmpty()) {
                 FloatingActionButton(
                     onClick = { onNavigateToAddEditGoal(null) },
                     modifier = Modifier.imePadding()
@@ -126,8 +126,12 @@ fun GoalsContent(
         }
     ) { innerPadding ->
         when {
-            uiState.isLoading -> LoadingState()
-            uiState.goals.isEmpty() -> EmptyGoalsState(onCreateGoal = { onNavigateToAddEditGoal(null) })
+            uiState.isLoading -> LoadingState(modifier = Modifier.padding(innerPadding))
+            uiState.goals.isEmpty() -> EmptyGoalsState(
+                onCreateGoal = { onNavigateToAddEditGoal(null) },
+                modifier = Modifier.padding(innerPadding)
+            )
+
             else -> GoalsList(
                 goals = uiState.goals,
                 onEditGoalClick = onNavigateToAddEditGoal,
@@ -140,9 +144,9 @@ fun GoalsContent(
 }
 
 @Composable
-fun LoadingState() {
+fun LoadingState(modifier: Modifier = Modifier) {
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         CircularProgressIndicator()
@@ -150,9 +154,9 @@ fun LoadingState() {
 }
 
 @Composable
-fun EmptyGoalsState(onCreateGoal: () -> Unit) {
+fun EmptyGoalsState(onCreateGoal: () -> Unit, modifier: Modifier = Modifier) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(AppStyleDefaults.SpacingLarge),
         verticalArrangement = Arrangement.Center,

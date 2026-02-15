@@ -8,5 +8,3 @@
     - Same with Goal List - it shoulddn't display FAB
         - And it should have the same centering as battle combo list
 
-- addedit goal screen save fab just opens addedit goal stage
-- This is because of the backstack actually

@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -46,6 +48,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -298,9 +301,12 @@ private fun AddEditComboContent(
 ) {
     val userInputs = uiState.userInputs
     val dialogsAndMessages = uiState.dialogsAndMessages
+    val scrollState = rememberScrollState()
 
     Column(
         modifier = modifier
+            .imePadding()
+            .verticalScroll(scrollState)
             .padding(horizontal = AppStyleDefaults.SpacingLarge),
         verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
     ) {
@@ -381,7 +387,9 @@ private fun SelectedMovesList(
             LazyColumn(
                 state = lazyListState,
                 verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 400.dp)
             ) {
                 items(
                     items = selectedMoves,
@@ -461,8 +469,9 @@ private fun AddMoveDropdown(
 
         if (filteredMoves.isNotEmpty() && dropdownExpanded) {
             ExposedDropdownMenu(
-                expanded = dropdownExpanded,
-                onDismissRequest = { onExpandedChange(false) }
+                expanded = true,
+                onDismissRequest = { onExpandedChange(false) },
+                modifier = Modifier.heightIn(max = 200.dp)
             ) {
                 filteredMoves.forEach { move ->
                     DropdownMenuItem(

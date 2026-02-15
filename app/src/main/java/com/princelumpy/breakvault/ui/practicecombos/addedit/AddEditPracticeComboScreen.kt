@@ -307,7 +307,8 @@ private fun AddEditComboContent(
         modifier = modifier
             .imePadding()
             .verticalScroll(scrollState)
-            .padding(horizontal = AppStyleDefaults.SpacingLarge),
+            .padding(horizontal = AppStyleDefaults.SpacingLarge)
+            .padding(bottom = AppStyleDefaults.SpacingLarge * 4),
         verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
     ) {
         // LAYER 1: Input Capping with Supporting Text Error Display
@@ -534,7 +535,7 @@ private fun ComboMoveItem(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         shape = MaterialTheme.shapes.small,
         shadowElevation = elevation,
         tonalElevation = if (isDragging) 4.dp else 0.dp

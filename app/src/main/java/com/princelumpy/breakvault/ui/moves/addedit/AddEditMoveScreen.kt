@@ -75,19 +75,11 @@ fun AddEditMoveScreen(
     moveViewModel: AddEditMoveViewModel = hiltViewModel()
 ) {
     val uiState by moveViewModel.uiState.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
     val focusManager = LocalFocusManager.current
     var showUnsavedChangesDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(key1 = moveId) {
         moveViewModel.loadMove(moveId)
-    }
-
-    LaunchedEffect(uiState.dialogsAndMessages.snackbarMessage) {
-        uiState.dialogsAndMessages.snackbarMessage?.let {
-            snackbarHostState.showSnackbar(it)
-            moveViewModel.onSnackbarMessageShown()
-        }
     }
 
     if (showUnsavedChangesDialog) {
@@ -111,7 +103,6 @@ fun AddEditMoveScreen(
 
     AddEditMoveScaffold(
         uiState = uiState,
-        snackbarHostState = snackbarHostState,
         moveViewModel = moveViewModel,
         onNavigateUp = {
             if (moveViewModel.hasUnsavedChanges()) {
@@ -149,7 +140,6 @@ fun AddEditMoveScreen(
 @Composable
 private fun AddEditMoveScaffold(
     uiState: AddEditMoveUiState,
-    snackbarHostState: SnackbarHostState,
     moveViewModel: AddEditMoveViewModel,
     onNavigateUp: () -> Unit,
     onMoveNameChange: (String) -> Unit,
@@ -164,7 +154,6 @@ private fun AddEditMoveScaffold(
     val focusManager = LocalFocusManager.current
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             AddEditMoveTopBar(
                 isNewMove = uiState.isNewMove,

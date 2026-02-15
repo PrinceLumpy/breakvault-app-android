@@ -80,19 +80,11 @@ fun AddEditGoalScreen(
     addEditGoalViewModel: AddEditGoalViewModel = hiltViewModel()
 ) {
     val uiState by addEditGoalViewModel.uiState.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
     var showDeleteConfirmationDialog by remember { mutableStateOf(false) }
     var showUnsavedChangesDialog by remember { mutableStateOf(false) }
 
     val userInputs = uiState.userInputs
     val dialogState = uiState.dialogState
-
-    LaunchedEffect(dialogState.snackbarMessage) {
-        dialogState.snackbarMessage?.let { message ->
-            snackbarHostState.showSnackbar(message)
-            addEditGoalViewModel.onSnackbarMessageShown()
-        }
-    }
 
     LaunchedEffect(dialogState.navigateToAddStageWithGoalId) {
         dialogState.navigateToAddStageWithGoalId?.let { goalIdForStage ->
@@ -138,7 +130,6 @@ fun AddEditGoalScreen(
     }
 
     AddEditGoalScaffold(
-        snackbarHostState = snackbarHostState,
         isNewGoal = uiState.isNewGoal,
         isLoading = uiState.isLoading,
         title = userInputs.title,
@@ -154,7 +145,7 @@ fun AddEditGoalScreen(
         onArchiveClick = { addEditGoalViewModel.archiveGoal { onNavigateUp() } },
         onDeleteClick = { showDeleteConfirmationDialog = true },
         hasUnsavedChanges = addEditGoalViewModel.hasUnsavedChanges(),
-        onSaveClick = { addEditGoalViewModel.saveGoal(showSnackbar = false) { onNavigateUp() } },
+        onSaveClick = { addEditGoalViewModel.saveGoal { onNavigateUp() } },
         onNavigateUp = {
             if (addEditGoalViewModel.hasUnsavedChanges()) {
                 showUnsavedChangesDialog = true
@@ -168,7 +159,6 @@ fun AddEditGoalScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddEditGoalScaffold(
-    snackbarHostState: SnackbarHostState,
     isNewGoal: Boolean,
     isLoading: Boolean,
     title: String,
@@ -190,7 +180,6 @@ private fun AddEditGoalScaffold(
     val focusManager = LocalFocusManager.current
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             AddEditGoalTopBar(
                 isNewGoal = isNewGoal,

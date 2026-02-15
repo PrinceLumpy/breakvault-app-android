@@ -72,7 +72,6 @@ fun AddEditGoalStageScreen(
 ) {
     val uiState by addEditGoalStageViewModel.uiState.collectAsStateWithLifecycle()
     var showUnsavedChangesDialog by remember { mutableStateOf(false) }
-    val snackbarHostState = remember { SnackbarHostState() }
 
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
@@ -84,13 +83,6 @@ fun AddEditGoalStageScreen(
     LaunchedEffect(uiState?.isNewStage) {
         if (uiState?.isNewStage == true) {
             focusRequester.requestFocus()
-        }
-    }
-
-    LaunchedEffect(uiState?.dialogState?.snackbarMessage) {
-        uiState?.dialogState?.snackbarMessage?.let { message ->
-            snackbarHostState.showSnackbar(message)
-            addEditGoalStageViewModel.onSnackbarMessageShown()
         }
     }
 
@@ -119,7 +111,6 @@ fun AddEditGoalStageScreen(
         }
 
         Scaffold(
-            snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 AddEditGoalStageTopBar(
                     isNewStage = currentUiState.isNewStage,

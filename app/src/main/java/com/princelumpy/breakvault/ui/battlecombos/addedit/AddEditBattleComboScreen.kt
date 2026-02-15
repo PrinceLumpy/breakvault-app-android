@@ -59,19 +59,11 @@ fun AddEditBattleComboScreen(
     viewModel: AddEditBattleComboViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
     val keyboardController = LocalSoftwareKeyboardController.current
     var showUnsavedChangesDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(comboId) {
         viewModel.loadCombo(comboId)
-    }
-
-    LaunchedEffect(uiState.dialogsAndMessages.snackbarMessage) {
-        uiState.dialogsAndMessages.snackbarMessage?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.onSnackbarMessageShown()
-        }
     }
 
     if (showUnsavedChangesDialog) {
@@ -95,7 +87,6 @@ fun AddEditBattleComboScreen(
 
     AddEditBattleComboScaffold(
         uiState = uiState,
-        snackbarHostState = snackbarHostState,
         viewModel = viewModel,
         onNavigateUp = {
             if (viewModel.hasUnsavedChanges()) {
@@ -137,7 +128,6 @@ fun AddEditBattleComboScreen(
 @Composable
 private fun AddEditBattleComboScaffold(
     uiState: AddEditBattleComboUiState,
-    snackbarHostState: SnackbarHostState,
     viewModel: AddEditBattleComboViewModel,
     onNavigateUp: () -> Unit,
     onSaveClick: () -> Unit,
@@ -157,7 +147,6 @@ private fun AddEditBattleComboScaffold(
     val dialogsAndMessages = uiState.dialogsAndMessages
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {

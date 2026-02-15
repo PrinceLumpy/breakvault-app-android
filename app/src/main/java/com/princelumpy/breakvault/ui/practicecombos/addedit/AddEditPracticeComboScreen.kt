@@ -90,7 +90,6 @@ fun AddEditPracticeComboScreen(
     val uiState by addEditPracticeComboViewModel.uiState.collectAsStateWithLifecycle()
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
-    val snackbarHostState = remember { SnackbarHostState() }
     var showUnsavedChangesDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(key1 = comboId) {
@@ -125,7 +124,6 @@ fun AddEditPracticeComboScreen(
     AddEditPracticeComboScaffold(
         uiState = uiState,
         focusRequester = focusRequester,
-        snackbarHostState = snackbarHostState,
         addEditPracticeComboViewModel = addEditPracticeComboViewModel,
         onNavigateUp = {
             if (addEditPracticeComboViewModel.hasUnsavedChanges()) {
@@ -165,7 +163,6 @@ fun AddEditPracticeComboScreen(
 private fun AddEditPracticeComboScaffold(
     uiState: AddEditComboUiState,
     focusRequester: FocusRequester,
-    snackbarHostState: SnackbarHostState,
     addEditPracticeComboViewModel: AddEditPracticeComboViewModel,
     onNavigateUp: () -> Unit,
     onComboNameChange: (String) -> Unit,
@@ -185,7 +182,6 @@ private fun AddEditPracticeComboScaffold(
 
     Scaffold(
         modifier = modifier,
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             AddEditComboTopBar(
                 isNewCombo = uiState.isNewCombo,

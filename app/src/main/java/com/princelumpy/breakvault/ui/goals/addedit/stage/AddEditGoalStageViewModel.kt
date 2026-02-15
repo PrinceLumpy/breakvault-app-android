@@ -168,10 +168,6 @@ class AddEditGoalStageViewModel @Inject constructor(
         _dialogState.update { it.copy(showDeleteDialog = show) }
     }
 
-    fun onSnackbarMessageShown() {
-        _dialogState.update { it.copy(snackbarMessage = null) }
-    }
-
     // --- Data Operation Handlers ---
     fun saveStage(onSuccess: (String) -> Unit) {
         val currentUiState = uiState.value ?: return
@@ -250,10 +246,8 @@ class AddEditGoalStageViewModel @Inject constructor(
 
             if (currentUiState.isNewStage) {
                 goalRepository.insertGoalStage(stageToSave)
-                _dialogState.update { it.copy(snackbarMessage = "Stage created successfully!") }
             } else {
                 goalRepository.updateGoalStage(stageToSave)
-                _dialogState.update { it.copy(snackbarMessage = "Stage updated successfully!") }
             }
             onSuccess(stageToSave.goalId)
         }
@@ -264,7 +258,6 @@ class AddEditGoalStageViewModel @Inject constructor(
         viewModelScope.launch {
             goalRepository.getGoalStageById(stageId)?.let { stage ->
                 goalRepository.deleteGoalStage(stage)
-                _dialogState.update { it.copy(snackbarMessage = "Stage deleted") }
                 onSuccess()
             }
         }

@@ -218,18 +218,12 @@ class AddEditPracticeComboViewModel @Inject constructor(
                         moves = finalMoves
                     )
                 )
-                _dialogsAndMessages.update {
-                    it.copy(snackbarMessage = "Combo \"${trimmedComboName}\" created successfully!")
-                }
             } else {
                 practiceComboRepository.updatePracticeCombo(
                     currentUiState.comboId!!,
                     trimmedComboName,
                     finalMoves
                 )
-                _dialogsAndMessages.update {
-                    it.copy(snackbarMessage = "Combo \"${trimmedComboName}\" updated successfully!")
-                }
             }
 
             // Update original values for change detection
@@ -238,10 +232,6 @@ class AddEditPracticeComboViewModel @Inject constructor(
             pendingMovesOrder = null
             onSuccess()
         }
-    }
-
-    fun onSnackbarShown() {
-        _dialogsAndMessages.update { it.copy(snackbarMessage = null) }
     }
 
     fun onDeleteComboClick() {
@@ -253,7 +243,6 @@ class AddEditPracticeComboViewModel @Inject constructor(
 
         viewModelScope.launch {
             practiceComboRepository.deletePracticeCombo(comboId)
-            _dialogsAndMessages.update { it.copy(snackbarMessage = "Combo deleted") }
             onSuccess()
         }
     }

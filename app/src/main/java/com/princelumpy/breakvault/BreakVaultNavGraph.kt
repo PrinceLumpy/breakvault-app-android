@@ -327,14 +327,22 @@ fun NavGraphBuilder.overlayNavGraph(
                 animationSpec = tween(300)
             )
         }
-    ) {
+    ) { backStackEntry ->
         val navActions = remember(navController) {
             BreakVaultNavigationActions(navController)
         }
+        val currentGoalId =
+            backStackEntry.arguments?.getString(BreakVaultDestinationsArgs.GOAL_ID_ARG)
+
         AddEditGoalScreen(
             onNavigateUp = { navActions.navigateUp() },
             onNavigateToAddEditStage = { gId, stageId ->
-                navActions.navigateToAddEditGoalStage(gId, stageId)
+                // If goalId changed (was null, now has value), update the backstack
+                if (currentGoalId != gId) {
+                    navActions.navigateToAddEditGoalStageFromNewGoal(gId, stageId)
+                } else {
+                    navActions.navigateToAddEditGoalStage(gId, stageId)
+                }
             }
         )
     }
@@ -370,7 +378,7 @@ fun NavGraphBuilder.overlayNavGraph(
             backStackEntry.arguments?.getString(BreakVaultDestinationsArgs.GOAL_ID_ARG) ?: ""
         val stageId = backStackEntry.arguments?.getString(BreakVaultDestinationsArgs.STAGE_ID_ARG)
         AddEditGoalStageScreen(
-            onNavigateUp = { navActions.navigateFromNewStageToParentGoal(goalId) },
+            onNavigateUp = { navActions.navigateFromStageToGoal(goalId) },
             goalId = goalId,
             stageId = stageId
         )

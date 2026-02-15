@@ -161,14 +161,29 @@ class BreakVaultNavigationActions(private val navController: NavHostController) 
         navController.navigate(route)
     }
 
-    fun navigateFromNewStageToParentGoal(goalId: String) {
-        val route = "${Screen.AddEditGoal.route}?${BreakVaultDestinationsArgs.GOAL_ID_ARG}=$goalId"
-        navController.navigate(route) {
-            popUpTo(BreakVaultDestinations.GOALS_LIST_ROUTE) {
-                inclusive = false
+    fun navigateToAddEditGoalStageFromNewGoal(goalId: String, stageId: String?) {
+        // First, navigate to AddEditGoal with the correct goalId to replace the one with null
+        val goalRoute =
+            "${Screen.AddEditGoal.route}?${BreakVaultDestinationsArgs.GOAL_ID_ARG}=$goalId"
+        navController.navigate(goalRoute) {
+            popUpTo(Screen.AddEditGoal.route) {
+                inclusive = true
             }
             launchSingleTop = true
         }
+
+        // Then navigate to AddEditGoalStage
+        var stageRoute =
+            "${Screen.AddEditGoalStage.route}?${BreakVaultDestinationsArgs.GOAL_ID_ARG}=$goalId"
+        if (stageId != null) {
+            stageRoute += "&${BreakVaultDestinationsArgs.STAGE_ID_ARG}=$stageId"
+        }
+        navController.navigate(stageRoute)
+    }
+
+    fun navigateFromStageToGoal(goalId: String) {
+        // Always pop back - works for both new and existing goals
+        navController.popBackStack()
     }
 
     fun navigateToAddEditBattleCombo(comboId: String?) {

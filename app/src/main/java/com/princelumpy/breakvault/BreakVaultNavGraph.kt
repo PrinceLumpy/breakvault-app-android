@@ -337,12 +337,7 @@ fun NavGraphBuilder.overlayNavGraph(
         AddEditGoalScreen(
             onNavigateUp = { navActions.navigateUp() },
             onNavigateToAddEditStage = { gId, stageId ->
-                // If goalId changed (was null, now has value), update the backstack
-                if (currentGoalId != gId) {
-                    navActions.navigateToAddEditGoalStageFromNewGoal(gId, stageId)
-                } else {
-                    navActions.navigateToAddEditGoalStage(gId, stageId)
-                }
+                navActions.navigateToAddEditGoalStageFromParentGoal(gId, stageId)
             }
         )
     }

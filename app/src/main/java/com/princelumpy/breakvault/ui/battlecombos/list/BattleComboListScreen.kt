@@ -132,41 +132,41 @@ fun BattleComboListContent(
                     IconButton(onClick = onNavigateToBattleTagList) {
                         Icon(
                             Icons.AutoMirrored.Filled.Label,
-                            contentDescription = "Manage BattleComboList Tags"
+                            contentDescription = stringResource(id = R.string.battle_combo_list_manage_tags_description)
                         )
                     }
                     // Sort Button
                     Box {
                         IconButton(onClick = { showSortMenu = true }) {
-                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
+                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(id = R.string.battle_combo_list_sort_description))
                         }
                         DropdownMenu(
                             expanded = showSortMenu,
                             onDismissRequest = { showSortMenu = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Energy: High -> Low") },
+                                text = { Text(stringResource(id = R.string.battle_combo_list_sort_energy_high_low)) },
                                 onClick = {
                                     onSortOptionChange(BattleSortOption.EnergyHighToLow)
                                     showSortMenu = false
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Energy: Low -> High") },
+                                text = { Text(stringResource(id = R.string.battle_combo_list_sort_energy_low_high)) },
                                 onClick = {
                                     onSortOptionChange(BattleSortOption.EnergyLowToHigh)
                                     showSortMenu = false
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Status: BattleComboList Ready") },
+                                text = { Text(stringResource(id = R.string.battle_combo_list_sort_status_ready)) },
                                 onClick = {
                                     onSortOptionChange(BattleSortOption.StatusFireFirst)
                                     showSortMenu = false
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Status: Training") },
+                                text = { Text(stringResource(id = R.string.battle_combo_list_sort_status_training)) },
                                 onClick = {
                                     onSortOptionChange(BattleSortOption.StatusHammerFirst)
                                     showSortMenu = false
@@ -176,7 +176,7 @@ fun BattleComboListContent(
                     }
                     // Reset Button
                     IconButton(onClick = onShowResetDialog) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Reset all to unused")
+                        Icon(Icons.Filled.Refresh, contentDescription = stringResource(id = R.string.battle_combo_list_reset_description))
                     }
                 }
             )
@@ -187,7 +187,7 @@ fun BattleComboListContent(
                     onClick = { onNavigateToAddEditBattleCombo(null) },
                     modifier = Modifier.imePadding()
                 ) {
-                    Icon(Icons.Filled.Add, contentDescription = "Add BattleComboList Combo")
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(id = R.string.battle_combo_list_add_combo_description))
                 }
             }
         }
@@ -213,12 +213,12 @@ fun BattleComboListContent(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "You have no battle combos.",
+                        text = stringResource(id = R.string.battle_combo_list_no_combos_title),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "Add battle-ready combos to track them during sessions.",
+                        text = stringResource(id = R.string.battle_combo_list_no_combos_subtitle),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -228,7 +228,7 @@ fun BattleComboListContent(
                     Button(onClick = { onNavigateToAddEditBattleCombo(null) }) {
                         Icon(Icons.Filled.Add, contentDescription = null)
                         Spacer(modifier = Modifier.padding(AppStyleDefaults.SpacingSmall))
-                        Text("Add BattleComboList Combo")
+                        Text(stringResource(id = R.string.battle_combo_list_add_combo_button))
                     }
                 }
             } else {
@@ -256,7 +256,7 @@ fun BattleComboListContent(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "No combos match your filter.",
+                                text = stringResource(id = R.string.battle_combo_list_no_matches_filter),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -283,16 +283,16 @@ fun BattleComboListContent(
         if (uiState.showResetConfirmDialog) {
             AlertDialog(
                 onDismissRequest = onCancelReset,
-                title = { Text("Clean Slate?") },
-                text = { Text("This will set all combos to unused. \nAre you ready?") },
+                title = { Text(stringResource(id = R.string.battle_combo_list_reset_dialog_title)) },
+                text = { Text(stringResource(id = R.string.battle_combo_list_reset_dialog_message)) },
                 confirmButton = {
                     TextButton(onClick = onConfirmReset) {
-                        Text("Clean Slate")
+                        Text(stringResource(id = R.string.battle_combo_list_reset_confirm_button))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = onCancelReset) {
-                        Text("Cancel")
+                        Text(stringResource(id = R.string.common_cancel))
                     }
                 }
             )
@@ -377,7 +377,7 @@ fun BattleComboItem(
                 IconButton(onClick = onEditClick) {
                     Icon(
                         Icons.Filled.Edit,
-                        contentDescription = "Edit",
+                        contentDescription = stringResource(id = R.string.battle_combo_list_edit_description),
                         tint = MaterialTheme.colorScheme.secondary
                     )
                 }

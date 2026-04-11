@@ -22,6 +22,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,6 +50,8 @@ import com.princelumpy.breakvault.ui.common.UnsavedChangesDialog
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 /**
  * The main, stateful screen composable that holds the ViewModel and state.
@@ -170,7 +174,7 @@ private fun AddEditBattleComboScaffold(
                         IconButton(onClick = onDeleteComboClick) {
                             Icon(
                                 imageVector = Icons.Filled.Delete,
-                                contentDescription = "Delete combo",
+                                contentDescription = stringResource(id = R.string.add_edit_battle_combo_delete_description),
                             )
                         }
                     }
@@ -312,6 +316,10 @@ private fun DescriptionField(
         },
         label = { Text(stringResource(id = R.string.add_edit_battle_combo_description_label)) },
         modifier = Modifier.fillMaxWidth(),
+        keyboardOptions = KeyboardOptions(
+            imeAction = ImeAction.Done,
+            capitalization = KeyboardCapitalization.Sentences
+        ),
         placeholder = { Text(stringResource(id = R.string.add_edit_battle_combo_description_placeholder)) },
         isError = descriptionError != null,
         supportingText = {
@@ -547,7 +555,7 @@ private fun DeleteComboDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(id = R.string.common_confirm_deletion_title)) },
         text = {
-            Text("Are you sure you want to delete this combo?\n\n$comboDescription")
+            Text(stringResource(id = R.string.add_edit_battle_combo_delete_dialog_message) + "\n\n$comboDescription")
         },
         confirmButton = {
             TextButton(

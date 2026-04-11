@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -44,13 +43,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.Composable
@@ -65,6 +63,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -277,7 +276,8 @@ private fun AddEditGoalContent(
             },
             singleLine = true,
             keyboardOptions = KeyboardOptions(
-                imeAction = ImeAction.Next
+                imeAction = ImeAction.Next,
+                capitalization = KeyboardCapitalization.Sentences,
             )
         )
         Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingLarge))
@@ -289,8 +289,7 @@ private fun AddEditGoalContent(
             label = { Text(stringResource(id = R.string.add_edit_goal_description_label)) },
             placeholder = { Text(stringResource(id = R.string.add_edit_goal_description_placeholder)) },
             modifier = Modifier
-                .fillMaxWidth()
-                .height(150.dp),
+                .fillMaxWidth(),
             isError = descriptionError != null,
             // Updated to show error text from ViewModel
             supportingText = {
@@ -305,7 +304,8 @@ private fun AddEditGoalContent(
             },
             maxLines = 5,
             keyboardOptions = KeyboardOptions(
-                imeAction = ImeAction.Done
+                imeAction = ImeAction.Done,
+                capitalization = KeyboardCapitalization.Sentences,
             ),
             keyboardActions = KeyboardActions(
                 onDone = { focusManager.clearFocus() }
@@ -433,7 +433,7 @@ private fun GoalStagesList(
             verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall),
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 300.dp)
+                .heightIn(max = 280.dp),
         ) {
             items(stages, key = { it.id }) { goalStage ->
                 ReorderableItem(reorderableState, key = goalStage.id) { isDragging ->
@@ -442,58 +442,6 @@ private fun GoalStagesList(
                         isDragging = isDragging,
                         onClick = { onEditStageClick(goalStage) },
                         scope = this
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun EditGoalStageItem(
-    stage: GoalStage,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val stageProgress = if (stage.targetCount > 0) {
-        (stage.currentCount.toDouble() / stage.targetCount.toDouble()).coerceIn(0.0, 1.0)
-    } else {
-        0.0
-    }
-
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-        shape = MaterialTheme.shapes.small
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(AppStyleDefaults.SpacingMedium),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Stage content
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = stage.name.ifBlank { "Untitled Stage" },
-                    style = MaterialTheme.typography.bodyLarge
-                )
-
-                if (stage.targetCount > 0) {
-                    Spacer(modifier = Modifier.height(AppStyleDefaults.SpacingSmall))
-                    AppLinearProgressIndicator(
-                        progress = { stageProgress.toFloat() },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "${stage.currentCount} / ${stage.targetCount} reps",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

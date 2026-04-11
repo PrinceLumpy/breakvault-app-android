@@ -216,7 +216,7 @@ private fun TimerRunning(
     onStopClick: () -> Unit
 ) {
     Text(
-        text = if (isPreTimer) "Get Ready!" else "Go!",
+        text = if (isPreTimer) stringResource(id = R.string.timer_get_ready) else stringResource(id = R.string.timer_go),
         style = MaterialTheme.typography.headlineSmall,
         color = if (isPreTimer) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
     )
@@ -227,8 +227,8 @@ private fun TimerRunning(
     )
     Spacer(modifier = Modifier.height(32.dp))
     Button(onClick = onStopClick) {
-        Icon(Icons.Default.Stop, contentDescription = "Stop Timer")
-        Text("Stop")
+        Icon(Icons.Default.Stop, contentDescription = stringResource(id = R.string.timer_stop_description))
+        Text(stringResource(id = R.string.timer_stop_button))
     }
 }
 
@@ -243,7 +243,7 @@ private fun TimerSetup(
 ) {
     val focusManager = LocalFocusManager.current
     Text(
-        text = "Set Timer (seconds)",
+        text = stringResource(id = R.string.timer_set_duration_label),
         style = MaterialTheme.typography.titleMedium
     )
     OutlinedTextField(
@@ -261,8 +261,8 @@ private fun TimerSetup(
     )
 
     Button(onClick = onStartClick) {
-        Icon(Icons.Default.PlayArrow, contentDescription = "Start Timer")
-        Text("Start")
+        Icon(Icons.Default.PlayArrow, contentDescription = stringResource(id = R.string.timer_start_description))
+        Text(stringResource(id = R.string.timer_start_button))
     }
 }
 

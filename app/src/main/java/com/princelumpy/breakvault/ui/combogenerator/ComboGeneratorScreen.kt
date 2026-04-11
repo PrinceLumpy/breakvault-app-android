@@ -428,13 +428,13 @@ fun TagSelectionComboBox(
             enabled = !isLoadingTags,
             label = {
                 Text(
-                    if (isLoadingTags) "Loading tags..."
+                    if (isLoadingTags) stringResource(id = R.string.combo_generator_loading_tags)
                     else stringResource(id = R.string.combo_generator_add_tag_to_sequence_label)
                 )
             },
             placeholder = {
                 if (expanded) {
-                    Text("Search tags...")
+                    Text(stringResource(id = R.string.combo_generator_search_tags_placeholder))
                 }
             },
             trailingIcon = {
@@ -462,7 +462,7 @@ fun TagSelectionComboBox(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            "No tags found",
+                            stringResource(id = R.string.combo_generator_no_tags_found),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

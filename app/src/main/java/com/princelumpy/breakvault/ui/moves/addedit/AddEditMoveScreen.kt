@@ -60,6 +60,7 @@ import com.princelumpy.breakvault.ui.common.UnsavedChangesDialog
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 // Constants for character limits (LAYER 1)
 private const val MOVE_NAME_CHARACTER_LIMIT = 100
@@ -295,7 +296,10 @@ private fun AddEditMoveContent(
                     Text(it, color = MaterialTheme.colorScheme.error)
                 }
             },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardOptions = KeyboardOptions(
+                imeAction = ImeAction.Done,
+                capitalization = KeyboardCapitalization.Sentences,
+            ),
             keyboardActions = KeyboardActions(onDone = { onSaveMove() })
         )
 

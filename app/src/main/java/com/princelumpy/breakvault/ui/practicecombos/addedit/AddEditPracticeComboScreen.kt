@@ -71,6 +71,7 @@ import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.KeyboardCapitalization
 
 // Constants for character limits (LAYER 1)
 private const val COMBO_NAME_CHARACTER_LIMIT = 30
@@ -330,7 +331,10 @@ private fun AddEditComboContent(
                     Text(it, color = MaterialTheme.colorScheme.error)
                 }
             },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+            keyboardOptions = KeyboardOptions(
+                imeAction = ImeAction.Next,
+                capitalization = KeyboardCapitalization.Sentences,
+            )
         )
 
         SelectedMovesList(
@@ -456,7 +460,10 @@ private fun AddMoveDropdown(
                 .fillMaxWidth()
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
             singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardOptions = KeyboardOptions(
+                imeAction = ImeAction.Done,
+                capitalization = KeyboardCapitalization.Sentences
+            ),
             keyboardActions = KeyboardActions(
                 onDone = {
                     if (filteredMoves.isNotEmpty()) {

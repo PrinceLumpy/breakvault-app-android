@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.comparisons.compareBy
 
 enum class BattleSortOption {
     EnergyHighToLow, EnergyLowToHigh, StatusFireFirst, StatusHammerFirst
@@ -64,10 +65,10 @@ class BattleComboListViewModel @Inject constructor(
 
         // Perform sorting
         val sortedCombos = when (interactions.sortOption) {
-            BattleSortOption.EnergyHighToLow -> filteredCombos.sortedByDescending { it.battleCombo.energy }
-            BattleSortOption.EnergyLowToHigh -> filteredCombos.sortedBy { it.battleCombo.energy }
-            BattleSortOption.StatusFireFirst -> filteredCombos.sortedBy { it.battleCombo.status != TrainingStatus.READY }
-            BattleSortOption.StatusHammerFirst -> filteredCombos.sortedBy { it.battleCombo.status != TrainingStatus.TRAINING }
+            BattleSortOption.EnergyHighToLow -> filteredCombos.sortedWith(compareBy<BattleComboWithTags>({ it.battleCombo.isUsed }, { -it.battleCombo.energy.ordinal }).thenBy { it.battleCombo.status.ordinal })
+            BattleSortOption.EnergyLowToHigh -> filteredCombos.sortedWith(compareBy<BattleComboWithTags>({ it.battleCombo.isUsed }, { it.battleCombo.energy.ordinal }).thenBy { it.battleCombo.status.ordinal })
+            BattleSortOption.StatusFireFirst -> filteredCombos.sortedWith(compareBy<BattleComboWithTags>({ it.battleCombo.isUsed }, { it.battleCombo.status != TrainingStatus.READY }).thenBy { -it.battleCombo.energy.ordinal })
+            BattleSortOption.StatusHammerFirst -> filteredCombos.sortedWith(compareBy<BattleComboWithTags>({ it.battleCombo.isUsed }, { it.battleCombo.status != TrainingStatus.TRAINING }).thenBy { -it.battleCombo.energy.ordinal })
         }
 
         // Return a new state object for the UI

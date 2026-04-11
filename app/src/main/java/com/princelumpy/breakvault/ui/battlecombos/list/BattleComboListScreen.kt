@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Label
@@ -33,7 +32,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,6 +52,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -64,8 +65,8 @@ import com.princelumpy.breakvault.data.local.relation.BattleComboWithTags
 import com.princelumpy.breakvault.data.local.entity.BattleTag
 import com.princelumpy.breakvault.data.local.entity.EnergyLevel
 import com.princelumpy.breakvault.data.local.entity.TrainingStatus
-import com.princelumpy.breakvault.ui.common.FlexibleItemList
 import com.princelumpy.breakvault.ui.common.TagFilterRow
+import AppStyleDefaults
 
 @Composable
 fun BattleComboListScreen(
@@ -108,6 +109,12 @@ fun BattleComboListContent(
 ) {
     var showSortMenu by remember { mutableStateOf(false) }
 
+    val lazyListState = rememberLazyListState()
+
+    LaunchedEffect(uiState.selectedTagNames, uiState.sortOption) {
+        lazyListState.animateScrollToItem(0)
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
@@ -138,7 +145,10 @@ fun BattleComboListContent(
                     // Sort Button
                     Box {
                         IconButton(onClick = { showSortMenu = true }) {
-                            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(id = R.string.battle_combo_list_sort_description))
+                            Icon(
+                                Icons.AutoMirrored.Filled.Sort,
+                                contentDescription = stringResource(id = R.string.battle_combo_list_sort_description)
+                            )
                         }
                         DropdownMenu(
                             expanded = showSortMenu,
@@ -176,7 +186,10 @@ fun BattleComboListContent(
                     }
                     // Reset Button
                     IconButton(onClick = onShowResetDialog) {
-                        Icon(Icons.Filled.Refresh, contentDescription = stringResource(id = R.string.battle_combo_list_reset_description))
+                        Icon(
+                            Icons.Filled.Refresh,
+                            contentDescription = stringResource(id = R.string.battle_combo_list_reset_description)
+                        )
                     }
                 }
             )
@@ -187,7 +200,10 @@ fun BattleComboListContent(
                     onClick = { onNavigateToAddEditBattleCombo(null) },
                     modifier = Modifier.imePadding()
                 ) {
-                    Icon(Icons.Filled.Add, contentDescription = stringResource(id = R.string.battle_combo_list_add_combo_description))
+                    Icon(
+                        Icons.Filled.Add,
+                        contentDescription = stringResource(id = R.string.battle_combo_list_add_combo_description)
+                    )
                 }
             }
         }
@@ -262,18 +278,28 @@ fun BattleComboListContent(
                             )
                         }
                     } else {
-                        FlexibleItemList(
-                            items = uiState.filteredAndSortedCombos,
-                            getItemKey = { it.battleCombo.id },
-                            modifier = Modifier.fillMaxSize()
-                        ) { comboWithTags ->
-                            BattleComboItem(
-                                comboWithTags = comboWithTags,
-                                onClick = { onToggleUsed(comboWithTags.battleCombo) },
-                                onEditClick = {
-                                    onNavigateToAddEditBattleCombo(comboWithTags.battleCombo.id)
-                                }
-                            )
+                        LazyColumn(
+                            state = lazyListState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(
+                                start = AppStyleDefaults.SpacingLarge,
+                                end = AppStyleDefaults.SpacingLarge,
+                                bottom = AppStyleDefaults.SpacingExtraLarge * 4
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingMedium)
+                        ) {
+                            items(
+                                items = uiState.filteredAndSortedCombos,
+                                key = { it.battleCombo.id }
+                            ) { comboWithTags ->
+                                BattleComboItem(
+                                    comboWithTags = comboWithTags,
+                                    onClick = { onToggleUsed(comboWithTags.battleCombo) },
+                                    onEditClick = {
+                                        onNavigateToAddEditBattleCombo(comboWithTags.battleCombo.id)
+                                    }
+                                )
+                            }
                         }
                     }
                 }

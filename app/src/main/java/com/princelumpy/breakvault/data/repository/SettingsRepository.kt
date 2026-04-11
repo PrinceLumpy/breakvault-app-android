@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.room.withTransaction
 import com.princelumpy.breakvault.data.local.database.AppDB
+import com.princelumpy.breakvault.data.local.entity.BattleCombo
 import com.princelumpy.breakvault.data.service.export.model.AppDataExport
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -51,7 +52,7 @@ class SettingsRepository @Inject constructor(
             moveDao.insertAllMoveTags(appData.moveTags)
             moveDao.insertAllMoveTagCrossRefs(appData.moveTagCrossRefs)
             practiceComboDao.insertAllPracticeCombos(appData.practiceCombos)
-            battleDao.insertAllBattleCombos(appData.battleCombos)
+            battleDao.insertAllBattleCombos(appData.battleCombos.map { it.fixLegacyBattleCombo() })
             battleDao.insertAllBattleTags(appData.battleTags)
             battleDao.insertAllBattleComboTagCrossRefs(appData.battleComboTagCrossRefs)
             goalDao.insertAllGoals(appData.goals)
@@ -83,4 +84,14 @@ class SettingsRepository @Inject constructor(
             }
         }
     }
+}
+
+private fun BattleCombo.fixLegacyBattleCombo(): BattleCombo {
+    val resolvedTitle = title.takeIf { it.isNotBlank() } ?: description
+    val resolvedDescription = if (title.isBlank()) "" else description
+
+    return copy(
+        title = resolvedTitle,
+        description = resolvedDescription
+    )
 }

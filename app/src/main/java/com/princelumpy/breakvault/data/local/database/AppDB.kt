@@ -52,6 +52,8 @@ abstract class AppDB : RoomDatabase() {
     abstract fun goalDao(): GoalDao
 
     suspend fun prepopulateExampleData() {
+        if (!BuildConfig.DEBUG) return  // Skip prepopulation for release builds
+
         val moveTagDao = this.moveDao()
         val practiceComboDao = this.practiceComboDao()
         val battleDao = this.battleDao()
@@ -65,9 +67,7 @@ abstract class AppDB : RoomDatabase() {
             tagMap[name] = newMoveTag.id
         }
 
-        // Only prepopulate the following data if developing, not in production
-        if (BuildConfig.DEBUG) {
-            // --- 2. Moves ---
+        // --- 2. Moves ---
             val movesData = listOf(
                 Pair("6-Step", "Footwork"),
                 Pair("CC", "Footwork"),
@@ -159,7 +159,6 @@ abstract class AppDB : RoomDatabase() {
                 }
             }
             Log.i("AppDB", "Populated 2 battle tags and 4 battle combos.")
-        }
     }
 
     companion object {

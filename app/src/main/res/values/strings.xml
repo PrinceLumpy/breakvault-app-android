@@ -354,7 +354,7 @@
     <string name="settings_title">Settings</string>
     <string name="settings_export_data_button">Export Data</string>
     <string name="settings_import_data_button">Import Data</string>
-    <string name="settings_reset_database_button">Reset Database</string>
+    <string name="settings_reset_database_button">Wipe Database</string>
     <string name="settings_export_success_snackbar">Data exported successfully to %1$s.</string>
     <string name="settings_export_error_retrieving_data_snackbar">Could not retrieve data for export.</string>
     <string name="settings_import_success_snackbar">Data imported successfully.</string>
@@ -364,9 +364,9 @@
     <string name="settings_export_action_label">Export</string>
     <string name="settings_import_action_label">Import</string>
     <string name="settings_database_reset_success_snackbar">Database reset successfully.</string>
-    <string name="settings_reset_dialog_title">Reset Database?</string>
-    <string name="settings_reset_dialog_message">Are you sure you want to reset all data? This action cannot be undone.</string>
-    <string name="settings_reset_dialog_confirm_button">Reset</string>
+    <string name="settings_reset_dialog_title">Wipe Database?</string>
+    <string name="settings_reset_dialog_message">Are you sure you want to wipe all data? This action cannot be undone.</string>
+    <string name="settings_reset_dialog_confirm_button">Wipe</string>
 
     <!-- ========================================== -->
     <!-- TIMER SCREEN -->

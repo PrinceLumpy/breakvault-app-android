@@ -375,7 +375,7 @@ fun BattleComboItem(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = combo.description,
+                        text = combo.title,
                         style = MaterialTheme.typography.bodyLarge,
                         textDecoration = if (isUsed) TextDecoration.LineThrough else null
                     )
@@ -422,7 +422,7 @@ fun PreviewBattleComboListScreen() {
                 BattleComboWithTags(
                     battleCombo = BattleCombo(
                         id = "1",
-                        description = "Jab -> Cross -> Hook",
+                        title = "Jab -> Cross -> Hook",
                         energy = EnergyLevel.MEDIUM,
                         status = TrainingStatus.READY,
                         isUsed = false
@@ -432,7 +432,7 @@ fun PreviewBattleComboListScreen() {
                 BattleComboWithTags(
                     battleCombo = BattleCombo(
                         id = "2",
-                        description = "Uppercut -> Body Shot",
+                        title = "Uppercut -> Body Shot",
                         energy = EnergyLevel.HIGH,
                         status = TrainingStatus.TRAINING,
                         isUsed = true
@@ -444,7 +444,7 @@ fun PreviewBattleComboListScreen() {
                 BattleComboWithTags(
                     battleCombo = BattleCombo(
                         id = "1",
-                        description = "Jab -> Cross -> Hook",
+                        title = "Jab -> Cross -> Hook",
                         energy = EnergyLevel.MEDIUM,
                         status = TrainingStatus.READY,
                         isUsed = false
@@ -454,7 +454,7 @@ fun PreviewBattleComboListScreen() {
                 BattleComboWithTags(
                     battleCombo = BattleCombo(
                         id = "2",
-                        description = "Uppercut -> Body Shot",
+                        title = "Uppercut -> Body Shot",
                         energy = EnergyLevel.HIGH,
                         status = TrainingStatus.TRAINING,
                         isUsed = true
@@ -534,7 +534,7 @@ fun PreviewBattleComboItem() {
         comboWithTags = BattleComboWithTags(
             battleCombo = BattleCombo(
                 id = "1",
-                description = "Jab -> Cross -> Hook",
+                title = "Jab -> Cross -> Hook",
                 energy = EnergyLevel.MEDIUM,
                 status = TrainingStatus.READY,
                 isUsed = false
@@ -556,7 +556,7 @@ fun PreviewBattleComboItemUsed() {
         comboWithTags = BattleComboWithTags(
             battleCombo = BattleCombo(
                 id = "1",
-                description = "Uppercut -> Body Shot",
+                title = "Uppercut -> Body Shot",
                 energy = EnergyLevel.HIGH,
                 status = TrainingStatus.TRAINING,
                 isUsed = true

@@ -38,6 +38,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
+import com.princelumpy.breakvault.common.Constants.BATTLE_COMBO_TITLE_CHARACTER_LIMIT
 import com.princelumpy.breakvault.common.Constants.BATTLE_COMBO_DESCRIPTION_CHARACTER_LIMIT
 import com.princelumpy.breakvault.common.Constants.BATTLE_TAG_CHARACTER_LIMIT
 import com.princelumpy.breakvault.data.local.entity.BattleTag
@@ -105,6 +106,7 @@ fun AddEditBattleComboScreen(
                 onNavigateUp()
             }
         },
+        onTitleChange = viewModel::onTitleChange,
         onDescriptionChange = viewModel::onDescriptionChange,
         onShowImportDialog = viewModel::showImportDialog,
         onEnergyChange = viewModel::onEnergyChange,
@@ -135,6 +137,7 @@ private fun AddEditBattleComboScaffold(
     viewModel: AddEditBattleComboViewModel,
     onNavigateUp: () -> Unit,
     onSaveClick: () -> Unit,
+    onTitleChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onShowImportDialog: (Boolean) -> Unit,
     onEnergyChange: (EnergyLevel) -> Unit,
@@ -183,7 +186,7 @@ private fun AddEditBattleComboScaffold(
         },
         floatingActionButton = {
             val hasUnsavedChanges = viewModel.hasUnsavedChanges()
-            val isValid = uiState.userInputs.description.isNotBlank()
+            val isValid = uiState.userInputs.title.isNotBlank()
             FloatingActionButton(
                 onClick = onSaveClick,
                 modifier = Modifier.imePadding(),
@@ -214,6 +217,7 @@ private fun AddEditBattleComboScaffold(
                 userInputs = userInputs,
                 dialogsAndMessages = dialogsAndMessages,
                 allBattleTags = uiState.allBattleTags,
+                onTitleChange = onTitleChange,
                 onDescriptionChange = onDescriptionChange,
                 onShowImportDialog = onShowImportDialog,
                 onEnergyChange = onEnergyChange,
@@ -235,7 +239,7 @@ private fun AddEditBattleComboScaffold(
 
     if (dialogsAndMessages.showDeleteDialog) {
         DeleteComboDialog(
-            comboDescription = userInputs.description,
+            comboTitle = userInputs.title,
             onConfirm = onConfirmComboDelete,
             onDismiss = onCancelComboDelete
         )
@@ -251,6 +255,7 @@ private fun AddEditBattleComboFormContent(
     userInputs: UserInputs,
     dialogsAndMessages: UiDialogsAndMessages,
     allBattleTags: List<BattleTag>,
+    onTitleChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onShowImportDialog: (Boolean) -> Unit,
     onEnergyChange: (EnergyLevel) -> Unit,
@@ -266,6 +271,12 @@ private fun AddEditBattleComboFormContent(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingSmall)
     ) {
+        TitleField(
+            title = userInputs.title,
+            titleError = dialogsAndMessages.titleError,
+            onTitleChange = onTitleChange
+        )
+
         DescriptionField(
             description = userInputs.description,
             descriptionError = dialogsAndMessages.descriptionError,
@@ -296,6 +307,44 @@ private fun AddEditBattleComboFormContent(
             onAddBattleTag = onAddBattleTag
         )
     }
+}
+
+/**
+ * Title input field with character limit.
+ */
+@Composable
+private fun TitleField(
+    title: String,
+    titleError: String?,
+    onTitleChange: (String) -> Unit
+) {
+    OutlinedTextField(
+        value = title,
+        onValueChange = { newText ->
+            if (newText.length <= BATTLE_COMBO_TITLE_CHARACTER_LIMIT) {
+                onTitleChange(newText)
+            }
+        },
+        label = { Text(stringResource(id = R.string.add_edit_battle_combo_title_label)) },
+        modifier = Modifier.fillMaxWidth(),
+        keyboardOptions = KeyboardOptions(
+            imeAction = ImeAction.Next,
+            capitalization = KeyboardCapitalization.Sentences
+        ),
+        placeholder = { Text(stringResource(id = R.string.add_edit_battle_combo_title_placeholder)) },
+        isError = titleError != null,
+        supportingText = {
+            if (titleError != null) {
+                Text(titleError, color = MaterialTheme.colorScheme.error)
+            } else {
+                Text(
+                    text = "${title.length} / $BATTLE_COMBO_TITLE_CHARACTER_LIMIT",
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.End
+                )
+            }
+        }
+    )
 }
 
 /**
@@ -547,7 +596,7 @@ private fun ImportDialog(
  */
 @Composable
 private fun DeleteComboDialog(
-    comboDescription: String,
+    comboTitle: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -555,7 +604,7 @@ private fun DeleteComboDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(id = R.string.common_confirm_deletion_title)) },
         text = {
-            Text(stringResource(id = R.string.add_edit_battle_combo_delete_dialog_message) + "\n\n$comboDescription")
+            Text(stringResource(id = R.string.add_edit_battle_combo_delete_dialog_message) + "\n\n$comboTitle")
         },
         confirmButton = {
             TextButton(
@@ -608,7 +657,8 @@ private fun AddEditBattleComboFormContentPreview() {
     BreakVaultTheme {
         AddEditBattleComboFormContent(
             userInputs = UserInputs(
-                description = "Jab -> Cross -> Hook",
+                title = "Windmill to Freeze",
+                description = "Classic power combo with smooth transitions",
                 selectedEnergy = EnergyLevel.MEDIUM,
                 selectedStatus = TrainingStatus.TRAINING,
                 selectedTags = setOf("Opening"),
@@ -616,6 +666,7 @@ private fun AddEditBattleComboFormContentPreview() {
             ),
             dialogsAndMessages = UiDialogsAndMessages(),
             allBattleTags = dummyTags,
+            onTitleChange = {},
             onDescriptionChange = {},
             onShowImportDialog = {},
             onEnergyChange = {},
@@ -638,7 +689,8 @@ private fun AddEditBattleComboFormContentEditPreview() {
     BreakVaultTheme {
         AddEditBattleComboFormContent(
             userInputs = UserInputs(
-                description = "Uppercut -> Spinning Kick -> Ground Move",
+                title = "Power Finisher Combo",
+                description = "Uppercut -> Spinning Kick -> Ground Move - High impact sequence",
                 selectedEnergy = EnergyLevel.HIGH,
                 selectedStatus = TrainingStatus.READY,
                 selectedTags = setOf("Finisher", "Opening"),
@@ -647,6 +699,7 @@ private fun AddEditBattleComboFormContentEditPreview() {
             ),
             dialogsAndMessages = UiDialogsAndMessages(),
             allBattleTags = dummyTags,
+            onTitleChange = {},
             onDescriptionChange = {},
             onShowImportDialog = {},
             onEnergyChange = {},
@@ -668,7 +721,8 @@ private fun AddEditBattleComboFormContentWithErrorsPreview() {
     BreakVaultTheme {
         AddEditBattleComboFormContent(
             userInputs = UserInputs(
-                description = "",
+                title = "",
+                description = "Some description",
                 selectedEnergy = EnergyLevel.LOW,
                 selectedStatus = TrainingStatus.TRAINING,
                 selectedTags = emptySet(),
@@ -676,10 +730,11 @@ private fun AddEditBattleComboFormContentWithErrorsPreview() {
                 newTagName = "Opening"
             ),
             dialogsAndMessages = UiDialogsAndMessages(
-                descriptionError = "Description cannot be empty.",
+                titleError = "Title cannot be empty.",
                 newTagError = "Tag 'Opening' already exists."
             ),
             allBattleTags = dummyTags,
+            onTitleChange = {},
             onDescriptionChange = {},
             onShowImportDialog = {},
             onEnergyChange = {},
@@ -696,7 +751,7 @@ private fun AddEditBattleComboFormContentWithErrorsPreview() {
 private fun DeleteComboDialogPreview() {
     BreakVaultTheme {
         DeleteComboDialog(
-            comboDescription = "Jab -> Cross -> Hook",
+            comboTitle = "Windmill to Freeze",
             onConfirm = {},
             onDismiss = {}
         )

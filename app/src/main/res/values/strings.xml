@@ -217,8 +217,10 @@
     <!-- Add/Edit Battle Combo - User Facing -->
     <string name="add_edit_battle_combo_new_title">Create Battle Combo</string>
     <string name="add_edit_battle_combo_edit_title">Edit Battle Combo</string>
-    <string name="add_edit_battle_combo_description_label">Combo Description</string>
-    <string name="add_edit_battle_combo_description_placeholder">e.g. 6-step -> freeze -> power move</string>
+    <string name="add_edit_battle_combo_title_label">Combo Title</string>
+    <string name="add_edit_battle_combo_title_placeholder">e.g. Power Combo #1</string>
+    <string name="add_edit_battle_combo_description_label">Description (Optional)</string>
+    <string name="add_edit_battle_combo_description_placeholder">Additional details about this combo</string>
     <string name="add_edit_battle_combo_import_button">Import from Practice Mode</string>
     <string name="add_edit_battle_combo_import_dialog_title">Select Practice Combo</string>
     <string name="add_edit_battle_combo_no_practice_combos_message">No saved practice combos</string>

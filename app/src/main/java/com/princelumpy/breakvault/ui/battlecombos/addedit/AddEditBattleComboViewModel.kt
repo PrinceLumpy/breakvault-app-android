@@ -2,6 +2,7 @@ package com.princelumpy.breakvault.ui.battlecombos.addedit
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.princelumpy.breakvault.common.Constants.BATTLE_COMBO_TITLE_CHARACTER_LIMIT
 import com.princelumpy.breakvault.common.Constants.BATTLE_COMBO_DESCRIPTION_CHARACTER_LIMIT
 import com.princelumpy.breakvault.common.Constants.BATTLE_TAG_CHARACTER_LIMIT
 import com.princelumpy.breakvault.data.local.entity.BattleCombo
@@ -23,6 +24,7 @@ import javax.inject.Inject
 
 data class UserInputs(
     val comboId: String? = null,
+    val title: String = "",
     val description: String = "",
     val selectedEnergy: EnergyLevel = EnergyLevel.NONE,
     val selectedStatus: TrainingStatus = TrainingStatus.TRAINING,
@@ -37,6 +39,7 @@ data class UiDialogsAndMessages(
     val showImportDialog: Boolean = false,
     val showDeleteDialog: Boolean = false,
     val snackbarMessage: String? = null,
+    val titleError: String? = null,
     val descriptionError: String? = null,
     val newTagError: String? = null
 )
@@ -63,6 +66,7 @@ class AddEditBattleComboViewModel @Inject constructor(
     private val _isInitialLoadDone = MutableStateFlow(false)
 
     // Track original values to detect changes
+    private var originalTitle: String? = null
     private var originalDescription: String? = null
     private var originalEnergy: EnergyLevel? = null
     private var originalStatus: TrainingStatus? = null
@@ -99,12 +103,14 @@ class AddEditBattleComboViewModel @Inject constructor(
         viewModelScope.launch {
             val comboWithTags = battleRepository.getBattleComboWithTags(comboId)
             if (comboWithTags != null) {
+                originalTitle = comboWithTags.battleCombo.title
                 originalDescription = comboWithTags.battleCombo.description
                 originalEnergy = comboWithTags.battleCombo.energy
                 originalStatus = comboWithTags.battleCombo.status
                 originalSelectedTags = comboWithTags.tags.map { it.id }.toSet()
                 _userInputs.value = UserInputs(
                     comboId = comboId,
+                    title = comboWithTags.battleCombo.title,
                     description = comboWithTags.battleCombo.description,
                     selectedEnergy = comboWithTags.battleCombo.energy,
                     selectedStatus = comboWithTags.battleCombo.status,
@@ -116,6 +122,18 @@ class AddEditBattleComboViewModel @Inject constructor(
                 _dialogsAndMessages.update { it.copy(snackbarMessage = "Could not find combo.") }
             }
             _isInitialLoadDone.value = true
+        }
+    }
+
+    // LAYER 2: State Sanitization
+    fun onTitleChange(newTitle: String) {
+        if (newTitle.length <= BATTLE_COMBO_TITLE_CHARACTER_LIMIT) {
+            _userInputs.update { it.copy(title = newTitle) }
+
+            // Clear error on valid input
+            if (_dialogsAndMessages.value.titleError != null) {
+                _dialogsAndMessages.update { it.copy(titleError = null) }
+            }
         }
     }
 
@@ -218,6 +236,7 @@ class AddEditBattleComboViewModel @Inject constructor(
         val currentInputs = _userInputs.value
 
         // Trim input values
+        val trimmedTitle = currentInputs.title.trim()
         val trimmedDescription = currentInputs.description.trim()
 
         // Don't save if there are no changes (avoids unnecessary database updates)
@@ -228,9 +247,16 @@ class AddEditBattleComboViewModel @Inject constructor(
 
         // Defensive guards against all business rules
         when {
-            trimmedDescription.isBlank() -> {
+            trimmedTitle.isBlank() -> {
                 _dialogsAndMessages.update {
-                    it.copy(descriptionError = "Description cannot be empty.")
+                    it.copy(titleError = "Title cannot be empty.")
+                }
+                return
+            }
+
+            trimmedTitle.length > BATTLE_COMBO_TITLE_CHARACTER_LIMIT -> {
+                _dialogsAndMessages.update {
+                    it.copy(titleError = "Title cannot exceed $BATTLE_COMBO_TITLE_CHARACTER_LIMIT characters.")
                 }
                 return
             }
@@ -246,6 +272,7 @@ class AddEditBattleComboViewModel @Inject constructor(
         viewModelScope.launch {
             val battleCombo = BattleCombo(
                 id = currentInputs.comboId ?: "",
+                title = trimmedTitle,
                 description = trimmedDescription,
                 energy = currentInputs.selectedEnergy,
                 status = currentInputs.selectedStatus,
@@ -300,14 +327,16 @@ class AddEditBattleComboViewModel @Inject constructor(
 
         // For new combos, check if any fields have been filled
         if (currentInputs.isNewCombo) {
-            return currentInputs.description.isNotBlank() ||
+            return currentInputs.title.isNotBlank() ||
+                    currentInputs.description.isNotBlank() ||
                     currentInputs.selectedEnergy != EnergyLevel.NONE ||
                     currentInputs.selectedStatus != TrainingStatus.TRAINING ||
                     currentInputs.selectedTags.isNotEmpty()
         }
 
         // For existing combos, check if any fields have been modified
-        return currentInputs.description != originalDescription ||
+        return currentInputs.title != originalTitle ||
+                currentInputs.description != originalDescription ||
                 currentInputs.selectedEnergy != originalEnergy ||
                 currentInputs.selectedStatus != originalStatus ||
                 currentInputs.selectedTags != originalSelectedTags

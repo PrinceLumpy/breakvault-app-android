@@ -41,7 +41,7 @@ import java.util.UUID
         Goal::class,
         GoalStage::class
     ],
-    version = 3
+    version = 4
 )
 
 @TypeConverters(Converters::class)
@@ -111,7 +111,7 @@ abstract class AppDB : RoomDatabase() {
                 Pair(
                     BattleCombo(
                         id = UUID.randomUUID().toString(),
-                        description = "Windmill -> Backspin -> Freeze",
+                        title = "Windmill -> Backspin -> Freeze",
                         energy = EnergyLevel.HIGH,
                         status = TrainingStatus.READY
                     ),
@@ -120,7 +120,7 @@ abstract class AppDB : RoomDatabase() {
                 Pair(
                     BattleCombo(
                         id = UUID.randomUUID().toString(),
-                        description = "Smooth transitions to CC",
+                        title = "Smooth transitions to CC",
                         energy = EnergyLevel.MEDIUM,
                         status = TrainingStatus.READY
                     ),
@@ -129,7 +129,7 @@ abstract class AppDB : RoomDatabase() {
                 Pair(
                     BattleCombo(
                         id = UUID.randomUUID().toString(),
-                        description = "Aggressive Toprock to Drop",
+                        title = "Aggressive Toprock to Drop",
                         energy = EnergyLevel.HIGH,
                         status = TrainingStatus.TRAINING
                     ),
@@ -138,7 +138,7 @@ abstract class AppDB : RoomDatabase() {
                 Pair(
                     BattleCombo(
                         id = UUID.randomUUID().toString(),
-                        description = "Slow intro to floor",
+                        title = "Slow intro to floor",
                         energy = EnergyLevel.LOW,
                         status = TrainingStatus.READY
                     ),
@@ -168,8 +168,12 @@ abstract class AppDB : RoomDatabase() {
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // Rename saved_combos table to practice_combos
-                db.execSQL("ALTER TABLE saved_combos RENAME TO practice_combos")
+                // Check if saved_combos table exists before renaming
+                val cursor = db.query("SELECT name FROM sqlite_master WHERE type='table' AND name='saved_combos'")
+                if (cursor.count > 0) {
+                    db.execSQL("ALTER TABLE saved_combos RENAME TO practice_combos")
+                }
+                cursor.close()
             }
         }
 
@@ -177,6 +181,15 @@ abstract class AppDB : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Add orderIndex column to goal_stages table with default value 0
                 db.execSQL("ALTER TABLE goal_stages ADD COLUMN orderIndex INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Rename description column to title
+                db.execSQL("ALTER TABLE battle_combos RENAME COLUMN description TO title")
+                // Add new description column with default empty string
+                db.execSQL("ALTER TABLE battle_combos ADD COLUMN description TEXT NOT NULL DEFAULT ''")
             }
         }
 
@@ -190,7 +203,7 @@ abstract class AppDB : RoomDatabase() {
                     AppDB::class.java,
                     "break_vault_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .fallbackToDestructiveMigration(true)
                     .addCallback(AppDbCallback(scope = CoroutineScope(Dispatchers.IO)))
                     .build()

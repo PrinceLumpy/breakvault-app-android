@@ -9,7 +9,8 @@ import java.util.UUID
 @Entity(tableName = "battle_combos")
 data class BattleCombo(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
-    val description: String,
+    val title: String,
+    val description: String = "",  // New field, optional
     val energy: EnergyLevel = EnergyLevel.NONE,
     val status: TrainingStatus = TrainingStatus.TRAINING,
     val isUsed: Boolean = false,

@@ -3,7 +3,6 @@ package com.princelumpy.breakvault.di
 import android.content.Context
 import com.princelumpy.breakvault.data.local.database.AppDB
 import com.princelumpy.breakvault.data.local.dao.BattleDao // 1. Import BattleDao
-import com.princelumpy.breakvault.data.local.dao.GoalDao
 import com.princelumpy.breakvault.data.local.dao.MoveDao
 import com.princelumpy.breakvault.data.local.dao.PracticeComboDao
 import dagger.Module
@@ -39,11 +38,5 @@ object DatabaseModule {
     @Singleton
     fun providePracticeComboDao(appDB: AppDB): PracticeComboDao {
         return appDB.practiceComboDao()
-    }
-
-    @Provides
-    @Singleton
-    fun provideGoalDao(appDB: AppDB): GoalDao {
-        return appDB.goalDao()
     }
 }

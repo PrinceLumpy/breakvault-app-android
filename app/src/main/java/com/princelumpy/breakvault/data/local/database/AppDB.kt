@@ -10,7 +10,6 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.princelumpy.breakvault.BuildConfig
 import com.princelumpy.breakvault.data.local.dao.BattleDao
-import com.princelumpy.breakvault.data.local.dao.GoalDao
 import com.princelumpy.breakvault.data.local.dao.MoveDao
 import com.princelumpy.breakvault.data.local.dao.PracticeComboDao
 import com.princelumpy.breakvault.data.local.entity.BattleCombo
@@ -18,8 +17,6 @@ import com.princelumpy.breakvault.data.local.entity.BattleComboTagCrossRef
 import com.princelumpy.breakvault.data.local.entity.BattleTag
 import com.princelumpy.breakvault.data.local.entity.EnergyLevel
 import com.princelumpy.breakvault.data.local.entity.TrainingStatus
-import com.princelumpy.breakvault.data.local.entity.Goal
-import com.princelumpy.breakvault.data.local.entity.GoalStage
 import com.princelumpy.breakvault.data.local.entity.Move
 import com.princelumpy.breakvault.data.local.entity.MoveTag
 import com.princelumpy.breakvault.data.local.entity.MoveTagCrossRef
@@ -37,11 +34,9 @@ import java.util.UUID
         PracticeCombo::class,
         BattleCombo::class,
         BattleTag::class,
-        BattleComboTagCrossRef::class,
-        Goal::class,
-        GoalStage::class
+        BattleComboTagCrossRef::class
     ],
-    version = 4
+    version = 5
 )
 
 @TypeConverters(Converters::class)
@@ -49,7 +44,6 @@ abstract class AppDB : RoomDatabase() {
     abstract fun moveDao(): MoveDao
     abstract fun practiceComboDao(): PracticeComboDao
     abstract fun battleDao(): BattleDao
-    abstract fun goalDao(): GoalDao
 
     suspend fun prepopulateExampleData() {
         if (!BuildConfig.DEBUG) return  // Skip prepopulation for release builds
@@ -192,6 +186,15 @@ abstract class AppDB : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Drop the removed goals feature. Child table first: goal_stages has a
+                // foreign key to goals.
+                db.execSQL("DROP TABLE IF EXISTS goal_stages")
+                db.execSQL("DROP TABLE IF EXISTS goals")
+            }
+        }
+
         fun getDatabase(context: Context): AppDB {
             val appContext = context.applicationContext
                 ?: throw IllegalStateException("Application context cannot be null when getting database.")
@@ -202,7 +205,7 @@ abstract class AppDB : RoomDatabase() {
                     AppDB::class.java,
                     "break_vault_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .fallbackToDestructiveMigration(true)
                     .addCallback(AppDbCallback(scope = CoroutineScope(Dispatchers.IO)))
                     .build()

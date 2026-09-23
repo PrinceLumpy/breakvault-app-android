@@ -24,7 +24,6 @@ class SettingsRepository @Inject constructor(
         val moveDao = db.moveDao()
         val practiceComboDao = db.practiceComboDao()
         val battleDao = db.battleDao()
-        val goalDao = db.goalDao()
 
         return AppDataExport(
             moves = moveDao.getAllMoves(),
@@ -33,20 +32,16 @@ class SettingsRepository @Inject constructor(
             practiceCombos = practiceComboDao.getAllPracticeCombosList(),
             battleCombos = battleDao.getAllBattleCombos(),
             battleTags = battleDao.getAllBattleTags(),
-            battleComboTagCrossRefs = battleDao.getAllBattleComboTagCrossRefs(),
-            goals = goalDao.getAllGoals(),
-            goalStages = goalDao.getAllGoalStages()
+            battleComboTagCrossRefs = battleDao.getAllBattleComboTagCrossRefs()
         )
     }
 
     suspend fun importAppData(appData: AppDataExport) {
         db.withTransaction {
-            db.clearAllTables()
 
             val moveDao = db.moveDao()
             val practiceComboDao = db.practiceComboDao()
             val battleDao = db.battleDao()
-            val goalDao = db.goalDao()
 
             moveDao.insertAllMoves(appData.moves)
             moveDao.insertAllMoveTags(appData.moveTags)
@@ -55,8 +50,6 @@ class SettingsRepository @Inject constructor(
             battleDao.insertAllBattleCombos(appData.battleCombos.map { it.fixLegacyBattleCombo() })
             battleDao.insertAllBattleTags(appData.battleTags)
             battleDao.insertAllBattleComboTagCrossRefs(appData.battleComboTagCrossRefs)
-            goalDao.insertAllGoals(appData.goals)
-            goalDao.insertAllGoalStages(appData.goalStages)
         }
     }
 

@@ -9,8 +9,6 @@ and track their training sessions.
 * **Combo Creation:** Create and save your own breaking combos.
 * **Combo Generator:** Generate new combos for inspiration.
 * **Battle Combos:** Manage combos specifically for battles.
-* **Goal Setting:** Set and track your breakdancing goals.
-* **Training Timer:** Time your practice sessions.
 
 ## Architecture
 

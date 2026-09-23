@@ -33,7 +33,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,19 +52,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import com.princelumpy.breakvault.R
-
-@Composable
-fun AppLinearProgressIndicator(
-    progress: () -> Float,
-    modifier: Modifier = Modifier,
-) {
-    LinearProgressIndicator(
-        progress = progress,
-        modifier = modifier.fillMaxWidth(), // Always fill width by default
-        color = MaterialTheme.colorScheme.primary, // Use primary color for progress
-        trackColor = MaterialTheme.colorScheme.outlineVariant, // High-contrast track
-    )
-}
 
 /**
  * A shared component for displaying and selecting tags in a scrollable card.

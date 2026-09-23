@@ -18,17 +18,12 @@ import com.princelumpy.breakvault.ui.battlecombos.addedit.AddEditBattleComboScre
 import com.princelumpy.breakvault.ui.battlecombos.list.BattleComboListScreen
 import com.princelumpy.breakvault.ui.battlecombos.managetags.BattleTagListScreen
 import com.princelumpy.breakvault.ui.combogenerator.ComboGeneratorScreen
-import com.princelumpy.breakvault.ui.goals.addedit.AddEditGoalScreen
-import com.princelumpy.breakvault.ui.goals.addedit.stage.AddEditGoalStageScreen
-import com.princelumpy.breakvault.ui.goals.archived.ArchivedGoalsScreen
-import com.princelumpy.breakvault.ui.goals.list.GoalsScreen
 import com.princelumpy.breakvault.ui.moves.addedit.AddEditMoveScreen
 import com.princelumpy.breakvault.ui.moves.list.MoveListScreen
 import com.princelumpy.breakvault.ui.moves.managetags.MoveTagListScreen
 import com.princelumpy.breakvault.ui.practicecombos.addedit.AddEditPracticeComboScreen
 import com.princelumpy.breakvault.ui.practicecombos.list.PracticeComboListScreen
 import com.princelumpy.breakvault.ui.settings.SettingsScreen
-import com.princelumpy.breakvault.ui.timer.TimerScreen
 
 /**
  * Inner NavHost containing only the 5 bottom nav screens.
@@ -162,20 +157,6 @@ fun BottomNavGraph(
             )
         }
 
-        composable(BreakVaultDestinations.GOALS_LIST_ROUTE) {
-            GoalsScreen(
-                onNavigateToAddEditGoal = { outerNavActions.navigateToAddEditGoal(it) },
-                onNavigateToAddEditStage = { goalId, stageId ->
-                    outerNavActions.navigateToAddEditGoalStage(goalId, stageId)
-                },
-                onOpenDrawer = onOpenDrawer
-            )
-        }
-
-        composable(BreakVaultDestinations.TIMER_ROUTE) {
-            TimerScreen(onOpenDrawer = onOpenDrawer)
-        }
-
         composable(BreakVaultDestinations.BATTLE_COMBO_LIST_ROUTE) {
             BattleComboListScreen(
                 onNavigateToAddEditBattleCombo = { outerNavActions.navigateToAddEditBattleCombo(it) },
@@ -304,102 +285,6 @@ fun NavGraphBuilder.overlayNavGraph(
         AddEditPracticeComboScreen(
             onNavigateUp = { navActions.navigateUp() },
             comboId = comboId
-        )
-    }
-
-    // ADD_EDIT_GOAL_ROUTE - AddEdit screen
-    composable(
-        route = BreakVaultDestinations.ADD_EDIT_GOAL_ROUTE,
-        arguments = listOf(navArgument(BreakVaultDestinationsArgs.GOAL_ID_ARG) {
-            type = NavType.StringType
-            nullable = true
-            defaultValue = null
-        }),
-        enterTransition = {
-            slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Up,
-                animationSpec = tween(300)
-            )
-        },
-        popExitTransition = {
-            slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Down,
-                animationSpec = tween(300)
-            )
-        }
-    ) { backStackEntry ->
-        val navActions = remember(navController) {
-            BreakVaultNavigationActions(navController)
-        }
-        val currentGoalId =
-            backStackEntry.arguments?.getString(BreakVaultDestinationsArgs.GOAL_ID_ARG)
-
-        AddEditGoalScreen(
-            onNavigateUp = { navActions.navigateUp() },
-            onNavigateToAddEditStage = { gId, stageId ->
-                navActions.navigateToAddEditGoalStageFromParentGoal(gId, stageId)
-            }
-        )
-    }
-
-    // ADD_EDIT_GOAL_STAGE_ROUTE - AddEdit screen
-    composable(
-        route = BreakVaultDestinations.ADD_EDIT_GOAL_STAGE_ROUTE,
-        arguments = listOf(
-            navArgument(BreakVaultDestinationsArgs.GOAL_ID_ARG) { type = NavType.StringType },
-            navArgument(BreakVaultDestinationsArgs.STAGE_ID_ARG) {
-                type = NavType.StringType
-                nullable = true
-                defaultValue = null
-            }
-        ),
-        enterTransition = {
-            slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Up,
-                animationSpec = tween(300)
-            )
-        },
-        popExitTransition = {
-            slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Down,
-                animationSpec = tween(300)
-            )
-        }
-    ) { backStackEntry ->
-        val navActions = remember(navController) {
-            BreakVaultNavigationActions(navController)
-        }
-        val goalId =
-            backStackEntry.arguments?.getString(BreakVaultDestinationsArgs.GOAL_ID_ARG) ?: ""
-        val stageId = backStackEntry.arguments?.getString(BreakVaultDestinationsArgs.STAGE_ID_ARG)
-        AddEditGoalStageScreen(
-            onNavigateUp = { navActions.navigateFromStageToGoal(goalId) },
-            goalId = goalId,
-            stageId = stageId
-        )
-    }
-
-    // ARCHIVED_GOALS_ROUTE - Management screen
-    composable(
-        route = BreakVaultDestinations.ARCHIVED_GOALS_ROUTE,
-        enterTransition = {
-            slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                animationSpec = tween(300)
-            )
-        },
-        popExitTransition = {
-            slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                animationSpec = tween(300)
-            )
-        }
-    ) {
-        val navActions = remember(navController) {
-            BreakVaultNavigationActions(navController)
-        }
-        ArchivedGoalsScreen(
-            onNavigateUp = { navActions.navigateUp() },
         )
     }
 

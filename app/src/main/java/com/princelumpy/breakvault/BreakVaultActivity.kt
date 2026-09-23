@@ -161,17 +161,6 @@ fun MainAppScreen(outerNavController: NavHostController) {
                     }
                 )
 
-                NavigationDrawerItem(
-                    label = { Text(stringResource(id = R.string.drawer_item_archived_goals)) },
-                    selected = false,
-                    onClick = {
-                        scope.launch {
-                            drawerState.close()
-                            outerNavActions.navigateToArchivedGoals()
-                        }
-                    }
-                )
-
                 HorizontalDivider()
 
                 NavigationDrawerItem(

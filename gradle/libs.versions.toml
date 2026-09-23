@@ -1,8 +1,8 @@
 [versions]
 # Core Android & Kotlin
-agp = "9.0.0"
+agp = "9.4.1"
 kotlin = "2.3.0"
-googleKsp = "2.3.4"
+googleKsp = "2.3.6"
 
 # AndroidX Lifecycle & Core
 androidxLifecycle = "2.10.0"

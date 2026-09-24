@@ -1,3 +1,4 @@
+// Modified by Claude Code - 2026-09-24
 package com.princelumpy.breakvault.ui.battlecombos.addedit
 
 import androidx.lifecycle.ViewModel
@@ -7,9 +8,8 @@ import com.princelumpy.breakvault.common.Constants.BATTLE_COMBO_DESCRIPTION_CHAR
 import com.princelumpy.breakvault.common.Constants.BATTLE_TAG_CHARACTER_LIMIT
 import com.princelumpy.breakvault.data.local.entity.BattleCombo
 import com.princelumpy.breakvault.data.local.entity.BattleTag
-import com.princelumpy.breakvault.data.local.entity.EnergyLevel
 import com.princelumpy.breakvault.data.local.entity.PracticeCombo
-import com.princelumpy.breakvault.data.local.entity.TrainingStatus
+import com.princelumpy.breakvault.data.local.entity.TagColor
 import com.princelumpy.breakvault.data.repository.BattleRepository
 import com.princelumpy.breakvault.data.repository.PracticeComboRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,11 +26,10 @@ data class UserInputs(
     val comboId: String? = null,
     val title: String = "",
     val description: String = "",
-    val selectedEnergy: EnergyLevel = EnergyLevel.NONE,
-    val selectedStatus: TrainingStatus = TrainingStatus.TRAINING,
     val isUsed: Boolean = false,
     val selectedTags: Set<String> = emptySet(),
     val newTagName: String = "",
+    val newTagColor: TagColor? = null,
     val isNewCombo: Boolean = true
 )
 
@@ -65,11 +64,12 @@ class AddEditBattleComboViewModel @Inject constructor(
 
     private val _isInitialLoadDone = MutableStateFlow(false)
 
+    // The combo as loaded; edits are saved as a copy so createdAt (and legacy fields) survive.
+    private var originalCombo: BattleCombo? = null
+
     // Track original values to detect changes
     private var originalTitle: String? = null
     private var originalDescription: String? = null
-    private var originalEnergy: EnergyLevel? = null
-    private var originalStatus: TrainingStatus? = null
     private var originalSelectedTags: Set<String>? = null
 
 
@@ -103,17 +103,14 @@ class AddEditBattleComboViewModel @Inject constructor(
         viewModelScope.launch {
             val comboWithTags = battleRepository.getBattleComboWithTags(comboId)
             if (comboWithTags != null) {
+                originalCombo = comboWithTags.battleCombo
                 originalTitle = comboWithTags.battleCombo.title
                 originalDescription = comboWithTags.battleCombo.description
-                originalEnergy = comboWithTags.battleCombo.energy
-                originalStatus = comboWithTags.battleCombo.status
                 originalSelectedTags = comboWithTags.tags.map { it.id }.toSet()
                 _userInputs.value = UserInputs(
                     comboId = comboId,
                     title = comboWithTags.battleCombo.title,
                     description = comboWithTags.battleCombo.description,
-                    selectedEnergy = comboWithTags.battleCombo.energy,
-                    selectedStatus = comboWithTags.battleCombo.status,
                     isUsed = comboWithTags.battleCombo.isUsed,
                     selectedTags = comboWithTags.tags.map { it.id }.toSet(),
                     isNewCombo = false
@@ -149,14 +146,6 @@ class AddEditBattleComboViewModel @Inject constructor(
         }
     }
 
-    fun onEnergyChange(newEnergy: EnergyLevel) {
-        _userInputs.update { it.copy(selectedEnergy = newEnergy) }
-    }
-
-    fun onStatusChange(newStatus: TrainingStatus) {
-        _userInputs.update { it.copy(selectedStatus = newStatus) }
-    }
-
     fun onTagSelected(tagId: String) {
         _userInputs.update { state ->
             val newTags = if (tagId in state.selectedTags) {
@@ -178,6 +167,10 @@ class AddEditBattleComboViewModel @Inject constructor(
                 _dialogsAndMessages.update { it.copy(newTagError = null) }
             }
         }
+    }
+
+    fun onNewTagColorChange(color: TagColor?) {
+        _userInputs.update { it.copy(newTagColor = color) }
     }
 
     // LAYER 3: Action Guard
@@ -211,11 +204,12 @@ class AddEditBattleComboViewModel @Inject constructor(
 
         // If all checks pass, proceed with insertion
         viewModelScope.launch {
-            val newTag = BattleTag(name = newTagName)
+            val newTag = BattleTag(name = newTagName, color = uiState.value.userInputs.newTagColor)
             battleRepository.insertBattleTag(newTag)
             _userInputs.update {
                 it.copy(
                     newTagName = "",
+                    newTagColor = null,
                     selectedTags = it.selectedTags + newTag.id
                 )
             }
@@ -270,14 +264,21 @@ class AddEditBattleComboViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            val battleCombo = BattleCombo(
-                id = currentInputs.comboId ?: "",
-                title = trimmedTitle,
-                description = trimmedDescription,
-                energy = currentInputs.selectedEnergy,
-                status = currentInputs.selectedStatus,
-                isUsed = currentInputs.isUsed
-            )
+            // New combos get fresh timestamps from the constructor. Edits copy the loaded combo so
+            // createdAt is preserved and only modifiedAt moves.
+            val battleCombo = originalCombo
+                ?.takeUnless { currentInputs.isNewCombo }
+                ?.copy(
+                    title = trimmedTitle,
+                    description = trimmedDescription,
+                    isUsed = currentInputs.isUsed,
+                    modifiedAt = System.currentTimeMillis()
+                )
+                ?: BattleCombo(
+                    title = trimmedTitle,
+                    description = trimmedDescription,
+                    isUsed = currentInputs.isUsed
+                )
 
             // Convert selected tag IDs to BattleTag objects
             val selectedTagObjects = uiState.value.allBattleTags
@@ -329,16 +330,12 @@ class AddEditBattleComboViewModel @Inject constructor(
         if (currentInputs.isNewCombo) {
             return currentInputs.title.isNotBlank() ||
                     currentInputs.description.isNotBlank() ||
-                    currentInputs.selectedEnergy != EnergyLevel.NONE ||
-                    currentInputs.selectedStatus != TrainingStatus.TRAINING ||
                     currentInputs.selectedTags.isNotEmpty()
         }
 
         // For existing combos, check if any fields have been modified
         return currentInputs.title != originalTitle ||
                 currentInputs.description != originalDescription ||
-                currentInputs.selectedEnergy != originalEnergy ||
-                currentInputs.selectedStatus != originalStatus ||
                 currentInputs.selectedTags != originalSelectedTags
     }
 }

@@ -1,3 +1,4 @@
+// Modified by Claude Code - 2026-09-24
 package com.princelumpy.breakvault.data.local.entity
 
 import androidx.room.Entity
@@ -10,6 +11,7 @@ import java.util.UUID
 data class BattleTag(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
     val name: String,
+    val color: TagColor? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val modifiedAt: Long = System.currentTimeMillis()
 )

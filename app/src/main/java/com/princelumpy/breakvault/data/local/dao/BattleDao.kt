@@ -1,3 +1,4 @@
+// Modified by Claude Code - 2026-09-24
 package com.princelumpy.breakvault.data.local.dao
 
 import androidx.room.Dao
@@ -40,9 +41,9 @@ interface BattleDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAllBattleComboTagCrossRefs(crossRefs: List<BattleComboTagCrossRef>)
 
-    /** Retrieves a flow of all battle combos with their associated tags, ordered by energy. */
+    /** Retrieves a flow of all battle combos with their associated tags, newest first. */
     @Transaction
-    @Query("SELECT * FROM battle_combos ORDER BY energy ASC")
+    @Query("SELECT * FROM battle_combos ORDER BY createdAt DESC")
     fun getAllBattleCombosWithTags(): Flow<List<BattleComboWithTags>>
 
     /** Retrieves a single battle combo with its associated tags by its ID. */
@@ -92,10 +93,7 @@ interface BattleDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBattleTag(tag: BattleTag)
 
-    /** Updates the name of a specific battle tag by its ID. */
-    @Query("UPDATE battle_tags SET name = :newName WHERE id = :tagId")
-    suspend fun updateTagName(tagId: String, newName: String)
-
+    /** Updates an existing battle tag (name, color, modifiedAt). */
     @Update
     suspend fun updateBattleTag(tag: BattleTag)
 

@@ -1,3 +1,4 @@
+// Modified by Claude Code - 2026-09-24
 package com.princelumpy.breakvault.data.local.entity
 
 import androidx.room.Entity
@@ -11,6 +12,7 @@ data class BattleCombo(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
     val title: String = "",
     val description: String = "",  // New field, optional
+    // energy and status are unused since DB v6 (replaced by tag colors); kept to avoid a table rebuild.
     val energy: EnergyLevel = EnergyLevel.NONE,
     val status: TrainingStatus = TrainingStatus.TRAINING,
     val isUsed: Boolean = false,

@@ -1,3 +1,4 @@
+<!-- Modified by Claude Code - 2026-09-24 -->
 <resources>
     <string name="app_name">BreakVault</string>
 
@@ -192,10 +193,9 @@
     <string name="battle_combo_list_no_combos_subtitle">Add battle-ready combos to track them during sessions!</string>
     <string name="battle_combo_list_add_combo_button">Add Battle Combo</string>
     <string name="battle_combo_list_no_matches_filter">No combos match your filter</string>
-    <string name="battle_combo_list_sort_energy_high_low">Energy: High → Low</string>
-    <string name="battle_combo_list_sort_energy_low_high">Energy: Low → High</string>
-    <string name="battle_combo_list_sort_status_ready">Status: Battle Ready</string>
-    <string name="battle_combo_list_sort_status_training">Status: Training</string>
+    <string name="battle_combo_list_sort_newest">Newest first</string>
+    <string name="battle_combo_list_sort_name">Name (A → Z)</string>
+    <string name="battle_combo_list_sort_color">Group by color</string>
     <string name="battle_combo_list_reset_dialog_title">Clean Slate?</string>
     <string name="battle_combo_list_reset_dialog_message">This will set all combos to unused. Are you ready?</string>
     <string name="battle_combo_list_reset_confirm_button">Clean Slate</string>
@@ -221,13 +221,6 @@
     <string name="add_edit_battle_combo_import_button">Import from Practice Mode</string>
     <string name="add_edit_battle_combo_import_dialog_title">Select Practice Combo</string>
     <string name="add_edit_battle_combo_no_practice_combos_message">No saved practice combos</string>
-    <string name="add_edit_battle_combo_energy_label">Energy Level</string>
-    <string name="add_edit_battle_combo_energy_low">Low</string>
-    <string name="add_edit_battle_combo_energy_med">Med</string>
-    <string name="add_edit_battle_combo_energy_high">High</string>
-    <string name="add_edit_battle_combo_readiness_label">Readiness</string>
-    <string name="add_edit_battle_combo_training_label">Training</string>
-    <string name="add_edit_battle_combo_ready_label">Battle Ready</string>
     <string name="add_edit_battle_combo_tags_label">Battle Tags</string>
     <string name="add_edit_battle_combo_no_tags_message">No battle tags available</string>
     <string name="add_edit_battle_combo_new_tag_label">New Tag Name</string>
@@ -247,7 +240,7 @@
     <string name="battle_tag_list_no_tags_subtitle">Tap \'+\' to add your first tag!</string>
     <string name="battle_tag_list_add_dialog_title">Add New Battle Tag</string>
     <string name="battle_tag_list_tag_name_label">Tag Name</string>
-    <string name="battle_tag_list_edit_dialog_title">Edit Tag Name</string>
+    <string name="battle_tag_list_edit_dialog_title">Edit Battle Tag</string>
     <string name="battle_tag_list_new_tag_name_label">New Tag Name</string>
     <string name="battle_tag_list_delete_confirmation">Are you sure you want to delete \'%1$s\'?</string>
 
@@ -255,6 +248,18 @@
     <string name="battle_tag_list_add_fab_description">Add Tag</string>
     <string name="battle_tag_list_edit_icon_desc">Edit Tag</string>
     <string name="battle_tag_list_delete_icon_desc">Delete Tag</string>
+
+    <!-- Battle Tag Colors -->
+    <string name="tag_color_label">Color</string>
+    <string name="tag_color_none">No color</string>
+    <string name="tag_color_red">Red</string>
+    <string name="tag_color_orange">Orange</string>
+    <string name="tag_color_yellow">Yellow</string>
+    <string name="tag_color_green">Green</string>
+    <string name="tag_color_teal">Teal</string>
+    <string name="tag_color_blue">Blue</string>
+    <string name="tag_color_purple">Purple</string>
+    <string name="tag_color_pink">Pink</string>
 
     <!-- ========================================== -->
     <!-- SETTINGS SCREEN -->

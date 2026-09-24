@@ -1,15 +1,25 @@
+// Modified by Claude Code - 2026-09-24
 package com.princelumpy.breakvault.ui.battlecombos.managetags
 
 import AppStyleDefaults
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -32,10 +42,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
-import com.princelumpy.breakvault.common.Constants.BATTLE_TAG_CHARACTER_LIMIT
 import com.princelumpy.breakvault.data.local.entity.BattleTag
-import com.princelumpy.breakvault.ui.common.GenericItemList
-import com.princelumpy.breakvault.ui.common.TagDialog
+import com.princelumpy.breakvault.data.local.entity.TagColor
+import com.princelumpy.breakvault.ui.battlecombos.common.BattleTagDialog
+import com.princelumpy.breakvault.ui.battlecombos.common.TagColorStrip
+import com.princelumpy.breakvault.ui.common.FlexibleItemList
 
 @Composable
 fun BattleTagListScreen(
@@ -61,6 +72,8 @@ fun BattleTagListScreen(
         onDeleteTagClicked = battleTagListViewModel::onDeleteTagClicked,
         onNewTagNameChange = battleTagListViewModel::onNewTagNameChange,
         onTagNameForEditChange = battleTagListViewModel::onTagNameForEditChange,
+        onNewTagColorChange = battleTagListViewModel::onNewTagColorChange,
+        onTagColorForEditChange = battleTagListViewModel::onTagColorForEditChange,
         onAddTag = battleTagListViewModel::onAddTag,
         onUpdateTag = battleTagListViewModel::onUpdateTag,
         onDeleteTag = battleTagListViewModel::onDeleteTag,
@@ -84,6 +97,8 @@ fun BattleTagListContent(
     onDeleteTagClicked: (BattleTag) -> Unit,
     onNewTagNameChange: (String) -> Unit,
     onTagNameForEditChange: (String) -> Unit,
+    onNewTagColorChange: (TagColor?) -> Unit = {},
+    onTagColorForEditChange: (TagColor?) -> Unit = {},
     onAddTag: () -> Unit,
     onUpdateTag: () -> Unit,
     onDeleteTag: () -> Unit,
@@ -129,43 +144,53 @@ fun BattleTagListContent(
                     .fillMaxSize()
             )
         } else {
-            GenericItemList(
+            FlexibleItemList(
                 items = uiState.tags,
-                onItemClick = onEditTagClicked,
-                onEditClick = onEditTagClicked,
-                onDeleteClick = onDeleteTagClicked,
                 getItemKey = { it.id },
-                getItemName = { it.name },
+                contentPadding = PaddingValues(
+                    start = AppStyleDefaults.SpacingLarge,
+                    end = AppStyleDefaults.SpacingLarge,
+                    top = AppStyleDefaults.SpacingLarge,
+                    bottom = AppStyleDefaults.SpacingExtraLarge * 4 // FAB clearance
+                ),
                 modifier = Modifier.padding(paddingValues)
-            )
+            ) { tag ->
+                BattleTagItem(
+                    tag = tag,
+                    onEditClick = { onEditTagClicked(tag) },
+                    onDeleteClick = { onDeleteTagClicked(tag) }
+                )
+            }
         }
     }
 
     if (dialogState.showAddDialog) {
-        TagDialog(
-            title = stringResource(id = R.string.tag_list_add_new_tag_dialog_title),
-            labelText = stringResource(id = R.string.tag_list_tag_name_label),
+        BattleTagDialog(
+            title = stringResource(id = R.string.battle_tag_list_add_dialog_title),
+            labelText = stringResource(id = R.string.battle_tag_list_tag_name_label),
             confirmButtonText = stringResource(id = R.string.common_add),
             tagName = userInputs.newTagName,
-            characterLimit = BATTLE_TAG_CHARACTER_LIMIT,
+            tagColor = userInputs.newTagColor,
             isError = uiState.newTagNameError != null,
             errorMessage = uiState.newTagNameError,
             onTagNameChange = onNewTagNameChange,
+            onTagColorChange = onNewTagColorChange,
             onConfirm = onAddTag,
             onDismiss = onAddTagDialogDismiss
         )
     }
 
     dialogState.tagForEditDialog?.let {
-        TagDialog(
-            title = stringResource(id = R.string.tag_list_edit_tag_name_dialog_title),
-            labelText = stringResource(id = R.string.tag_list_new_tag_name_label),
+        BattleTagDialog(
+            title = stringResource(id = R.string.battle_tag_list_edit_dialog_title),
+            labelText = stringResource(id = R.string.battle_tag_list_tag_name_label),
             confirmButtonText = stringResource(id = R.string.common_save),
             tagName = userInputs.tagNameForEdit,
-            characterLimit = BATTLE_TAG_CHARACTER_LIMIT,
+            tagColor = userInputs.tagColorForEdit,
             isError = uiState.editTagNameError != null,
             errorMessage = uiState.editTagNameError,
             onTagNameChange = onTagNameForEditChange,
+            onTagColorChange = onTagColorForEditChange,
             onConfirm = onUpdateTag,
             onDismiss = onEditTagDialogDismiss
         )
@@ -190,6 +215,57 @@ private fun EmptyTagListState(modifier: Modifier = Modifier) {
             text = stringResource(id = R.string.battle_tag_list_no_tags_message),
             style = MaterialTheme.typography.bodyLarge
         )
+    }
+}
+
+/**
+ * Tag card with the same leading color strip as battle combo cards.
+ * Tapping the card opens the edit dialog, like the edit icon.
+ */
+@Composable
+private fun BattleTagItem(
+    tag: BattleTag,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
+    Card(
+        onClick = onEditClick,
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = AppStyleDefaults.SpacingSmall)
+    ) {
+        Row(
+            modifier = Modifier.height(IntrinsicSize.Min),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TagColorStrip(colors = listOfNotNull(tag.color))
+            Text(
+                text = tag.name,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(
+                        horizontal = AppStyleDefaults.SpacingLarge,
+                        vertical = AppStyleDefaults.SpacingMedium
+                    )
+            )
+            IconButton(onClick = onEditClick) {
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = stringResource(id = R.string.battle_tag_list_edit_icon_desc),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            IconButton(
+                onClick = onDeleteClick,
+                modifier = Modifier.padding(end = AppStyleDefaults.SpacingSmall)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = stringResource(id = R.string.battle_tag_list_delete_icon_desc),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
 
@@ -235,9 +311,9 @@ private fun DeleteTagDialog(
 @Composable
 private fun BattleTagListContentPreview_Populated() {
     val tags = listOf(
-        BattleTag(id = "1", name = "Boxing"),
+        BattleTag(id = "1", name = "Boxing", color = TagColor.RED),
         BattleTag(id = "2", name = "Kicking"),
-        BattleTag(id = "3", name = "Power")
+        BattleTag(id = "3", name = "Power", color = TagColor.BLUE)
     )
     MaterialTheme {
         BattleTagListContent(
@@ -311,13 +387,13 @@ private fun BattleTagListContentPreview_AddDialog() {
 @Preview(showBackground = true, name = "Edit Dialog Open")
 @Composable
 private fun BattleTagListContentPreview_EditDialog() {
-    val tagToEdit = BattleTag(id = "1", name = "Boxing")
+    val tagToEdit = BattleTag(id = "1", name = "Boxing", color = TagColor.GREEN)
     MaterialTheme {
         BattleTagListContent(
             uiState = BattleTagListUiState(
                 tags = listOf(tagToEdit),
                 dialogState = DialogState(tagForEditDialog = tagToEdit),
-                userInputs = UserInputs(tagNameForEdit = "Boxing Edit")
+                userInputs = UserInputs(tagNameForEdit = "Boxing Edit", tagColorForEdit = TagColor.GREEN)
             ),
             onNavigateUp = {},
             onAddTagClicked = {},
@@ -363,25 +439,6 @@ private fun BattleTagListContentPreview_DeleteDialog() {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-private fun AddTagDialogPreview() {
-    MaterialTheme {
-        TagDialog(
-            title = "Add New Tag",
-            labelText = "Tag Name",
-            confirmButtonText = "Add",
-            tagName = "New Tag",
-            characterLimit = BATTLE_TAG_CHARACTER_LIMIT,
-            isError = false,
-            errorMessage = null,
-            onTagNameChange = {},
-            onConfirm = {},
-            onDismiss = {}
-        )
-    }
-}
-
 @Preview(showBackground = true, name = "Add Dialog With Error")
 @Composable
 private fun BattleTagListContentPreview_AddDialogError() {
@@ -409,30 +466,11 @@ private fun BattleTagListContentPreview_AddDialogError() {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-private fun EditTagDialogPreview() {
-    MaterialTheme {
-        TagDialog(
-            title = "Edit Tag Name",
-            labelText = "New Tag Name",
-            confirmButtonText = "Save",
-            tagName = "Existing Tag",
-            characterLimit = BATTLE_TAG_CHARACTER_LIMIT,
-            isError = false,
-            errorMessage = null,
-            onTagNameChange = {},
-            onConfirm = {},
-            onDismiss = {}
-        )
-    }
-}
-
 @Preview(showBackground = true, name = "Edit Dialog With Error")
 @Composable
 private fun BattleTagListContentPreview_EditDialogError() {
     val tags = listOf(
-        BattleTag(id = "1", name = "Boxing"),
+        BattleTag(id = "1", name = "Boxing", color = TagColor.RED),
         BattleTag(id = "2", name = "Kicking")
     )
     MaterialTheme {

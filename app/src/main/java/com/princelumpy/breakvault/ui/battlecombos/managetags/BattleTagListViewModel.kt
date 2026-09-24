@@ -1,9 +1,11 @@
+// Modified by Claude Code - 2026-09-24
 package com.princelumpy.breakvault.ui.battlecombos.managetags
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.princelumpy.breakvault.common.Constants.BATTLE_TAG_CHARACTER_LIMIT
 import com.princelumpy.breakvault.data.local.entity.BattleTag
+import com.princelumpy.breakvault.data.local.entity.TagColor
 import com.princelumpy.breakvault.data.repository.BattleRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +21,9 @@ import javax.inject.Inject
 // State representing the user's direct inputs.
 data class UserInputs(
     val newTagName: String = "",
-    val tagNameForEdit: String = ""
+    val newTagColor: TagColor? = null,
+    val tagNameForEdit: String = "",
+    val tagColorForEdit: TagColor? = null
 )
 
 // State for transient UI events like showing dialogs.
@@ -94,6 +98,14 @@ class BattleTagListViewModel @Inject constructor(
         }
     }
 
+    fun onNewTagColorChange(color: TagColor?) {
+        _userInputs.update { it.copy(newTagColor = color) }
+    }
+
+    fun onTagColorForEditChange(color: TagColor?) {
+        _userInputs.update { it.copy(tagColorForEdit = color) }
+    }
+
     // --- Dialog State Handlers ---
 
     fun onAddTagClicked() {
@@ -103,18 +115,18 @@ class BattleTagListViewModel @Inject constructor(
 
     fun onAddTagDialogDismiss() {
         _dialogState.update { it.copy(showAddDialog = false) }
-        _userInputs.update { it.copy(newTagName = "") } // Clear input
+        _userInputs.update { it.copy(newTagName = "", newTagColor = null) } // Clear input
     }
 
     fun onEditTagClicked(tag: BattleTag) {
-        _userInputs.update { it.copy(tagNameForEdit = tag.name) } // Pre-fill input
+        _userInputs.update { it.copy(tagNameForEdit = tag.name, tagColorForEdit = tag.color) } // Pre-fill input
         _editTagNameError.update { null }
         _dialogState.update { it.copy(tagForEditDialog = tag) }
     }
 
     fun onEditTagDialogDismiss() {
         _dialogState.update { it.copy(tagForEditDialog = null) }
-        _userInputs.update { it.copy(tagNameForEdit = "") }
+        _userInputs.update { it.copy(tagNameForEdit = "", tagColorForEdit = null) }
     }
 
     fun onDeleteTagClicked(tag: BattleTag) {
@@ -146,7 +158,11 @@ class BattleTagListViewModel @Inject constructor(
         }
         // end validation
         viewModelScope.launch {
-            val newBattleTag = BattleTag(name = newTagName, id = UUID.randomUUID().toString())
+            val newBattleTag = BattleTag(
+                name = newTagName,
+                color = _userInputs.value.newTagColor,
+                id = UUID.randomUUID().toString()
+            )
             battleRepository.insertBattleTag(newBattleTag)
             _dialogState.update { it.copy(snackbarMessage = "Tag created successfully!") }
             onAddTagDialogDismiss()
@@ -156,6 +172,7 @@ class BattleTagListViewModel @Inject constructor(
     fun onUpdateTag() {
         val tagToEdit = _dialogState.value.tagForEditDialog ?: return
         val newName = _userInputs.value.tagNameForEdit.trim()
+        val newColor = _userInputs.value.tagColorForEdit
 
         val allOtherTagNames = uiState.value.tags
             .filter { it.id != tagToEdit.id }
@@ -177,13 +194,19 @@ class BattleTagListViewModel @Inject constructor(
         // end validation
 
         // If no change, dismiss dialog
-        if (newName == tagToEdit.name) {
+        if (newName == tagToEdit.name && newColor == tagToEdit.color) {
             onEditTagDialogDismiss()
             return
         }
 
         viewModelScope.launch {
-            battleRepository.updateTagName(tagToEdit.id, newName)
+            battleRepository.updateBattleTag(
+                tagToEdit.copy(
+                    name = newName,
+                    color = newColor,
+                    modifiedAt = System.currentTimeMillis()
+                )
+            )
             _dialogState.update { it.copy(snackbarMessage = "Tag updated successfully!") }
             onEditTagDialogDismiss()
         }

@@ -1,3 +1,4 @@
+// Modified by Claude Code - 2026-09-24
 package com.princelumpy.breakvault.ui.battlecombos.addedit
 
 import AppStyleDefaults
@@ -30,7 +31,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -40,12 +40,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.common.Constants.BATTLE_COMBO_TITLE_CHARACTER_LIMIT
 import com.princelumpy.breakvault.common.Constants.BATTLE_COMBO_DESCRIPTION_CHARACTER_LIMIT
-import com.princelumpy.breakvault.common.Constants.BATTLE_TAG_CHARACTER_LIMIT
 import com.princelumpy.breakvault.data.local.entity.BattleTag
-import com.princelumpy.breakvault.data.local.entity.EnergyLevel
-import com.princelumpy.breakvault.data.local.entity.TrainingStatus
+import com.princelumpy.breakvault.data.local.entity.TagColor
 import com.princelumpy.breakvault.data.local.entity.PracticeCombo
-import com.princelumpy.breakvault.ui.common.TagDialog
+import com.princelumpy.breakvault.ui.battlecombos.common.BattleTagDialog
 import com.princelumpy.breakvault.ui.common.TagSelectionCard
 import com.princelumpy.breakvault.ui.common.UnsavedChangesDialog
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
@@ -109,10 +107,9 @@ fun AddEditBattleComboScreen(
         onTitleChange = viewModel::onTitleChange,
         onDescriptionChange = viewModel::onDescriptionChange,
         onShowImportDialog = viewModel::showImportDialog,
-        onEnergyChange = viewModel::onEnergyChange,
-        onStatusChange = viewModel::onStatusChange,
         onTagSelected = viewModel::onTagSelected,
         onNewTagNameChange = viewModel::onNewTagNameChange,
+        onNewTagColorChange = viewModel::onNewTagColorChange,
         onAddBattleTag = viewModel::addBattleTag,
         onImportCombo = viewModel::onImportCombo,
         onDeleteComboClick = viewModel::onDeleteComboClick,
@@ -140,10 +137,9 @@ private fun AddEditBattleComboScaffold(
     onTitleChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onShowImportDialog: (Boolean) -> Unit,
-    onEnergyChange: (EnergyLevel) -> Unit,
-    onStatusChange: (TrainingStatus) -> Unit,
     onTagSelected: (String) -> Unit,
     onNewTagNameChange: (String) -> Unit,
+    onNewTagColorChange: (TagColor?) -> Unit,
     onAddBattleTag: () -> Unit,
     onImportCombo: (PracticeCombo) -> Unit,
     onDeleteComboClick: () -> Unit,
@@ -220,10 +216,9 @@ private fun AddEditBattleComboScaffold(
                 onTitleChange = onTitleChange,
                 onDescriptionChange = onDescriptionChange,
                 onShowImportDialog = onShowImportDialog,
-                onEnergyChange = onEnergyChange,
-                onStatusChange = onStatusChange,
                 onTagSelected = onTagSelected,
                 onNewTagNameChange = onNewTagNameChange,
+                onNewTagColorChange = onNewTagColorChange,
                 onAddBattleTag = onAddBattleTag
             )
         }
@@ -258,10 +253,9 @@ private fun AddEditBattleComboFormContent(
     onTitleChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onShowImportDialog: (Boolean) -> Unit,
-    onEnergyChange: (EnergyLevel) -> Unit,
-    onStatusChange: (TrainingStatus) -> Unit,
     onTagSelected: (String) -> Unit,
     onNewTagNameChange: (String) -> Unit,
+    onNewTagColorChange: (TagColor?) -> Unit,
     onAddBattleTag: () -> Unit
 ) {
     Column(
@@ -287,23 +281,15 @@ private fun AddEditBattleComboFormContent(
             ImportButton(onClick = { onShowImportDialog(true) })
         }
 
-        EnergySection(
-            selectedEnergy = userInputs.selectedEnergy,
-            onEnergyChange = onEnergyChange
-        )
-
-        ReadinessSection(
-            selectedStatus = userInputs.selectedStatus,
-            onStatusChange = onStatusChange
-        )
-
         TagsSection(
             allBattleTags = allBattleTags,
             selectedTags = userInputs.selectedTags,
             newTagName = userInputs.newTagName,
+            newTagColor = userInputs.newTagColor,
             newTagError = dialogsAndMessages.newTagError,
             onTagSelected = onTagSelected,
             onNewTagNameChange = onNewTagNameChange,
+            onNewTagColorChange = onNewTagColorChange,
             onAddBattleTag = onAddBattleTag
         )
     }
@@ -400,74 +386,6 @@ private fun ImportButton(onClick: () -> Unit) {
 }
 
 /**
- * Section for selecting energy level.
- */
-@Composable
-private fun EnergySection(
-    selectedEnergy: EnergyLevel,
-    onEnergyChange: (EnergyLevel) -> Unit
-) {
-    Text(
-        stringResource(id = R.string.add_edit_battle_combo_energy_label),
-        style = MaterialTheme.typography.titleMedium
-    )
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
-    ) {
-        EnergyChip(
-            label = stringResource(id = R.string.add_edit_battle_combo_energy_low),
-            color = Color(0xFF4CAF50),
-            isSelected = selectedEnergy == EnergyLevel.LOW,
-            onClick = { onEnergyChange(EnergyLevel.LOW) }
-        )
-        EnergyChip(
-            label = stringResource(id = R.string.add_edit_battle_combo_energy_med),
-            color = Color(0xFFFFC107),
-            isSelected = selectedEnergy == EnergyLevel.MEDIUM,
-            onClick = { onEnergyChange(EnergyLevel.MEDIUM) }
-        )
-        EnergyChip(
-            label = stringResource(id = R.string.add_edit_battle_combo_energy_high),
-            color = Color(0xFFF44336),
-            isSelected = selectedEnergy == EnergyLevel.HIGH,
-            onClick = { onEnergyChange(EnergyLevel.HIGH) }
-        )
-    }
-}
-
-/**
- * Section for selecting training status/readiness.
- */
-@Composable
-private fun ReadinessSection(
-    selectedStatus: TrainingStatus,
-    onStatusChange: (TrainingStatus) -> Unit
-) {
-    Text(
-        stringResource(id = R.string.add_edit_battle_combo_readiness_label),
-        style = MaterialTheme.typography.titleMedium
-    )
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(AppStyleDefaults.SpacingLarge)
-    ) {
-        FilterChip(
-            selected = selectedStatus == TrainingStatus.TRAINING,
-            onClick = { onStatusChange(TrainingStatus.TRAINING) },
-            label = { Text(stringResource(id = R.string.add_edit_battle_combo_training_label)) },
-            leadingIcon = { Text("🔨") }
-        )
-        FilterChip(
-            selected = selectedStatus == TrainingStatus.READY,
-            onClick = { onStatusChange(TrainingStatus.READY) },
-            label = { Text(stringResource(id = R.string.add_edit_battle_combo_ready_label)) },
-            leadingIcon = { Text("🔥") }
-        )
-    }
-}
-
-/**
  * Section for displaying and adding battle tags.
  */
 @Composable
@@ -475,9 +393,11 @@ private fun TagsSection(
     allBattleTags: List<BattleTag>,
     selectedTags: Set<String>,
     newTagName: String,
+    newTagColor: TagColor?,
     newTagError: String?,
     onTagSelected: (String) -> Unit,
     onNewTagNameChange: (String) -> Unit,
+    onNewTagColorChange: (TagColor?) -> Unit,
     onAddBattleTag: () -> Unit
 ) {
     var showAddTagDialog by remember { mutableStateOf(false) }
@@ -511,21 +431,24 @@ private fun TagsSection(
     )
 
     if (showAddTagDialog) {
-        TagDialog(
-            title = stringResource(id = R.string.add_edit_battle_combo_new_tag_label),
-            labelText = stringResource(id = R.string.add_edit_battle_combo_new_tag_label),
+        // Same name + color popup as the manage battle tags screen
+        BattleTagDialog(
+            title = stringResource(id = R.string.battle_tag_list_add_dialog_title),
+            labelText = stringResource(id = R.string.battle_tag_list_tag_name_label),
             confirmButtonText = stringResource(id = R.string.common_add),
             tagName = newTagName,
-            characterLimit = BATTLE_TAG_CHARACTER_LIMIT,
+            tagColor = newTagColor,
             isError = newTagError != null,
             errorMessage = newTagError,
             onTagNameChange = onNewTagNameChange,
+            onTagColorChange = onNewTagColorChange,
             onConfirm = {
                 onAddBattleTag()
             },
             onDismiss = {
                 showAddTagDialog = false
                 onNewTagNameChange("") // Clear input on dismiss
+                onNewTagColorChange(null)
             }
         )
     }
@@ -622,27 +545,6 @@ private fun DeleteComboDialog(
     )
 }
 
-/**
- * Chip for displaying and selecting energy level.
- */
-@Composable
-private fun EnergyChip(
-    label: String,
-    color: Color,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    FilterChip(
-        selected = isSelected,
-        onClick = onClick,
-        label = { Text(label) },
-        colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = color.copy(alpha = 0.3f),
-            selectedLabelColor = color
-        )
-    )
-}
-
 
 //region Previews
 
@@ -659,8 +561,6 @@ private fun AddEditBattleComboFormContentPreview() {
             userInputs = UserInputs(
                 title = "Windmill to Freeze",
                 description = "Classic power combo with smooth transitions",
-                selectedEnergy = EnergyLevel.MEDIUM,
-                selectedStatus = TrainingStatus.TRAINING,
                 selectedTags = setOf("Opening"),
                 isNewCombo = true
             ),
@@ -669,10 +569,9 @@ private fun AddEditBattleComboFormContentPreview() {
             onTitleChange = {},
             onDescriptionChange = {},
             onShowImportDialog = {},
-            onEnergyChange = {},
-            onStatusChange = {},
             onTagSelected = {},
             onNewTagNameChange = {},
+            onNewTagColorChange = {},
             onAddBattleTag = {}
         )
     }
@@ -691,8 +590,6 @@ private fun AddEditBattleComboFormContentEditPreview() {
             userInputs = UserInputs(
                 title = "Power Finisher Combo",
                 description = "Uppercut -> Spinning Kick -> Ground Move - High impact sequence",
-                selectedEnergy = EnergyLevel.HIGH,
-                selectedStatus = TrainingStatus.READY,
                 selectedTags = setOf("Finisher", "Opening"),
                 isNewCombo = false,
                 newTagName = "Power"
@@ -702,10 +599,9 @@ private fun AddEditBattleComboFormContentEditPreview() {
             onTitleChange = {},
             onDescriptionChange = {},
             onShowImportDialog = {},
-            onEnergyChange = {},
-            onStatusChange = {},
             onTagSelected = {},
             onNewTagNameChange = {},
+            onNewTagColorChange = {},
             onAddBattleTag = {}
         )
     }
@@ -723,8 +619,6 @@ private fun AddEditBattleComboFormContentWithErrorsPreview() {
             userInputs = UserInputs(
                 title = "",
                 description = "Some description",
-                selectedEnergy = EnergyLevel.LOW,
-                selectedStatus = TrainingStatus.TRAINING,
                 selectedTags = emptySet(),
                 isNewCombo = true,
                 newTagName = "Opening"
@@ -737,10 +631,9 @@ private fun AddEditBattleComboFormContentWithErrorsPreview() {
             onTitleChange = {},
             onDescriptionChange = {},
             onShowImportDialog = {},
-            onEnergyChange = {},
-            onStatusChange = {},
             onTagSelected = {},
             onNewTagNameChange = {},
+            onNewTagColorChange = {},
             onAddBattleTag = {}
         )
     }

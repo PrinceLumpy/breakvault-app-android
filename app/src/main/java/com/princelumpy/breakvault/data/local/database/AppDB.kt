@@ -1,3 +1,4 @@
+// Modified by Claude Code - 2026-09-24
 package com.princelumpy.breakvault.data.local.database
 
 import android.content.Context
@@ -15,12 +16,11 @@ import com.princelumpy.breakvault.data.local.dao.PracticeComboDao
 import com.princelumpy.breakvault.data.local.entity.BattleCombo
 import com.princelumpy.breakvault.data.local.entity.BattleComboTagCrossRef
 import com.princelumpy.breakvault.data.local.entity.BattleTag
-import com.princelumpy.breakvault.data.local.entity.EnergyLevel
-import com.princelumpy.breakvault.data.local.entity.TrainingStatus
 import com.princelumpy.breakvault.data.local.entity.Move
 import com.princelumpy.breakvault.data.local.entity.MoveTag
 import com.princelumpy.breakvault.data.local.entity.MoveTagCrossRef
 import com.princelumpy.breakvault.data.local.entity.PracticeCombo
+import com.princelumpy.breakvault.data.local.entity.TagColor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -36,7 +36,7 @@ import java.util.UUID
         BattleTag::class,
         BattleComboTagCrossRef::class
     ],
-    version = 5
+    version = 6
 )
 
 @TypeConverters(Converters::class)
@@ -92,58 +92,33 @@ abstract class AppDB : RoomDatabase() {
             Log.i("AppDB", "Populated 3 practice combos.")
 
             // --- 4. BattleComboList Tags ---
-            val battleTagsToEnsure = listOf("Power", "Technique")
+            val battleTagsToEnsure = listOf(
+                "Power" to TagColor.RED,
+                "Technique" to TagColor.BLUE,
+                "Opener" to TagColor.GREEN,
+                "Filler" to null
+            )
             val battleTagMap = mutableMapOf<String, String>()
-            battleTagsToEnsure.forEach { name ->
-                val newTag = BattleTag(id = UUID.randomUUID().toString(), name = name)
+            battleTagsToEnsure.forEach { (name, color) ->
+                val newTag = BattleTag(id = UUID.randomUUID().toString(), name = name, color = color)
                 battleDao.insertBattleTag(newTag)
                 battleTagMap[name] = newTag.id
             }
 
             // --- 5. BattleComboList Combos ---
             val battleCombosData = listOf(
-                Pair(
-                    BattleCombo(
-                        id = UUID.randomUUID().toString(),
-                        title = "Windmill -> Backspin -> Freeze",
-                        energy = EnergyLevel.HIGH,
-                        status = TrainingStatus.READY
-                    ),
-                    "Power"
-                ),
-                Pair(
-                    BattleCombo(
-                        id = UUID.randomUUID().toString(),
-                        title = "Smooth transitions to CC",
-                        energy = EnergyLevel.MEDIUM,
-                        status = TrainingStatus.READY
-                    ),
-                    "Technique"
-                ),
-                Pair(
-                    BattleCombo(
-                        id = UUID.randomUUID().toString(),
-                        title = "Aggressive Toprock to Drop",
-                        energy = EnergyLevel.HIGH,
-                        status = TrainingStatus.TRAINING
-                    ),
-                    "Technique"
-                ),
-                Pair(
-                    BattleCombo(
-                        id = UUID.randomUUID().toString(),
-                        title = "Slow intro to floor",
-                        energy = EnergyLevel.LOW,
-                        status = TrainingStatus.READY
-                    ),
-                    "Technique"
-                )
+                "Windmill -> Backspin -> Freeze" to listOf("Power"),
+                "Smooth transitions to CC" to listOf("Technique", "Filler"),
+                "Aggressive Toprock to Drop" to listOf("Opener", "Power", "Technique"),
+                "Slow intro to floor" to listOf("Opener", "Technique"),
+                "Freestyle filler" to listOf("Filler")
             )
 
-            battleCombosData.forEach { (combo, tagName) ->
+            battleCombosData.forEach { (title, tagNames) ->
+                val combo = BattleCombo(id = UUID.randomUUID().toString(), title = title)
                 battleDao.insertBattleCombo(combo)
                 // Link Tags
-                battleTagMap[tagName]?.let { tagId ->
+                tagNames.mapNotNull { battleTagMap[it] }.forEach { tagId ->
                     battleDao.link(
                         BattleComboTagCrossRef(
                             battleComboId = combo.id,
@@ -152,7 +127,7 @@ abstract class AppDB : RoomDatabase() {
                     )
                 }
             }
-            Log.i("AppDB", "Populated 2 battle tags and 4 battle combos.")
+            Log.i("AppDB", "Populated 4 battle tags and 5 battle combos.")
     }
 
     companion object {
@@ -195,6 +170,14 @@ abstract class AppDB : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Battle tags gain an optional color. battle_combos.energy/status are left in
+                // place (unused) to avoid rebuilding a table referenced by a CASCADE foreign key.
+                db.execSQL("ALTER TABLE battle_tags ADD COLUMN color TEXT DEFAULT NULL")
+            }
+        }
+
         fun getDatabase(context: Context): AppDB {
             val appContext = context.applicationContext
                 ?: throw IllegalStateException("Application context cannot be null when getting database.")
@@ -205,7 +188,7 @@ abstract class AppDB : RoomDatabase() {
                     AppDB::class.java,
                     "break_vault_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .fallbackToDestructiveMigration(true)
                     .addCallback(AppDbCallback(scope = CoroutineScope(Dispatchers.IO)))
                     .build()

@@ -1,3 +1,4 @@
+// Modified by Claude Code - 2026-09-24
 package com.princelumpy.breakvault.ui.common
 
 import AppStyleDefaults
@@ -160,6 +161,7 @@ fun <T> TagSelectionCard(
  * @param onTagNameChange Callback when tag name changes
  * @param onConfirm Callback when confirm button is clicked
  * @param onDismiss Callback when dialog is dismissed
+ * @param extraContent Optional content rendered below the name field (e.g. a color picker)
  */
 @Composable
 fun TagDialog(
@@ -172,7 +174,8 @@ fun TagDialog(
     errorMessage: String?,
     onTagNameChange: (String) -> Unit,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    extraContent: (@Composable () -> Unit)? = null
 ) {
     val focusRequester = remember { FocusRequester() }
 
@@ -184,40 +187,43 @@ fun TagDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            OutlinedTextField(
-                value = tagName,
-                onValueChange = { newValue ->
-                    if (characterLimit == null || newValue.length <= characterLimit) {
-                        onTagNameChange(newValue)
-                    }
-                },
-                label = { Text(labelText) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        if (tagName.isNotBlank()) {
-                            onConfirm()
+            Column {
+                OutlinedTextField(
+                    value = tagName,
+                    onValueChange = { newValue ->
+                        if (characterLimit == null || newValue.length <= characterLimit) {
+                            onTagNameChange(newValue)
                         }
-                    }
-                ),
-                isError = isError,
-                supportingText = {
-                    if (isError) {
-                        Text(
-                            text = errorMessage ?: "",
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester)
-            )
+                    },
+                    label = { Text(labelText) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            if (tagName.isNotBlank()) {
+                                onConfirm()
+                            }
+                        }
+                    ),
+                    isError = isError,
+                    supportingText = {
+                        if (isError) {
+                            Text(
+                                text = errorMessage ?: "",
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester)
+                )
+                extraContent?.invoke()
+            }
         },
         confirmButton = {
             TextButton(

@@ -1,3 +1,4 @@
+# Modified by Claude Code - 2026-09-24
 [versions]
 # Core Android & Kotlin
 agp = "9.4.1"
@@ -11,6 +12,9 @@ coreKtx = "1.17.0"
 
 # Room
 androidxRoom = "2.8.4"
+
+# DataStore
+datastore = "1.2.0"
 
 # Compose & UI
 composeBom = "2026.01.00"
@@ -47,6 +51,9 @@ androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecyc
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "androidxRoom" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "androidxRoom" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "androidxRoom" }
+
+# DataStore
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 
 # Core & Compose
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

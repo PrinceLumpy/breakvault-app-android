@@ -1,3 +1,4 @@
+// Modified by Claude Code - 2026-09-24
 package com.princelumpy.breakvault.data.repository
 
 import com.princelumpy.breakvault.data.local.dao.BattleDao
@@ -108,13 +109,12 @@ class BattleRepository @Inject constructor(
     }
 
     /**
-     * Updates the name of an existing battle tag. Main-safe.
-     * @param tagId The ID of the tag to update.
-     * @param newName The new name for the tag.
+     * Updates an existing battle tag. Main-safe.
+     * Callers are responsible for setting [BattleTag.modifiedAt].
      */
-    suspend fun updateTagName(tagId: String, newName: String) {
+    suspend fun updateBattleTag(tag: BattleTag) {
         withContext(Dispatchers.IO) {
-            battleDao.updateTagName(tagId, newName)
+            battleDao.updateBattleTag(tag)
         }
     }
 

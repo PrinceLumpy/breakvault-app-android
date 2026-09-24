@@ -37,9 +37,9 @@ Notes on the build:
 - KSP (not kapt) generates Room and Hilt code.
 - Dependency versions live in `gradle/libs.versions.toml`; add libraries there, reference via
   `libs.*` aliases in `app/build.gradle.kts`.
-- `app/src/test` and `app/src/androidTest` do not exist yet, but the test dependencies (JUnit4,
-  MockK, `kotlinx-coroutines-test`, `androidx.arch.core:core-testing`, Compose UI test) are already
-  declared.
+- `app/src/test` holds JVM unit tests; `app/src/androidTest` does not exist yet. Test dependencies
+  (JUnit4, MockK, `kotlinx-coroutines-test`, `androidx.arch.core:core-testing`, Compose UI test)
+  are declared.
 
 ## Architecture
 
@@ -53,7 +53,9 @@ MVVM + repository over Room, everything under `com.princelumpy.breakvault`.
   return `Flow<...>` for reactive reads; `...List()` suspend variants exist for one-shot export.
 - `data/local/relation` — `@Relation` classes (e.g. `MoveWithTags`) for the many-to-many tag joins
   via `MoveTagCrossRef` / `BattleComboTagCrossRef`.
-- `data/repository` — one repository per domain plus `SettingsRepository`. Repositories are thin:
+- `data/repository` — one repository per domain plus `SettingsRepository` and
+  `UserPreferencesRepository` (DataStore Preferences for persisted UI choices such as the battle
+  list sort; not part of export or DB reset). Repositories are thin:
   they pass Flows through unchanged and wrap multi-write operations in `withContext(Dispatchers.IO)`
   / DAO `@Transaction`. **Filtering and derivation belong in the ViewModel, not here.**
 - `data/service/export/model/AppDataExport.kt` — the full-database JSON snapshot used by
@@ -69,7 +71,7 @@ _userInteractions)` derives a single public `data class ...UiState`, exposed as 
 `stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ...)` with `isLoading = true` as the
 initial value.
 
-**Database** — `data/local/database/AppDB.kt` is the single `@Database` (currently `version = 5`)
+**Database** — `data/local/database/AppDB.kt` is the single `@Database` (currently `version = 6`)
 with hand-written `MIGRATION_x_y` objects, `fallbackToDestructiveMigration(true)`, a `Converters`
 `@TypeConverters`, and an `AppDbCallback` that calls `prepopulateExampleData()` on create. Example
 data is debug-only (guarded by `BuildConfig.DEBUG`). Schemas are exported to `app/schemas`.

@@ -1,6 +1,6 @@
+// Modified by Claude Code - 2026-09-24
 package com.princelumpy.breakvault.ui.battlecombos.list
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
@@ -47,7 +47,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -63,8 +62,9 @@ import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.BattleCombo
 import com.princelumpy.breakvault.data.local.relation.BattleComboWithTags
 import com.princelumpy.breakvault.data.local.entity.BattleTag
-import com.princelumpy.breakvault.data.local.entity.EnergyLevel
-import com.princelumpy.breakvault.data.local.entity.TrainingStatus
+import com.princelumpy.breakvault.data.local.entity.TagColor
+import com.princelumpy.breakvault.data.repository.BattleSortOption
+import com.princelumpy.breakvault.ui.battlecombos.common.TagColorStrip
 import com.princelumpy.breakvault.ui.common.TagFilterRow
 import AppStyleDefaults
 
@@ -154,34 +154,22 @@ fun BattleComboListContent(
                             expanded = showSortMenu,
                             onDismissRequest = { showSortMenu = false }
                         ) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(id = R.string.battle_combo_list_sort_energy_high_low)) },
-                                onClick = {
-                                    onSortOptionChange(BattleSortOption.EnergyHighToLow)
-                                    showSortMenu = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(id = R.string.battle_combo_list_sort_energy_low_high)) },
-                                onClick = {
-                                    onSortOptionChange(BattleSortOption.EnergyLowToHigh)
-                                    showSortMenu = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(id = R.string.battle_combo_list_sort_status_ready)) },
-                                onClick = {
-                                    onSortOptionChange(BattleSortOption.StatusFireFirst)
-                                    showSortMenu = false
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(id = R.string.battle_combo_list_sort_status_training)) },
-                                onClick = {
-                                    onSortOptionChange(BattleSortOption.StatusHammerFirst)
-                                    showSortMenu = false
-                                }
-                            )
+                            listOf(
+                                BattleSortOption.NEWEST to R.string.battle_combo_list_sort_newest,
+                                BattleSortOption.NAME to R.string.battle_combo_list_sort_name,
+                                BattleSortOption.COLOR to R.string.battle_combo_list_sort_color
+                            ).forEach { (option, labelResId) ->
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(id = labelResId)) },
+                                    trailingIcon = if (option == uiState.sortOption) {
+                                        { Icon(Icons.Filled.Check, contentDescription = null) }
+                                    } else null,
+                                    onClick = {
+                                        onSortOptionChange(option)
+                                        showSortMenu = false
+                                    }
+                                )
+                            }
                         }
                     }
                     // Reset Button
@@ -290,13 +278,13 @@ fun BattleComboListContent(
                         ) {
                             items(
                                 items = uiState.filteredAndSortedCombos,
-                                key = { it.battleCombo.id }
-                            ) { comboWithTags ->
+                                key = { it.comboWithTags.battleCombo.id }
+                            ) { item ->
                                 BattleComboItem(
-                                    comboWithTags = comboWithTags,
-                                    onClick = { onToggleUsed(comboWithTags.battleCombo) },
+                                    item = item,
+                                    onClick = { onToggleUsed(item.comboWithTags.battleCombo) },
                                     onEditClick = {
-                                        onNavigateToAddEditBattleCombo(comboWithTags.battleCombo.id)
+                                        onNavigateToAddEditBattleCombo(item.comboWithTags.battleCombo.id)
                                     }
                                 )
                             }
@@ -328,25 +316,13 @@ fun BattleComboListContent(
 
 @Composable
 fun BattleComboItem(
-    comboWithTags: BattleComboWithTags,
+    item: BattleComboListItem,
     onClick: () -> Unit,
     onEditClick: () -> Unit
 ) {
-    val combo = comboWithTags.battleCombo
-    val tags = comboWithTags.tags
+    val combo = item.comboWithTags.battleCombo
+    val tags = item.comboWithTags.tags
     val isUsed = combo.isUsed
-
-    val energyColor = when (combo.energy) {
-        EnergyLevel.LOW -> Color(0xFF4CAF50)
-        EnergyLevel.MEDIUM -> Color(0xFFFFC107)
-        EnergyLevel.HIGH -> Color(0xFFF44336)
-        EnergyLevel.NONE -> Color.Gray
-    }
-
-    val statusIcon = when (combo.status) {
-        TrainingStatus.READY -> "🔥"
-        TrainingStatus.TRAINING -> "🔨"
-    }
 
     Card(
         modifier = Modifier
@@ -359,13 +335,7 @@ fun BattleComboItem(
                 .height(IntrinsicSize.Min)
                 .graphicsLayer(alpha = if (isUsed) 0.5f else 1.0f)
         ) {
-            // Energy Strip
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(8.dp)
-                    .background(energyColor)
-            )
+            TagColorStrip(colors = item.stripColors)
 
             Row(
                 modifier = Modifier
@@ -393,12 +363,6 @@ fun BattleComboItem(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Status Icon
-                Text(
-                    text = statusIcon,
-                    style = MaterialTheme.typography.headlineSmall
-                )
-
                 // Edit Button
                 IconButton(onClick = onEditClick) {
                     Icon(
@@ -413,62 +377,38 @@ fun BattleComboItem(
 }
 
 // PREVIEWS
+private val previewTags = listOf(
+    BattleTag(name = "Power", color = TagColor.RED),
+    BattleTag(name = "Technique", color = TagColor.BLUE),
+    BattleTag(name = "Filler")
+)
+
+private val previewCombos = listOf(
+    BattleComboWithTags(
+        battleCombo = BattleCombo(id = "1", title = "Jab -> Cross -> Hook"),
+        tags = previewTags
+    ),
+    BattleComboWithTags(
+        battleCombo = BattleCombo(id = "2", title = "Windmill -> Freeze"),
+        tags = listOf(previewTags[0])
+    ),
+    BattleComboWithTags(
+        battleCombo = BattleCombo(id = "3", title = "Uppercut -> Body Shot", isUsed = true),
+        tags = emptyList()
+    )
+)
+
 @Preview(showBackground = true)
 @Composable
 fun PreviewBattleComboListScreen() {
     BattleComboListContent(
         uiState = BattleComboListUiState(
-            allCombos = listOf(
-                BattleComboWithTags(
-                    battleCombo = BattleCombo(
-                        id = "1",
-                        title = "Jab -> Cross -> Hook",
-                        energy = EnergyLevel.MEDIUM,
-                        status = TrainingStatus.READY,
-                        isUsed = false
-                    ),
-                    tags = listOf(BattleTag(name = "Power"), BattleTag(name = "Speed"))
-                ),
-                BattleComboWithTags(
-                    battleCombo = BattleCombo(
-                        id = "2",
-                        title = "Uppercut -> Body Shot",
-                        energy = EnergyLevel.HIGH,
-                        status = TrainingStatus.TRAINING,
-                        isUsed = true
-                    ),
-                    tags = emptyList()
-                )
-            ),
-            filteredAndSortedCombos = listOf(
-                BattleComboWithTags(
-                    battleCombo = BattleCombo(
-                        id = "1",
-                        title = "Jab -> Cross -> Hook",
-                        energy = EnergyLevel.MEDIUM,
-                        status = TrainingStatus.READY,
-                        isUsed = false
-                    ),
-                    tags = listOf(BattleTag(name = "Power"), BattleTag(name = "Speed"))
-                ),
-                BattleComboWithTags(
-                    battleCombo = BattleCombo(
-                        id = "2",
-                        title = "Uppercut -> Body Shot",
-                        energy = EnergyLevel.HIGH,
-                        status = TrainingStatus.TRAINING,
-                        isUsed = true
-                    ),
-                    tags = emptyList()
-                )
-            ),
-            allTags = listOf(
-                BattleTag(name = "Power"),
-                BattleTag(name = "Speed"),
-                BattleTag(name = "Defense")
-            ),
+            allCombos = previewCombos,
+            filteredAndSortedCombos = previewCombos.map { BattleComboListItem(it) },
+            allTags = previewTags,
             selectedTagNames = setOf("Power"),
-            showResetConfirmDialog = false
+            showResetConfirmDialog = false,
+            isLoading = false
         ),
         onSortOptionChange = {},
         onToggleTagFilter = {},
@@ -487,13 +427,7 @@ fun PreviewBattleComboListScreen() {
 @Composable
 fun PreviewBattleComboListScreenEmpty() {
     BattleComboListContent(
-        uiState = BattleComboListUiState(
-            allCombos = emptyList(),
-            filteredAndSortedCombos = emptyList(),
-            allTags = emptyList(),
-            selectedTagNames = emptySet(),
-            showResetConfirmDialog = false
-        ),
+        uiState = BattleComboListUiState(isLoading = false),
         onSortOptionChange = {},
         onToggleTagFilter = {},
         onClearFilters = {},
@@ -531,19 +465,7 @@ fun PreviewBattleComboListScreenResetDialog() {
 @Composable
 fun PreviewBattleComboItem() {
     BattleComboItem(
-        comboWithTags = BattleComboWithTags(
-            battleCombo = BattleCombo(
-                id = "1",
-                title = "Jab -> Cross -> Hook",
-                energy = EnergyLevel.MEDIUM,
-                status = TrainingStatus.READY,
-                isUsed = false
-            ),
-            tags = listOf(
-                BattleTag(name = "Power"),
-                BattleTag(name = "Speed")
-            )
-        ),
+        item = BattleComboListItem(previewCombos[0]),
         onClick = {},
         onEditClick = {}
     )
@@ -553,16 +475,7 @@ fun PreviewBattleComboItem() {
 @Composable
 fun PreviewBattleComboItemUsed() {
     BattleComboItem(
-        comboWithTags = BattleComboWithTags(
-            battleCombo = BattleCombo(
-                id = "1",
-                title = "Uppercut -> Body Shot",
-                energy = EnergyLevel.HIGH,
-                status = TrainingStatus.TRAINING,
-                isUsed = true
-            ),
-            tags = emptyList()
-        ),
+        item = BattleComboListItem(previewCombos[2]),
         onClick = {},
         onEditClick = {}
     )
@@ -572,11 +485,7 @@ fun PreviewBattleComboItemUsed() {
 @Composable
 fun PreviewTagFilterRow() {
     TagFilterRow(
-        tags = listOf(
-            BattleTag(name = "Power"),
-            BattleTag(name = "Speed"),
-            BattleTag(name = "Defense")
-        ),
+        tags = previewTags,
         selectedTagNames = setOf("Power"),
         onTagSelected = {},
         getTagName = { it.name },

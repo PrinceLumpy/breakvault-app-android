@@ -56,7 +56,6 @@ class SettingsRepository @Inject constructor(
     suspend fun resetDatabase() {
         withContext(Dispatchers.IO) {
             db.clearAllTables()
-            db.prepopulateExampleData()
         }
     }
 

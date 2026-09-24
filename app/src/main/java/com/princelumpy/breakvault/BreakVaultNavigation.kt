@@ -3,9 +3,9 @@ package com.princelumpy.breakvault
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -21,7 +21,7 @@ sealed class Screen(
         Screen("move_list", R.string.screen_label_moves, Icons.AutoMirrored.Filled.List)
 
     data object PracticeComboList :
-        Screen("practice_combos_list", R.string.screen_label_practice_combos, Icons.Filled.Favorite)
+        Screen("practice_combos_list", R.string.screen_label_practice_combos, Icons.Filled.Science)
 
     data object BattleComboList :
         Screen("battle_combo_list", R.string.screen_label_battle, Icons.Filled.FlashOn)

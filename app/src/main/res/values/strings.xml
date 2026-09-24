@@ -30,7 +30,7 @@
 
     <!-- Screen Labels (for Navigation) -->
     <string name="screen_label_moves">Moves</string>
-    <string name="screen_label_practice_combos">Combos</string>
+    <string name="screen_label_practice_combos">Lab</string>
     <string name="screen_label_tags">Tags</string>
     <string name="screen_label_settings">Settings</string>
     <string name="screen_label_combo_generator">Generator</string>

@@ -14,7 +14,7 @@ coreKtx = "1.17.0"
 androidxRoom = "2.8.4"
 
 # DataStore
-datastore = "1.2.0"
+datastore = "1.2.1"
 
 # Compose & UI
 composeBom = "2026.01.00"

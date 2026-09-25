@@ -1,3 +1,4 @@
+// Modified by Claude Code - 2026-09-25
 package com.princelumpy.breakvault.data.repository
 
 import android.content.Context
@@ -61,7 +62,7 @@ class SettingsRepository @Inject constructor(
 
     // ADDED: Function to write data to a user-selected file URI.
     fun writeDataToUri(uri: Uri, jsonString: String) {
-        context.contentResolver.openFileDescriptor(uri, "w")?.use { parcelFileDescriptor ->
+        context.contentResolver.openFileDescriptor(uri, "wt")?.use { parcelFileDescriptor ->
             FileOutputStream(parcelFileDescriptor.fileDescriptor).use { fileOutputStream ->
                 fileOutputStream.write(jsonString.toByteArray())
             }

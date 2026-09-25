@@ -1,4 +1,4 @@
-// Modified by Claude Code - 2026-09-24
+// Modified by Claude Code - 2026-09-25
 package com.princelumpy.breakvault.ui.battlecombos.list
 
 import androidx.compose.foundation.clickable
@@ -64,7 +64,7 @@ import com.princelumpy.breakvault.data.local.relation.BattleComboWithTags
 import com.princelumpy.breakvault.data.local.entity.BattleTag
 import com.princelumpy.breakvault.data.local.entity.TagColor
 import com.princelumpy.breakvault.data.repository.BattleSortOption
-import com.princelumpy.breakvault.ui.battlecombos.common.TagColorStrip
+import com.princelumpy.breakvault.ui.common.TagColorStrip
 import com.princelumpy.breakvault.ui.common.TagFilterRow
 import AppStyleDefaults
 

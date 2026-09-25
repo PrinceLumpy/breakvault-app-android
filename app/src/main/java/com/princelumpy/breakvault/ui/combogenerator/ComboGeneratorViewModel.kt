@@ -1,7 +1,10 @@
+// Modified by Claude Code - 2026-09-25
 package com.princelumpy.breakvault.ui.combogenerator
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.dao.MoveDao
 import com.princelumpy.breakvault.data.local.dao.PracticeComboDao
 import com.princelumpy.breakvault.data.local.entity.Move
@@ -16,9 +19,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import javax.inject.Inject
 
 enum class GenerationMode {
@@ -34,15 +34,22 @@ data class GenerationSettings(
     val structuredMoveTagSequence: List<MoveTag> = emptyList()
 )
 
+// A string resource plus its format args, resolved to text by the screen.
+data class UiMessage(
+    @StringRes val resId: Int,
+    val args: List<Any> = emptyList()
+)
+
 // State for the output of the generation.
 data class GeneratedComboState(
     val moves: List<Move> = emptyList(),
-    val text: String = ""
+    val text: String = "",
+    val error: UiMessage? = null
 )
 
 // State for transient UI events like dialogs and messages.
 data class DialogAndMessageState(
-    val snackbarMessage: String? = null,
+    val snackbarMessage: UiMessage? = null,
 )
 
 // The final, combined state for the UI to consume.
@@ -109,7 +116,7 @@ class ComboGeneratorViewModel @Inject constructor(
         val availableMoves = moveDao.getMovesByTags(tagsToUse.map { it.id })
 
         if (availableMoves.isEmpty()) {
-            showSnackbar("No moves found for the selected tags.")
+            showSnackbar(UiMessage(R.string.combo_generator_no_moves_found_message))
             return emptyList()
         }
 
@@ -120,8 +127,10 @@ class ComboGeneratorViewModel @Inject constructor(
         } else {
             if (comboLength > availableMoves.size) {
                 _generatedCombo.value = GeneratedComboState(
-                    moves = listOf(),
-                    text = "Cannot generate a combo of length $comboLength without repeats from only ${availableMoves.size} moves."
+                    error = UiMessage(
+                        R.string.combo_generator_not_enough_moves_message,
+                        listOf(comboLength, availableMoves.size)
+                    )
                 )
                 return emptyList()
             }
@@ -132,7 +141,7 @@ class ComboGeneratorViewModel @Inject constructor(
     private suspend fun generateStructuredMoves(): List<Move> {
         val settings = _settings.value
         val structuredSequence = settings.structuredMoveTagSequence.ifEmpty {
-            showSnackbar("Please define a sequence for Structured mode.")
+            showSnackbar(UiMessage(R.string.combo_generator_define_sequence_message))
             return emptyList()
         }
 
@@ -142,7 +151,9 @@ class ComboGeneratorViewModel @Inject constructor(
             if (moveForTag != null) {
                 generatedMoves.add(moveForTag)
             } else {
-                showSnackbar("Could not find a move for tag: ${tag.name}")
+                showSnackbar(
+                    UiMessage(R.string.combo_generator_no_move_for_tag_message, listOf(tag.name))
+                )
             }
         }
         return generatedMoves
@@ -190,26 +201,47 @@ class ComboGeneratorViewModel @Inject constructor(
         _dialogAndMessages.update { it.copy(snackbarMessage = null) }
     }
 
-    private fun showSnackbar(message: String) {
+    private fun showSnackbar(message: UiMessage) {
         _dialogAndMessages.update { it.copy(snackbarMessage = message) }
     }
 
     // --- Data Operation Handlers ---
-    fun saveCombo() {
+    /**
+     * Saves the generated combo to the Lab, named from [nameFormat] (e.g. "Generated Combo #%1$d")
+     * with the next number after the highest one already in use.
+     */
+    fun saveCombo(nameFormat: String) {
         viewModelScope.launch {
             val combo = _generatedCombo.value
             if (combo.moves.isNotEmpty()) {
-                val comboName =
-                    SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+                val existingNames = practiceComboDao.getAllPracticeCombosList().map { it.name }
+                val comboName = nextGeneratedComboName(existingNames, nameFormat)
                 val newCombo = PracticeCombo(
                     name = comboName,
                     moves = combo.moves.map { it.name }
                 )
                 practiceComboDao.insertPracticeCombo(newCombo)
-                showSnackbar("Combo saved successfully!")
+                showSnackbar(
+                    UiMessage(R.string.combo_generator_combo_saved_snackbar, listOf(comboName))
+                )
             } else {
-                showSnackbar("No combo to save.")
+                showSnackbar(UiMessage(R.string.combo_generator_no_combo_to_save_message))
             }
         }
     }
+}
+
+/**
+ * Fills [nameFormat]'s `%1$d` with one more than the highest number among [existingNames] that
+ * match the format. Deleted or renamed combos therefore never produce a duplicate name.
+ */
+internal fun nextGeneratedComboName(existingNames: List<String>, nameFormat: String): String {
+    val parts = nameFormat.split("%1\$d", limit = 2)
+    val prefix = parts[0]
+    val suffix = parts.getOrElse(1) { "" }
+    val pattern = Regex(Regex.escape(prefix) + "(\\d+)" + Regex.escape(suffix))
+    val highest = existingNames
+        .mapNotNull { pattern.matchEntire(it.trim())?.groupValues?.get(1)?.toIntOrNull() }
+        .maxOrNull() ?: 0
+    return prefix + (highest + 1) + suffix
 }

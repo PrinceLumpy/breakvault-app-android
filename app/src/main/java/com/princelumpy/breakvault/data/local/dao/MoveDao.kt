@@ -1,3 +1,4 @@
+// Modified by Claude Code - 2026-09-25
 package com.princelumpy.breakvault.data.local.dao
 
 import androidx.room.Dao
@@ -84,9 +85,6 @@ interface MoveDao {
 
     @Update
     suspend fun updateMoveTag(moveTag: MoveTag)
-
-    @Query("UPDATE move_tags SET name = :name, modifiedAt = :modifiedAt WHERE id = :id")
-    suspend fun updateTagName(id: String, name: String, modifiedAt: Long)
 
     @Delete
     suspend fun deleteTag(moveTag: MoveTag)

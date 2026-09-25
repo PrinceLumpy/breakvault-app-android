@@ -1,25 +1,17 @@
-// Modified by Claude Code - 2026-09-24
+// Modified by Claude Code - 2026-09-25
 package com.princelumpy.breakvault.ui.battlecombos.managetags
 
 import AppStyleDefaults
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -45,7 +37,7 @@ import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.BattleTag
 import com.princelumpy.breakvault.data.local.entity.TagColor
 import com.princelumpy.breakvault.ui.battlecombos.common.BattleTagDialog
-import com.princelumpy.breakvault.ui.battlecombos.common.TagColorStrip
+import com.princelumpy.breakvault.ui.common.ColoredTagItem
 import com.princelumpy.breakvault.ui.common.FlexibleItemList
 
 @Composable
@@ -155,8 +147,11 @@ fun BattleTagListContent(
                 ),
                 modifier = Modifier.padding(paddingValues)
             ) { tag ->
-                BattleTagItem(
-                    tag = tag,
+                ColoredTagItem(
+                    name = tag.name,
+                    color = tag.color,
+                    editContentDescription = stringResource(id = R.string.battle_tag_list_edit_icon_desc),
+                    deleteContentDescription = stringResource(id = R.string.battle_tag_list_delete_icon_desc),
                     onEditClick = { onEditTagClicked(tag) },
                     onDeleteClick = { onDeleteTagClicked(tag) }
                 )
@@ -215,57 +210,6 @@ private fun EmptyTagListState(modifier: Modifier = Modifier) {
             text = stringResource(id = R.string.battle_tag_list_no_tags_message),
             style = MaterialTheme.typography.bodyLarge
         )
-    }
-}
-
-/**
- * Tag card with the same leading color strip as battle combo cards.
- * Tapping the card opens the edit dialog, like the edit icon.
- */
-@Composable
-private fun BattleTagItem(
-    tag: BattleTag,
-    onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit
-) {
-    Card(
-        onClick = onEditClick,
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = AppStyleDefaults.SpacingSmall)
-    ) {
-        Row(
-            modifier = Modifier.height(IntrinsicSize.Min),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TagColorStrip(colors = listOfNotNull(tag.color))
-            Text(
-                text = tag.name,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(
-                        horizontal = AppStyleDefaults.SpacingLarge,
-                        vertical = AppStyleDefaults.SpacingMedium
-                    )
-            )
-            IconButton(onClick = onEditClick) {
-                Icon(
-                    imageVector = Icons.Filled.Edit,
-                    contentDescription = stringResource(id = R.string.battle_tag_list_edit_icon_desc),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
-            IconButton(
-                onClick = onDeleteClick,
-                modifier = Modifier.padding(end = AppStyleDefaults.SpacingSmall)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Delete,
-                    contentDescription = stringResource(id = R.string.battle_tag_list_delete_icon_desc),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
     }
 }
 

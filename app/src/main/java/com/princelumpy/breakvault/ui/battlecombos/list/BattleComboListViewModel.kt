@@ -1,4 +1,4 @@
-// Modified by Claude Code - 2026-09-24
+// Modified by Claude Code - 2026-09-25
 package com.princelumpy.breakvault.ui.battlecombos.list
 
 import androidx.lifecycle.ViewModel
@@ -10,7 +10,7 @@ import com.princelumpy.breakvault.data.local.relation.BattleComboWithTags
 import com.princelumpy.breakvault.data.repository.BattleRepository
 import com.princelumpy.breakvault.data.repository.BattleSortOption
 import com.princelumpy.breakvault.data.repository.UserPreferencesRepository
-import com.princelumpy.breakvault.ui.battlecombos.common.stripColors
+import com.princelumpy.breakvault.ui.common.stripColors
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted

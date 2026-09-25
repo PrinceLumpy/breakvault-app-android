@@ -1,7 +1,9 @@
+// Modified by Claude Code - 2026-09-25
 package com.princelumpy.breakvault.ui.moves.managetags
 
 import AppStyleDefaults
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -33,8 +35,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
+import com.princelumpy.breakvault.common.Constants.MOVE_TAG_CHARACTER_LIMIT
 import com.princelumpy.breakvault.data.local.entity.MoveTag
-import com.princelumpy.breakvault.ui.common.GenericItemList
+import com.princelumpy.breakvault.data.local.entity.TagColor
+import com.princelumpy.breakvault.ui.common.ColoredTagItem
+import com.princelumpy.breakvault.ui.common.FlexibleItemList
+import com.princelumpy.breakvault.ui.common.TagColorPicker
 import com.princelumpy.breakvault.ui.common.TagDialog
 import com.princelumpy.breakvault.ui.theme.BreakVaultTheme
 
@@ -73,11 +79,18 @@ fun MoveTagListScreen(
             labelText = stringResource(id = R.string.tag_list_tag_name_label),
             confirmButtonText = stringResource(id = R.string.common_add),
             tagName = userInputs.newTagName,
+            characterLimit = MOVE_TAG_CHARACTER_LIMIT,
             isError = uiState.newTagNameError != null,
             errorMessage = uiState.newTagNameError,
             onTagNameChange = moveTagListViewModel::onNewTagNameChange,
             onDismiss = moveTagListViewModel::onAddTagDialogDismiss,
-            onConfirm = moveTagListViewModel::onAddTag
+            onConfirm = moveTagListViewModel::onAddTag,
+            extraContent = {
+                TagColorPicker(
+                    selectedColor = userInputs.newTagColor,
+                    onColorSelected = moveTagListViewModel::onNewTagColorChange
+                )
+            }
         )
     }
 
@@ -87,11 +100,18 @@ fun MoveTagListScreen(
             labelText = stringResource(id = R.string.tag_list_new_tag_name_label),
             confirmButtonText = stringResource(id = R.string.common_save),
             tagName = userInputs.tagNameForEdit,
+            characterLimit = MOVE_TAG_CHARACTER_LIMIT,
             isError = uiState.editTagNameError != null,
             errorMessage = uiState.editTagNameError,
             onTagNameChange = moveTagListViewModel::onTagNameForEditChange,
             onDismiss = moveTagListViewModel::onEditTagDialogDismiss,
-            onConfirm = moveTagListViewModel::onUpdateTag
+            onConfirm = moveTagListViewModel::onUpdateTag,
+            extraContent = {
+                TagColorPicker(
+                    selectedColor = userInputs.tagColorForEdit,
+                    onColorSelected = moveTagListViewModel::onTagColorForEditChange
+                )
+            }
         )
     }
 
@@ -154,15 +174,26 @@ private fun MoveTagListScaffold(
                     .fillMaxSize()
             )
         } else {
-            GenericItemList(
+            FlexibleItemList(
                 items = tags,
-                onItemClick = onEditClick,
-                onEditClick = onEditClick,
-                onDeleteClick = onDeleteClick,
                 getItemKey = { it.id },
-                getItemName = { it.name },
+                contentPadding = PaddingValues(
+                    start = AppStyleDefaults.SpacingLarge,
+                    end = AppStyleDefaults.SpacingLarge,
+                    top = AppStyleDefaults.SpacingLarge,
+                    bottom = AppStyleDefaults.SpacingExtraLarge * 4 // FAB clearance
+                ),
                 modifier = Modifier.padding(paddingValues)
-            )
+            ) { tag ->
+                ColoredTagItem(
+                    name = tag.name,
+                    color = tag.color,
+                    editContentDescription = stringResource(id = R.string.tag_list_edit_tag_description),
+                    deleteContentDescription = stringResource(id = R.string.tag_list_delete_tag_description),
+                    onEditClick = { onEditClick(tag) },
+                    onDeleteClick = { onDeleteClick(tag) }
+                )
+            }
         }
     }
 }
@@ -230,8 +261,8 @@ private fun MoveTagListScaffold_WithTags_Preview() {
     BreakVaultTheme {
         MoveTagListScaffold(
             tags = listOf(
-                MoveTag(id = "1", name = "Beginner"),
-                MoveTag(id = "2", name = "Power"),
+                MoveTag(id = "1", name = "Beginner", color = TagColor.GREEN),
+                MoveTag(id = "2", name = "Power", color = TagColor.RED),
                 MoveTag(id = "3", name = "Freezes")
             ),
             onNavigateBack = {},

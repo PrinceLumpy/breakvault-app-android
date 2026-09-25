@@ -1,3 +1,4 @@
+// Modified by Claude Code - 2026-09-25
 package com.princelumpy.breakvault.ui.moves.addedit
 
 
@@ -54,6 +55,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.princelumpy.breakvault.R
 import com.princelumpy.breakvault.data.local.entity.MoveTag
+import com.princelumpy.breakvault.data.local.entity.TagColor
+import com.princelumpy.breakvault.ui.common.TagColorPicker
 import com.princelumpy.breakvault.ui.common.TagDialog
 import com.princelumpy.breakvault.ui.common.TagSelectionCard
 import com.princelumpy.breakvault.ui.common.UnsavedChangesDialog
@@ -115,6 +118,7 @@ fun AddEditMoveScreen(
         onMoveNameChange = { moveViewModel.onMoveNameChange(it) },
         onTagSelected = { moveViewModel.onTagSelected(it) },
         onNewTagNameChange = { moveViewModel.onNewTagNameChange(it) },
+        onNewTagColorChange = { moveViewModel.onNewTagColorChange(it) },
         onAddTag = { moveViewModel.addTag() },
         onSaveMove = {
             moveViewModel.saveMove {
@@ -146,6 +150,7 @@ private fun AddEditMoveScaffold(
     onMoveNameChange: (String) -> Unit,
     onTagSelected: (String) -> Unit,
     onNewTagNameChange: (String) -> Unit,
+    onNewTagColorChange: (TagColor?) -> Unit = {},
     onAddTag: () -> Unit,
     onSaveMove: () -> Unit,
     onDeleteMoveClick: () -> Unit,
@@ -203,6 +208,7 @@ private fun AddEditMoveScaffold(
                 onMoveNameChange = onMoveNameChange,
                 onTagSelected = onTagSelected,
                 onNewTagNameChange = onNewTagNameChange,
+                onNewTagColorChange = onNewTagColorChange,
                 onAddTag = onAddTag,
                 onSaveMove = onSaveMove
             )
@@ -268,6 +274,7 @@ private fun AddEditMoveContent(
     onMoveNameChange: (String) -> Unit,
     onTagSelected: (String) -> Unit,
     onNewTagNameChange: (String) -> Unit,
+    onNewTagColorChange: (TagColor?) -> Unit = {},
     onAddTag: () -> Unit,
     onSaveMove: () -> Unit
 ) {
@@ -350,6 +357,13 @@ private fun AddEditMoveContent(
                 onDismiss = {
                     showAddTagDialog = false
                     onNewTagNameChange("") // Clear input on dismiss
+                    onNewTagColorChange(null)
+                },
+                extraContent = {
+                    TagColorPicker(
+                        selectedColor = userInputs.newTagColor,
+                        onColorSelected = onNewTagColorChange
+                    )
                 }
             )
         }

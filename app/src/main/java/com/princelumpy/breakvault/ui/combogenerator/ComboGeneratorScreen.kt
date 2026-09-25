@@ -1,3 +1,4 @@
+// Modified by Claude Code - 2026-09-25
 package com.princelumpy.breakvault.ui.combogenerator
 
 import AppStyleDefaults
@@ -28,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -45,10 +47,12 @@ fun ComboGeneratorScreen(
 ) {
     val uiState by comboGeneratorViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val resources = LocalResources.current
+    val defaultComboNameFormat = stringResource(id = R.string.combo_generator_default_name)
 
     LaunchedEffect(uiState.dialogAndMessages.snackbarMessage) {
         uiState.dialogAndMessages.snackbarMessage?.let {
-            snackbarHostState.showSnackbar(it)
+            snackbarHostState.showSnackbar(resources.getString(it.resId, *it.args.toTypedArray()))
             comboGeneratorViewModel.onSnackbarShown()
         }
     }
@@ -64,7 +68,7 @@ fun ComboGeneratorScreen(
         onAddTagToSequence = comboGeneratorViewModel::onAddTagToSequence,
         onRemoveLastTagFromSequence = comboGeneratorViewModel::onRemoveLastTagFromSequence,
         onGenerateCombo = comboGeneratorViewModel::generateCombo,
-        onSaveCombo = comboGeneratorViewModel::saveCombo,
+        onSaveCombo = { comboGeneratorViewModel.saveCombo(defaultComboNameFormat) },
     )
 }
 
@@ -167,7 +171,14 @@ fun ComboGeneratorContent(
                 Text(stringResource(id = R.string.combo_generator_generate_combo_button))
             }
 
-            GeneratedComboCard(comboText = uiState.generatedCombo.text)
+            val error = uiState.generatedCombo.error
+            GeneratedComboCard(
+                comboText = if (error != null) {
+                    stringResource(error.resId, *error.args.toTypedArray())
+                } else {
+                    uiState.generatedCombo.text
+                }
+            )
         }
     }
 }

@@ -1,5 +1,5 @@
-// Modified by Claude Code - 2026-09-24
-package com.princelumpy.breakvault.ui.battlecombos.common
+// Modified by Claude Code - 2026-09-25
+package com.princelumpy.breakvault.ui.common
 
 import AppStyleDefaults
 import androidx.annotation.StringRes

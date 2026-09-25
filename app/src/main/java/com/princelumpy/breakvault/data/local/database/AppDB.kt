@@ -1,4 +1,4 @@
-// Modified by Claude Code - 2026-09-24
+// Modified by Claude Code - 2026-09-25
 package com.princelumpy.breakvault.data.local.database
 
 import android.content.Context
@@ -36,7 +36,7 @@ import java.util.UUID
         BattleTag::class,
         BattleComboTagCrossRef::class
     ],
-    version = 6
+    version = 7
 )
 
 @TypeConverters(Converters::class)
@@ -53,10 +53,15 @@ abstract class AppDB : RoomDatabase() {
         val battleDao = this.battleDao()
 
         // --- 1. Tags ---
-        val tagsToEnsure = listOf("Toprock", "Footwork", "Freeze", "Power")
+        val tagsToEnsure = listOf(
+            "Toprock" to TagColor.YELLOW,
+            "Footwork" to TagColor.GREEN,
+            "Freeze" to TagColor.BLUE,
+            "Power" to TagColor.RED
+        )
         val tagMap = mutableMapOf<String, String>() // Name -> ID
-        tagsToEnsure.forEach { name ->
-            val newMoveTag = MoveTag(id = UUID.randomUUID().toString(), name = name)
+        tagsToEnsure.forEach { (name, color) ->
+            val newMoveTag = MoveTag(id = UUID.randomUUID().toString(), name = name, color = color)
             moveTagDao.insertMoveTag(newMoveTag)
             tagMap[name] = newMoveTag.id
         }
@@ -178,6 +183,39 @@ abstract class AppDB : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Move tags gain an optional color, like battle tags.
+                db.execSQL("ALTER TABLE move_tags ADD COLUMN color TEXT")
+
+                // Drop battle_combos.energy/status. minSdk 26 has no DROP COLUMN, so rebuild the
+                // table. Dropping it could CASCADE-delete its tag links if foreign keys are
+                // enforced, so back the links up and restore them afterwards.
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `battle_combos_new` (`id` TEXT NOT NULL, " +
+                        "`title` TEXT NOT NULL, `description` TEXT NOT NULL, " +
+                        "`isUsed` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, " +
+                        "`modifiedAt` INTEGER NOT NULL, PRIMARY KEY(`id`))"
+                )
+                db.execSQL(
+                    "INSERT INTO battle_combos_new (id, title, description, isUsed, createdAt, modifiedAt) " +
+                        "SELECT id, title, description, isUsed, createdAt, modifiedAt FROM battle_combos"
+                )
+                db.execSQL(
+                    "CREATE TEMP TABLE battle_combo_tag_cross_ref_backup AS " +
+                        "SELECT battleComboId, battleTagId FROM battle_combo_tag_cross_ref"
+                )
+                db.execSQL("DROP TABLE battle_combos")
+                db.execSQL("ALTER TABLE battle_combos_new RENAME TO battle_combos")
+                db.execSQL("DELETE FROM battle_combo_tag_cross_ref")
+                db.execSQL(
+                    "INSERT INTO battle_combo_tag_cross_ref (battleComboId, battleTagId) " +
+                        "SELECT battleComboId, battleTagId FROM battle_combo_tag_cross_ref_backup"
+                )
+                db.execSQL("DROP TABLE battle_combo_tag_cross_ref_backup")
+            }
+        }
+
         fun getDatabase(context: Context): AppDB {
             val appContext = context.applicationContext
                 ?: throw IllegalStateException("Application context cannot be null when getting database.")
@@ -188,7 +226,7 @@ abstract class AppDB : RoomDatabase() {
                     AppDB::class.java,
                     "break_vault_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .fallbackToDestructiveMigration(true)
                     .addCallback(AppDbCallback(scope = CoroutineScope(Dispatchers.IO)))
                     .build()

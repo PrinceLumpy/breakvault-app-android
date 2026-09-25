@@ -1,4 +1,4 @@
-// Modified by Claude Code - 2026-09-24
+// Modified by Claude Code - 2026-09-25
 package com.princelumpy.breakvault.ui.battlecombos.common
 
 import androidx.compose.material3.MaterialTheme
@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.princelumpy.breakvault.common.Constants.BATTLE_TAG_CHARACTER_LIMIT
 import com.princelumpy.breakvault.data.local.entity.TagColor
+import com.princelumpy.breakvault.ui.common.TagColorPicker
 import com.princelumpy.breakvault.ui.common.TagDialog
 
 /**

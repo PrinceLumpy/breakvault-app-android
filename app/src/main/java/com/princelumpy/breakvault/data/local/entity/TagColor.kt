@@ -1,10 +1,10 @@
-// Modified by Claude Code - 2026-09-24
+// Modified by Claude Code - 2026-09-25
 package com.princelumpy.breakvault.data.local.entity
 
 import kotlinx.serialization.Serializable
 
 /**
- * Fixed palette for battle tag colors. Declaration order is the top-to-bottom order of the
+ * Fixed palette for move and battle tag colors. Declaration order is the top-to-bottom order of the
  * color strip on a battle combo card.
  *
  * Entries are persisted by name (Room TEXT column and export JSON), so never rename or remove

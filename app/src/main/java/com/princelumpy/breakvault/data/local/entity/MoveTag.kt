@@ -1,3 +1,4 @@
+// Modified by Claude Code - 2026-09-25
 package com.princelumpy.breakvault.data.local.entity
 
 import androidx.room.Entity
@@ -9,6 +10,7 @@ import kotlinx.serialization.Serializable
 data class MoveTag(
     @PrimaryKey val id: String,
     val name: String,
+    val color: TagColor? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val modifiedAt: Long = System.currentTimeMillis()
 )

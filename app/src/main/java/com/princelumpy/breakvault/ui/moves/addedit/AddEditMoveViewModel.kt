@@ -1,9 +1,11 @@
+// Modified by Claude Code - 2026-09-25
 package com.princelumpy.breakvault.ui.moves.addedit
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.princelumpy.breakvault.data.local.entity.Move
 import com.princelumpy.breakvault.data.local.entity.MoveTag
+import com.princelumpy.breakvault.data.local.entity.TagColor
 import com.princelumpy.breakvault.data.repository.MoveRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +27,7 @@ private const val MOVE_TAG_CHARACTER_LIMIT = 30
 data class UserInputs(
     val moveName: String = "",
     val newTagName: String = "",
+    val newTagColor: TagColor? = null,
     val selectedTags: Set<String> = emptySet()
 )
 
@@ -135,6 +138,10 @@ class AddEditMoveViewModel @Inject constructor(
         }
     }
 
+    fun onNewTagColorChange(color: TagColor?) {
+        _userInputs.update { it.copy(newTagColor = color) }
+    }
+
     fun onTagSelected(tagId: String) {
         _userInputs.update { currentInputs ->
             val newSelectedTags = if (tagId in currentInputs.selectedTags) {
@@ -178,12 +185,15 @@ class AddEditMoveViewModel @Inject constructor(
         // If all checks pass, proceed with insertion
         viewModelScope.launch {
             val newTagId = UUID.randomUUID().toString()
-            moveRepository.insertMoveTag(MoveTag(id = newTagId, name = newTagName))
+            moveRepository.insertMoveTag(
+                MoveTag(id = newTagId, name = newTagName, color = uiState.value.userInputs.newTagColor)
+            )
 
             // Clear the field and select the new tag
             _userInputs.update {
                 it.copy(
                     newTagName = "",
+                    newTagColor = null,
                     selectedTags = it.selectedTags + newTagId
                 )
             }

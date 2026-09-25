@@ -1,3 +1,4 @@
+// Modified by Claude Code - 2026-09-25
 package com.princelumpy.breakvault.data.repository
 
 import com.princelumpy.breakvault.data.local.dao.MoveDao
@@ -79,9 +80,9 @@ class MoveRepository @Inject constructor(
     }
 
     // -- Tags --
-    suspend fun updateTagName(tagId: String, newName: String) {
+    suspend fun updateMoveTag(tag: MoveTag) {
         withContext(Dispatchers.IO) {
-            moveDao.updateTagName(tagId, newName, System.currentTimeMillis())
+            moveDao.updateMoveTag(tag)
         }
     }
 
